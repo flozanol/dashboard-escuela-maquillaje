@@ -124,6 +124,24 @@ const Dashboard = () => {
   const formatNumber = (number) => {
     return new Intl.NumberFormat('es-MX').format(number);
   };
+
+  // Función para limpiar y convertir números
+  const parseNumberFromString = (value) => {
+    if (!value) return 0;
+    
+    // Convertir a string si no lo es
+    const str = value.toString();
+    
+    // Remover comas, espacios y caracteres no numéricos excepto punto y signo negativo
+    const cleaned = str.replace(/[,$\s]/g, '').replace(/[^\d.-]/g, '');
+    
+    // Convertir a número
+    const number = parseFloat(cleaned);
+    
+    console.log(`🔢 Convirtiendo "${value}" → "${cleaned}" → ${number}`);
+    
+    return isNaN(number) ? 0 : number;
+  };
   const transformGoogleSheetsData = (rawData) => {
     const headers = rawData[0];
     const rows = rawData.slice(1);
@@ -734,10 +752,30 @@ const Dashboard = () => {
               <strong>✅ Conectado exitosamente.</strong> Datos actualizados desde Google Sheets.
             </p>
             <button 
-              onClick={() => console.log('📊 Datos actuales en salesData:', salesData)}
+              onClick={() => {
+                console.log('📊 Datos actuales en salesData:', salesData);
+                
+                // Calcular total de julio manualmente
+                const julioData = salesData["2024-07"];
+                if (julioData) {
+                  let total = 0;
+                  Object.keys(julioData).forEach(school => {
+                    Object.keys(julioData[school]).forEach(area => {
+                      Object.keys(julioData[school][area]).forEach(course => {
+                        total += julioData[school][area][course].ventas;
+                      });
+                    });
+                  });
+                  console.log(`💰 TOTAL JULIO CALCULADO: ${total.toLocaleString()}`);
+                  alert(`Total Julio: ${total.toLocaleString()}`);
+                } else {
+                  console.log('❌ No hay datos para julio 2024');
+                  alert('No hay datos para julio 2024');
+                }
+              }}
               className="mt-2 text-xs bg-green-200 text-green-800 px-2 py-1 rounded hover:bg-green-300"
             >
-              🔍 Ver datos en consola (F12)
+              🔍 Verificar total Julio
             </button>
           </div>
         )}
