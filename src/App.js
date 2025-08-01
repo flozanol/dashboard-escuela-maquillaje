@@ -74,37 +74,90 @@ const Dashboard = () => {
     return isNaN(number) ? 0 : number;
   };
 
-  // Función para ordenar meses cronológicamente
+  // Función para ordenar meses cronológicamente (mejorada)
   const sortMonthsChronologically = (months) => {
+    console.log('🔍 Función sortMonthsChronologically recibió:', months);
+    
     return months.sort((a, b) => {
-      // Si es formato YYYY-MM
-      if (a.match(/^\d{4}-\d{2}$/) && b.match(/^\d{4}-\d{2}$/)) {
-        return new Date(a + '-01') - new Date(b + '-01');
-      }
+      console.log(`🔀 Comparando: "${a}" vs "${b}"`);
       
-      // Si es formato "Mes YYYY" en español
-      const monthNames = {
-        'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
-        'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
-        'septiembre': '09', 'octubre': '10', 'noviembre': '11', 'diciembre': '12'
-      };
-      
-      const parseSpanishDate = (dateStr) => {
-        const parts = dateStr.toLowerCase().split(' ');
+      // Función para convertir diferentes formatos a YYYY-MM
+      const parseToStandardDate = (dateStr) => {
+        if (!dateStr) return null;
+        
+        const str = dateStr.toString().trim();
+        console.log(`  📅 Parseando: "${str}"`);
+        
+        // Formato YYYY-MM
+        if (str.match(/^\d{4}-\d{2}$/)) {
+          console.log(`    ✅ Formato YYYY-MM detectado: ${str}`);
+          return str;
+        }
+        
+        // Formato MM/YYYY
+        if (str.match(/^\d{1,2}\/\d{4}$/)) {
+          const [month, year] = str.split('/');
+          const result = `${year}-${month.padStart(2, '0')}`;
+          console.log(`    ✅ Formato MM/YYYY convertido: ${str} -> ${result}`);
+          return result;
+        }
+        
+        // Formato MM-YYYY
+        if (str.match(/^\d{1,2}-\d{4}$/)) {
+          const [month, year] = str.split('-');
+          const result = `${year}-${month.padStart(2, '0')}`;
+          console.log(`    ✅ Formato MM-YYYY convertido: ${str} -> ${result}`);
+          return result;
+        }
+        
+        // Formato "Mes YYYY" en español
+        const monthNames = {
+          'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
+          'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
+          'septiembre': '09', 'octubre': '10', 'noviembre': '11', 'diciembre': '12',
+          'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04',
+          'may': '05', 'jun': '06', 'jul': '07', 'ago': '08',
+          'sep': '09', 'oct': '10', 'nov': '11', 'dic': '12'
+        };
+        
+        const parts = str.toLowerCase().split(/[\s-]+/);
         if (parts.length === 2) {
           const month = monthNames[parts[0]];
           const year = parts[1];
-          if (month && year) {
-            return `${year}-${month}`;
+          if (month && year && year.match(/^\d{4}$/)) {
+            const result = `${year}-${month}`;
+            console.log(`    ✅ Formato español convertido: ${str} -> ${result}`);
+            return result;
           }
         }
-        return dateStr;
+        
+        // Formato "YYYY Mes" en español
+        if (parts.length === 2) {
+          const month = monthNames[parts[1]];
+          const year = parts[0];
+          if (month && year && year.match(/^\d{4}$/)) {
+            const result = `${year}-${month}`;
+            console.log(`    ✅ Formato español invertido convertido: ${str} -> ${result}`);
+            return result;
+          }
+        }
+        
+        console.log(`    ❌ Formato no reconocido: ${str}`);
+        return str; // Devolver original si no se puede parsear
       };
       
-      const dateA = parseSpanishDate(a);
-      const dateB = parseSpanishDate(b);
+      const dateA = parseToStandardDate(a);
+      const dateB = parseToStandardDate(b);
       
-      return new Date(dateA + '-01') - new Date(dateB + '-01');
+      if (!dateA || !dateB) {
+        console.log(`    ⚠️ No se pudieron parsear las fechas`);
+        return a.localeCompare(b); // Fallback a orden alfabético
+      }
+      
+      const comparison = new Date(dateA + '-01') - new Date(dateB + '-01');
+      console.log(`    📊 Resultado: ${dateA} ${comparison < 0 ? '<' : comparison > 0 ? '>' : '='} ${dateB}`);
+      
+      return comparison;
     });
   };
 
@@ -1170,21 +1223,29 @@ const Dashboard = () => {
     // Obtener todos los meses únicos de los datos de cobranza y ordenarlos cronológicamente
     const mesesCobranza = useMemo(() => {
       const meses = new Set();
-      Object.values(cobranzaData).forEach(escuela => {
-        Object.keys(escuela).forEach(mes => {
+      
+      console.log('🚀 Iniciando extracción de meses de cobranzaData:', cobranzaData);
+      
+      Object.entries(cobranzaData).forEach(([escuela, datosEscuela]) => {
+        console.log(`📋 Procesando escuela: ${escuela}`);
+        console.log(`   Datos de escuela:`, datosEscuela);
+        
+        Object.keys(datosEscuela).forEach(mes => {
           if (mes && mes.trim() !== '') {
-            meses.add(mes.trim());
+            const mesLimpio = mes.trim();
+            meses.add(mesLimpio);
+            console.log(`   ✅ Mes agregado: "${mesLimpio}"`);
           }
         });
       });
       
-      // Convertir a array y ordenar cronológicamente
+      // Convertir a array y mostrar antes del ordenamiento
       const mesesArray = Array.from(meses);
-      console.log('Meses antes de ordenar:', mesesArray);
+      console.log('📅 Meses extraídos (antes de ordenar):', mesesArray);
       
-      // Usar la función de ordenamiento cronológico existente
+      // Usar la función de ordenamiento cronológico mejorada
       const mesesOrdenados = sortMonthsChronologically(mesesArray);
-      console.log('Meses después de ordenar:', mesesOrdenados);
+      console.log('🎯 Meses después de ordenar:', mesesOrdenados);
       
       return mesesOrdenados;
     }, [cobranzaData]);
