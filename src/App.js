@@ -1,15 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
-import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Users, Award, Scissors, Eye, Book, Package, AlertTriangle, Mail, Calendar, Star, Target, Activity, Bell, RefreshCw, Wifi, WifiOff, User, Building, BookOpen, BarChart3 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Star, Target, AlertTriangle, Activity } from 'lucide-react';
 
-// 🔧 AQUÍ CAMBIAS TUS API KEYS - ESTAS SON DE EJEMPLO
 const GOOGLE_SHEETS_CONFIG = {
-  apiKey: 'AIzaSyBXvaWWirK1_29g7x6uIq2qlmLdBL9g3TE', // 👈 CAMBIA ESTO POR TU API KEY REAL
-  spreadsheetId: '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg', // 👈 CAMBIA ESTO POR TU SPREADSHEET ID REAL
-  range: 'Ventas!A:G' // 👈 VERIFICA QUE TU HOJA SE LLAME "Ventas_2024"
+  apiKey: 'AIzaSyBXvaWWirK1_29g7x6uIq2qlmLdBL9g3TE',
+  spreadsheetId: '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg',
+  range: 'Ventas!A:G'
 };
 
-// Datos de respaldo (fallback) en caso de error de conexión
 const fallbackData = {
   "2024-01": {
     "Polanco": {
@@ -53,8 +51,6 @@ const Dashboard = () => {
   const [viewType, setViewType] = useState("executive");
   const [metricType, setMetricType] = useState("ventas");
   const [compareMonths, setCompareMonths] = useState(["2024-06", "2024-07"]);
-  
-  // Estados para Google Sheets
   const [salesData, setSalesData] = useState(fallbackData);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -63,32 +59,23 @@ const Dashboard = () => {
   const [isManualRefresh, setIsManualRefresh] = useState(false);
   const [alerts, setAlerts] = useState([]);
 
-  // 🔧 FUNCIÓN CORREGIDA PARA PARSEAR NÚMEROS
   const parseNumberFromString = (value) => {
     if (!value) return 0;
-    
-    // Convertir a string y limpiar
     const str = value.toString().trim();
     if (!str) return 0;
-    
-    // Remover símbolos de moneda, comas, espacios y otros caracteres no numéricos
-    // Mantener solo dígitos, puntos decimales y signo negativo
     const cleaned = str
-      .replace(/[$,\s]/g, '') // Remover $, comas y espacios
-      .replace(/[^\d.-]/g, ''); // Mantener solo dígitos, punto y signo negativo
-    
+      .replace(/[$,\s]/g, '')
+      .replace(/[^\d.-]/g, '');
     const number = parseFloat(cleaned);
     return isNaN(number) ? 0 : number;
   };
 
-  // Función para obtener datos de Google Sheets
   const fetchGoogleSheetsData = async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
     setIsManualRefresh(showLoading);
     
     try {
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.range}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
-      
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -102,12 +89,10 @@ const Dashboard = () => {
       }
       
       const transformedData = transformGoogleSheetsData(data.values);
-      
       setSalesData(transformedData);
       setConnectionStatus('connected');
       setLastUpdated(new Date());
       setErrorMessage('');
-      
     } catch (error) {
       console.error('Error fetching Google Sheets data:', error);
       setConnectionStatus('error');
@@ -122,11 +107,9 @@ const Dashboard = () => {
     }
   };
 
-  // 🔧 FUNCIÓN CORREGIDA PARA TRANSFORMAR DATOS
   const transformGoogleSheetsData = (rawData) => {
     const headers = rawData[0];
     const rows = rawData.slice(1);
-    
     const transformedData = {};
     
     rows.forEach((row, index) => {
@@ -151,11 +134,9 @@ const Dashboard = () => {
         transformedData[monthKey][escuela][area] = {};
       }
       
-      // 🔧 CORRECCIÓN: Usar la función mejorada de parsing
       const ventasNum = parseNumberFromString(ventas);
       const cursosNum = parseNumberFromString(cursosVendidos) || 1;
       
-      // Si el curso ya existe, sumar los valores
       if (transformedData[monthKey][escuela][area][curso]) {
         transformedData[monthKey][escuela][area][curso].ventas += ventasNum;
         transformedData[monthKey][escuela][area][curso].cursos += cursosNum;
@@ -171,12 +152,10 @@ const Dashboard = () => {
     return transformedData;
   };
 
-  // Cargar datos iniciales
   useEffect(() => {
     fetchGoogleSheetsData();
   }, []);
 
-  // Actualización automática cada hora
   useEffect(() => {
     const interval = setInterval(() => {
       fetchGoogleSheetsData(false);
@@ -185,7 +164,6 @@ const Dashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Generar alertas automáticas
   useEffect(() => {
     const generateAlerts = () => {
       const newAlerts = [];
@@ -196,7 +174,6 @@ const Dashboard = () => {
       const currentMonth = months[months.length - 1];
       const previousMonth = months[months.length - 2];
       
-      // Alertas por curso
       Object.keys(salesData[currentMonth]).forEach(school => {
         Object.keys(salesData[currentMonth][school]).forEach(area => {
           Object.keys(salesData[currentMonth][school][area]).forEach(course => {
@@ -247,7 +224,6 @@ const Dashboard = () => {
               }
             }
             
-            // Alerta si un curso no tuvo ventas este mes
             if (current.ventas === 0) {
               newAlerts.push({
                 type: 'warning',
@@ -314,16 +290,13 @@ const Dashboard = () => {
     return Object.keys(salesData).sort();
   }, [salesData]);
 
-  // Función para formatear fechas compatible con iOS
   const formatDateForDisplay = (monthString) => {
     try {
-      // Convertir "2024-07" a "2024/07/01" que es compatible con iOS
       const [year, month] = monthString.split('-');
       const date = new Date(parseInt(year), parseInt(month) - 1, 1);
       
-      // Verificar si la fecha es válida
       if (isNaN(date.getTime())) {
-        return monthString; // Fallback al string original
+        return monthString;
       }
       
       return date.toLocaleDateString('es-ES', { 
@@ -332,11 +305,10 @@ const Dashboard = () => {
       });
     } catch (error) {
       console.warn('Error formatting date:', monthString, error);
-      return monthString; // Fallback al string original
+      return monthString;
     }
   };
 
-  // Función para formatear fechas cortas compatible con iOS
   const formatDateShort = (monthString) => {
     try {
       const [year, month] = monthString.split('-');
@@ -365,7 +337,6 @@ const Dashboard = () => {
     return "stable";
   };
 
-  // Función para renderizar icono de tendencia
   const TrendIcon = ({ trend }) => {
     switch (trend) {
       case "up":
@@ -377,7 +348,6 @@ const Dashboard = () => {
     }
   };
 
-  // Componente de estado de conexión
   const ConnectionStatus = () => (
     <div className="flex items-center gap-2 text-sm">
       {connectionStatus === 'connected' && (
@@ -406,7 +376,6 @@ const Dashboard = () => {
     </div>
   );
 
-  // Función para obtener totales por escuela
   const getSchoolTotals = (month) => {
     const totals = {};
     if (!salesData[month]) return totals;
@@ -423,7 +392,6 @@ const Dashboard = () => {
     return totals;
   };
 
-  // Función para obtener totales por área
   const getAreaTotals = (month, school = null) => {
     const totals = {};
     if (!salesData[month]) return totals;
@@ -446,7 +414,6 @@ const Dashboard = () => {
     return totals;
   };
 
-  // Función para obtener totales por instructor
   const getInstructorTotals = (month, school = null) => {
     const totals = {};
     if (!salesData[month]) return totals;
@@ -474,7 +441,6 @@ const Dashboard = () => {
       }
     });
     
-    // Convertir Sets a arrays
     Object.keys(totals).forEach(instructor => {
       totals[instructor].areas = Array.from(totals[instructor].areas);
       totals[instructor].escuelas = Array.from(totals[instructor].escuelas);
@@ -483,7 +449,6 @@ const Dashboard = () => {
     return totals;
   };
 
-  // Función para obtener cursos específicos
   const getCourses = (month, school = null, area = null) => {
     const courses = {};
     if (!salesData[month]) return courses;
@@ -514,7 +479,6 @@ const Dashboard = () => {
     return courses;
   };
 
-  // Datos para el Dashboard Ejecutivo
   const executiveKPIs = useMemo(() => {
     const currentMonth = salesData[selectedMonth];
     if (!currentMonth) {
@@ -564,7 +528,6 @@ const Dashboard = () => {
     };
   }, [selectedMonth, salesData, months]);
 
-  // Datos para las diferentes vistas
   const getViewData = useMemo(() => {
     switch (viewType) {
       case "escuela":
@@ -661,7 +624,6 @@ const Dashboard = () => {
     }
   }, [viewType, selectedMonth, selectedSchool, selectedArea, metricType, months, schools, compareMonths]);
 
-  // Componente de Alertas
   const AlertsPanel = () => (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-4">
@@ -742,9 +704,7 @@ const Dashboard = () => {
     </div>
   );
 
-  // Componente principal del dashboard ejecutivo
   const ExecutiveDashboard = () => {
-    // Función para obtener datos de ventas por escuela y mes
     const getSalesBySchoolAndMonth = () => {
       const data = {};
       
@@ -759,7 +719,6 @@ const Dashboard = () => {
       return data;
     };
 
-    // Función para obtener datos de cursos por escuela y mes
     const getCoursesBySchoolAndMonth = () => {
       const data = {};
       
@@ -774,8 +733,42 @@ const Dashboard = () => {
       return data;
     };
 
+    const calculateMonthlySalesTotals = () => {
+      const totals = {};
+      months.forEach(month => {
+        totals[month] = 0;
+        const monthData = salesData[month] || {};
+        Object.values(monthData).forEach(school => {
+          Object.values(school).forEach(area => {
+            Object.values(area).forEach(course => {
+              totals[month] += course.ventas;
+            });
+          });
+        });
+      });
+      return totals;
+    };
+
+    const calculateMonthlyCoursesTotals = () => {
+      const totals = {};
+      months.forEach(month => {
+        totals[month] = 0;
+        const monthData = salesData[month] || {};
+        Object.values(monthData).forEach(school => {
+          Object.values(school).forEach(area => {
+            Object.values(area).forEach(course => {
+              totals[month] += course.cursos;
+            });
+          });
+        });
+      });
+      return totals;
+    };
+
     const salesBySchool = getSalesBySchoolAndMonth();
     const coursesBySchool = getCoursesBySchoolAndMonth();
+    const monthlySalesTotals = calculateMonthlySalesTotals();
+    const monthlyCoursesTotals = calculateMonthlyCoursesTotals();
 
     return (
       <div className="space-y-6">
@@ -1023,12 +1016,21 @@ const Dashboard = () => {
                       </div>
                     </td>
                     {months.map(month => (
-                      <td key={month} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ${salesBySchool[school][month].toLocaleString()}
+                      <td key={`${school}-${month}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${salesBySchool[school][month]?.toLocaleString() || '0'}
                       </td>
                     ))}
                   </tr>
                 ))}
+                {/* Fila de Totales */}
+                <tr className="bg-gray-50 font-medium">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Total</td>
+                  {months.map(month => (
+                    <td key={`total-${month}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      ${monthlySalesTotals[month]?.toLocaleString() || '0'}
+                    </td>
+                  ))}
+                </tr>
               </tbody>
             </table>
           </div>
@@ -1059,12 +1061,21 @@ const Dashboard = () => {
                       </div>
                     </td>
                     {months.map(month => (
-                      <td key={month} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {coursesBySchool[school][month].toLocaleString()}
+                      <td key={`${school}-${month}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {coursesBySchool[school][month]?.toLocaleString() || '0'}
                       </td>
                     ))}
                   </tr>
                 ))}
+                {/* Fila de Totales */}
+                <tr className="bg-gray-50 font-medium">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Total</td>
+                  {months.map(month => (
+                    <td key={`total-${month}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {monthlyCoursesTotals[month]?.toLocaleString() || '0'}
+                    </td>
+                  ))}
+                </tr>
               </tbody>
             </table>
           </div>
