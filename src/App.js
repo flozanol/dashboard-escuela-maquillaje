@@ -11,7 +11,7 @@ const GOOGLE_SHEETS_CONFIG = {
 
 // Datos de respaldo (fallback) en caso de error de conexión
 const fallbackData = {
-  "2024-01": {
+  "2025-01": {
     "Polanco": {
       "Maquillaje": {
         "Maquillaje Básico": { ventas: 24000, cursos: 20, instructor: "Ana Martínez" },
@@ -27,7 +27,7 @@ const fallbackData = {
       }
     }
   },
-  "2024-07": {
+  "2025-07": {
     "Polanco": {
       "Maquillaje": {
         "Maquillaje Básico": { ventas: 28000, cursos: 24, instructor: "Ana Martínez" },
@@ -46,13 +46,13 @@ const fallbackData = {
 };
 
 const Dashboard = () => {
-  const [selectedMonth, setSelectedMonth] = useState("2024-07");
+  const [selectedMonth, setSelectedMonth] = useState("2025-07");  // ← Cambiado a 2025
   const [selectedSchool, setSelectedSchool] = useState("Polanco");
   const [selectedArea, setSelectedArea] = useState("Maquillaje");
   const [selectedInstructor, setSelectedInstructor] = useState("");
   const [viewType, setViewType] = useState("executive");
   const [metricType, setMetricType] = useState("ventas");
-  const [compareMonths, setCompareMonths] = useState(["2024-06", "2024-07"]);
+  const [compareMonths, setCompareMonths] = useState(["2025-06", "2025-07"]);  // ← Cambiado a 2025
   
   // Estados para Google Sheets
   const [salesData, setSalesData] = useState(fallbackData);
@@ -775,7 +775,7 @@ const Dashboard = () => {
               }}
               className="mt-2 text-xs bg-green-200 text-green-800 px-2 py-1 rounded hover:bg-green-300"
             >
-              🔍 Verificar total Julio
+              🔍 Verificar total Julio 2025
             </button>
           </div>
         )}
