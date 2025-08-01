@@ -71,6 +71,8 @@ const Dashboard = () => {
     try {
       const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.range}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
       
+      console.log('🔍 Intentando conectar a:', url); // Debug
+      
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -78,12 +80,16 @@ const Dashboard = () => {
       }
       
       const data = await response.json();
+      console.log('📊 Datos recibidos de Google Sheets:', data); // Debug
       
       if (!data.values || data.values.length === 0) {
         throw new Error('No se encontraron datos en la hoja de cálculo');
       }
       
+      console.log('📋 Primeras 3 filas de datos:', data.values.slice(0, 3)); // Debug
+      
       const transformedData = transformGoogleSheetsData(data.values);
+      console.log('🔄 Datos transformados:', transformedData); // Debug
       
       setSalesData(transformedData);
       setConnectionStatus('connected');
@@ -91,7 +97,7 @@ const Dashboard = () => {
       setErrorMessage('');
       
     } catch (error) {
-      console.error('Error fetching Google Sheets data:', error);
+      console.error('❌ Error completo:', error);
       setConnectionStatus('error');
       setErrorMessage(error.message);
       
@@ -727,6 +733,12 @@ const Dashboard = () => {
             <p className="text-sm text-green-800">
               <strong>✅ Conectado exitosamente.</strong> Datos actualizados desde Google Sheets.
             </p>
+            <button 
+              onClick={() => console.log('📊 Datos actuales en salesData:', salesData)}
+              className="mt-2 text-xs bg-green-200 text-green-800 px-2 py-1 rounded hover:bg-green-300"
+            >
+              🔍 Ver datos en consola (F12)
+            </button>
           </div>
         )}
         
