@@ -355,6 +355,7 @@ const Dashboard = () => {
       return monthString;
     }
   };
+
   const calculateTrend = (values) => {
     if (values.length < 2) return "stable";
     const lastTwo = values.slice(-2);
@@ -742,228 +743,335 @@ const Dashboard = () => {
   );
 
   // Componente principal del dashboard ejecutivo
-  const ExecutiveDashboard = () => (
-    <div className="space-y-6">
-      {/* Estado de conexión */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex items-center justify-between">
-          <ConnectionStatus />
-          <div className="flex items-center gap-2">
-            <div className="text-xs text-gray-500">
-              {Object.values(salesData).reduce((total, month) => {
-                let monthTotal = 0;
-                Object.values(month).forEach(school => {
-                  Object.values(school).forEach(area => {
-                    monthTotal += Object.keys(area).length;
+  const ExecutiveDashboard = () => {
+    // Función para obtener datos de ventas por escuela y mes
+    const getSalesBySchoolAndMonth = () => {
+      const data = {};
+      
+      schools.forEach(school => {
+        data[school] = {};
+        months.forEach(month => {
+          const totals = getSchoolTotals(month);
+          data[school][month] = totals[school] ? totals[school].ventas : 0;
+        });
+      });
+      
+      return data;
+    };
+
+    // Función para obtener datos de cursos por escuela y mes
+    const getCoursesBySchoolAndMonth = () => {
+      const data = {};
+      
+      schools.forEach(school => {
+        data[school] = {};
+        months.forEach(month => {
+          const totals = getSchoolTotals(month);
+          data[school][month] = totals[school] ? totals[school].cursos : 0;
+        });
+      });
+      
+      return data;
+    };
+
+    const salesBySchool = getSalesBySchoolAndMonth();
+    const coursesBySchool = getCoursesBySchoolAndMonth();
+
+    return (
+      <div className="space-y-6">
+        {/* Estado de conexión */}
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center justify-between">
+            <ConnectionStatus />
+            <div className="flex items-center gap-2">
+              <div className="text-xs text-gray-500">
+                {Object.values(salesData).reduce((total, month) => {
+                  let monthTotal = 0;
+                  Object.values(month).forEach(school => {
+                    Object.values(school).forEach(area => {
+                      monthTotal += Object.keys(area).length;
+                    });
                   });
-                });
-                return total + monthTotal;
-              }, 0)} registros cargados
+                  return total + monthTotal;
+                }, 0)} registros cargados
+              </div>
+              <button
+                onClick={() => fetchGoogleSheetsData(true)}
+                disabled={isLoading}
+                className={`flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium ${
+                  isLoading 
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                    : 'bg-green-100 text-green-700 hover:bg-green-200'
+                }`}
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                {isLoading ? 'Cargando...' : 'Actualizar'}
+              </button>
             </div>
-            <button
-              onClick={() => fetchGoogleSheetsData(true)}
-              disabled={isLoading}
-              className={`flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium ${
-                isLoading 
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                  : 'bg-green-100 text-green-700 hover:bg-green-200'
-              }`}
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-              {isLoading ? 'Cargando...' : 'Actualizar'}
-            </button>
           </div>
-        </div>
-        
-        {connectionStatus === 'connected' && (
-          <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-sm text-green-800">
-              <strong>✅ Conectado exitosamente.</strong> Datos actualizados desde Google Sheets.
-            </p>
-          </div>
-        )}
-        
-        {connectionStatus === 'error' && (
-          <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-sm text-yellow-800">
-              <strong>📊 Usando datos de respaldo.</strong> Verifica tu API Key y Spreadsheet ID.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* KPIs Principales */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-green-100 text-sm">Ventas Totales</p>
-              <p className="text-3xl font-bold">${executiveKPIs.totalVentas.toLocaleString()}</p>
-              <p className="text-green-100 text-sm">
-                {executiveKPIs.ventasGrowth > 0 ? '+' : ''}{executiveKPIs.ventasGrowth.toFixed(1)}% vs mes anterior
+          
+          {connectionStatus === 'connected' && (
+            <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-green-800">
+                <strong>✅ Conectado exitosamente.</strong> Datos actualizados desde Google Sheets.
               </p>
             </div>
-            <DollarSign className="w-8 h-8 text-green-200" />
-          </div>
-        </div>
-        
-        <div className="bg-gradient-to-r from-gray-600 to-gray-700 rounded-lg shadow p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-100 text-sm">Cursos Vendidos</p>
-              <p className="text-3xl font-bold">{executiveKPIs.totalCursos.toLocaleString()}</p>
-              <p className="text-gray-100 text-sm">
-                {executiveKPIs.cursosGrowth > 0 ? '+' : ''}{executiveKPIs.cursosGrowth.toFixed(1)}% vs mes anterior
+          )}
+          
+          {connectionStatus === 'error' && (
+            <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                <strong>📊 Usando datos de respaldo.</strong> Verifica tu API Key y Spreadsheet ID.
               </p>
             </div>
-            <ShoppingCart className="w-8 h-8 text-gray-200" />
-          </div>
+          )}
         </div>
-        
-        <div className="bg-gradient-to-r from-green-400 to-green-500 rounded-lg shadow p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-green-100 text-sm">Ticket Promedio</p>
-              <p className="text-3xl font-bold">${executiveKPIs.ticketPromedio.toFixed(0)}</p>
-              <p className="text-green-100 text-sm">Por curso vendido</p>
+
+        {/* KPIs Principales */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-100 text-sm">Ventas Totales</p>
+                <p className="text-3xl font-bold">${executiveKPIs.totalVentas.toLocaleString()}</p>
+                <p className="text-green-100 text-sm">
+                  {executiveKPIs.ventasGrowth > 0 ? '+' : ''}{executiveKPIs.ventasGrowth.toFixed(1)}% vs mes anterior
+                </p>
+              </div>
+              <DollarSign className="w-8 h-8 text-green-200" />
             </div>
-            <Target className="w-8 h-8 text-green-200" />
           </div>
-        </div>
-        
-        <div className="bg-gradient-to-r from-gray-500 to-gray-600 rounded-lg shadow p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-100 text-sm">Alertas Activas</p>
-              <p className="text-3xl font-bold">{alerts.length}</p>
-              <p className="text-gray-100 text-sm">{schools.length} escuelas monitoreadas</p>
+          
+          <div className="bg-gradient-to-r from-gray-600 to-gray-700 rounded-lg shadow p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-100 text-sm">Cursos Vendidos</p>
+                <p className="text-3xl font-bold">{executiveKPIs.totalCursos.toLocaleString()}</p>
+                <p className="text-gray-100 text-sm">
+                  {executiveKPIs.cursosGrowth > 0 ? '+' : ''}{executiveKPIs.cursosGrowth.toFixed(1)}% vs mes anterior
+                </p>
+              </div>
+              <ShoppingCart className="w-8 h-8 text-gray-200" />
             </div>
-            <Bell className="w-8 h-8 text-gray-200" />
+          </div>
+          
+          <div className="bg-gradient-to-r from-green-400 to-green-500 rounded-lg shadow p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-100 text-sm">Ticket Promedio</p>
+                <p className="text-3xl font-bold">${executiveKPIs.ticketPromedio.toFixed(0)}</p>
+                <p className="text-green-100 text-sm">Por curso vendido</p>
+              </div>
+              <Target className="w-8 h-8 text-green-200" />
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-gray-500 to-gray-600 rounded-lg shadow p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-100 text-sm">Alertas Activas</p>
+                <p className="text-3xl font-bold">{alerts.length}</p>
+                <p className="text-gray-100 text-sm">{schools.length} escuelas monitoreadas</p>
+              </div>
+              <Bell className="w-8 h-8 text-gray-200" />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Alertas y Tendencias */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <AlertsPanel />
+        {/* Alertas y Tendencias */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <AlertsPanel />
 
-        {/* Gráfica de Tendencias */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">Tendencia Mensual de Ventas</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={months.map(month => {
-                const totals = getSchoolTotals(month);
-                const totalVentas = Object.values(totals).reduce((sum, school) => sum + school.ventas, 0);
-                return {
-                  month: month.substring(5),
-                  ventas: totalVentas,
-                  cursos: Object.values(totals).reduce((sum, school) => sum + school.cursos, 0)
-                };
-              })}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis yAxisId="ventas" orientation="left" tickFormatter={(value) => `${(value/1000).toFixed(0)}k`} />
-                <YAxis yAxisId="cursos" orientation="right" />
-                <Tooltip />
-                <Legend />
-                <Line yAxisId="ventas" type="monotone" dataKey="ventas" stroke="#22C55E" strokeWidth={3} name="Ventas ($)" />
-                <Line yAxisId="cursos" type="monotone" dataKey="cursos" stroke="#6B7280" strokeWidth={2} name="Cursos" />
-              </LineChart>
-            </ResponsiveContainer>
+          {/* Gráfica de Tendencias */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-4">Tendencia Mensual de Ventas</h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={months.map(month => {
+                  const totals = getSchoolTotals(month);
+                  const totalVentas = Object.values(totals).reduce((sum, school) => sum + school.ventas, 0);
+                  return {
+                    month: month.substring(5),
+                    ventas: totalVentas,
+                    cursos: Object.values(totals).reduce((sum, school) => sum + school.cursos, 0)
+                  };
+                })}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis yAxisId="ventas" orientation="left" tickFormatter={(value) => `${(value/1000).toFixed(0)}k`} />
+                  <YAxis yAxisId="cursos" orientation="right" />
+                  <Tooltip />
+                  <Legend />
+                  <Line yAxisId="ventas" type="monotone" dataKey="ventas" stroke="#22C55E" strokeWidth={3} name="Ventas ($)" />
+                  <Line yAxisId="cursos" type="monotone" dataKey="cursos" stroke="#6B7280" strokeWidth={2} name="Cursos" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Top Performers */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Top Vendedores */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Star className="w-5 h-5 text-yellow-500" />
-            <h3 className="text-lg font-semibold">Top Vendedores</h3>
-          </div>
-          <div className="space-y-3">
-            {Object.entries(getInstructorTotals(selectedMonth))
-              .sort(([,a], [,b]) => b.ventas - a.ventas)
-              .slice(0, 5)
-              .map(([vendedor, data], index) => (
-                <div key={vendedor} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                      index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-orange-500' : 'bg-gray-300'
-                    }`}>
-                      {index + 1}
-                    </span>
-                    <div>
-                      <p className="font-medium text-sm">{vendedor}</p>
-                      <p className="text-xs text-gray-500">{data.areas.length} áreas</p>
+        {/* Top Performers */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Top Vendedores */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Star className="w-5 h-5 text-yellow-500" />
+              <h3 className="text-lg font-semibold">Top Vendedores</h3>
+            </div>
+            <div className="space-y-3">
+              {Object.entries(getInstructorTotals(selectedMonth))
+                .sort(([,a], [,b]) => b.ventas - a.ventas)
+                .slice(0, 5)
+                .map(([vendedor, data], index) => (
+                  <div key={vendedor} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                        index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-orange-500' : 'bg-gray-300'
+                      }`}>
+                        {index + 1}
+                      </span>
+                      <div>
+                        <p className="font-medium text-sm">{vendedor}</p>
+                        <p className="text-xs text-gray-500">{data.areas.length} áreas</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-sm">${data.ventas.toLocaleString()}</p>
+                      <p className="text-xs text-gray-500">{data.cursos} cursos</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-sm">${data.ventas.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500">{data.cursos} cursos</p>
-                  </div>
-                </div>
-              ))}
+                ))}
+            </div>
           </div>
-        </div>
 
-        {/* Top Áreas */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <BarChart3 className="w-5 h-5 text-green-500" />
-            <h3 className="text-lg font-semibold">Top Áreas</h3>
-          </div>
-          <div className="space-y-3">
-            {Object.entries(getAreaTotals(selectedMonth))
-              .sort(([,a], [,b]) => b.ventas - a.ventas)
-              .slice(0, 5)
-              .map(([area, data], index) => (
-                <div key={area} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <BookOpen className="w-5 h-5 text-green-500" />
-                    <div>
-                      <p className="font-medium text-sm">{area}</p>
-                      <p className="text-xs text-gray-500">Área de estudio</p>
+          {/* Top Áreas */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart3 className="w-5 h-5 text-green-500" />
+              <h3 className="text-lg font-semibold">Top Áreas</h3>
+            </div>
+            <div className="space-y-3">
+              {Object.entries(getAreaTotals(selectedMonth))
+                .sort(([,a], [,b]) => b.ventas - a.ventas)
+                .slice(0, 5)
+                .map(([area, data], index) => (
+                  <div key={area} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <BookOpen className="w-5 h-5 text-green-500" />
+                      <div>
+                        <p className="font-medium text-sm">{area}</p>
+                        <p className="text-xs text-gray-500">Área de estudio</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-sm">${data.ventas.toLocaleString()}</p>
+                      <p className="text-xs text-gray-500">{data.cursos} cursos</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-sm">${data.ventas.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500">{data.cursos} cursos</p>
+                ))}
+            </div>
+          </div>
+
+          {/* Top Cursos */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Book className="w-5 h-5 text-gray-600" />
+              <h3 className="text-lg font-semibold">Top Cursos</h3>
+            </div>
+            <div className="space-y-3">
+              {Object.entries(getCourses(selectedMonth))
+                .sort(([,a], [,b]) => b.ventas - a.ventas)
+                .slice(0, 5)
+                .map(([course, data], index) => (
+                  <div key={course} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="font-medium text-sm">{course.split(' (')[0]}</p>
+                      <p className="text-xs text-gray-500">{data.instructor}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-sm">${data.ventas.toLocaleString()}</p>
+                      <p className="text-xs text-gray-500">{data.cursos} vendidos</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+            </div>
           </div>
         </div>
 
-        {/* Top Cursos */}
+        {/* Tabla de Ventas por Escuela y Mes */}
         <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Book className="w-5 h-5 text-gray-600" />
-            <h3 className="text-lg font-semibold">Top Cursos</h3>
+          <h3 className="text-lg font-semibold mb-4">Ventas por Escuela (en pesos)</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Escuela</th>
+                  {months.map(month => (
+                    <th key={month} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {formatDateShort(month)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {schools.map(school => (
+                  <tr key={school}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <div className="flex items-center gap-2">
+                        <Building className="w-4 h-4 text-gray-500" />
+                        {school}
+                      </div>
+                    </td>
+                    {months.map(month => (
+                      <td key={month} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${salesBySchool[school][month].toLocaleString()}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <div className="space-y-3">
-            {Object.entries(getCourses(selectedMonth))
-              .sort(([,a], [,b]) => b.ventas - a.ventas)
-              .slice(0, 5)
-              .map(([course, data], index) => (
-                <div key={course} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-sm">{course.split(' (')[0]}</p>
-                    <p className="text-xs text-gray-500">{data.instructor}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-sm">${data.ventas.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500">{data.cursos} vendidos</p>
-                  </div>
-                </div>
-              ))}
+        </div>
+
+        {/* Tabla de Cursos por Escuela y Mes */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4">Cursos Vendidos por Escuela</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Escuela</th>
+                  {months.map(month => (
+                    <th key={month} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {formatDateShort(month)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {schools.map(school => (
+                  <tr key={school}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <div className="flex items-center gap-2">
+                        <Building className="w-4 h-4 text-gray-500" />
+                        {school}
+                      </div>
+                    </td>
+                    {months.map(month => (
+                      <td key={month} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {coursesBySchool[school][month].toLocaleString()}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
