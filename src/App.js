@@ -65,13 +65,25 @@ const Dashboard = () => {
 
   const parseNumberFromString = (value) => {
     if (!value) return 0;
+    if (typeof value === 'number') return value;
+    
     const str = value.toString().trim();
-    if (!str) return 0;
+    if (!str || str === '' || str.toLowerCase() === 'null' || str.toLowerCase() === 'undefined') return 0;
+    
+    // Remover símbolos de moneda, comas, espacios y otros caracteres no numéricos excepto punto y guión
     const cleaned = str
-      .replace(/[$,\s]/g, '')
-      .replace(/[^\d.-]/g, '');
+      .replace(/[$,\s]/g, '')           // Remover $, comas y espacios
+      .replace(/[^\d.-]/g, '');         // Mantener solo dígitos, punto y guión
+    
     const number = parseFloat(cleaned);
-    return isNaN(number) ? 0 : number;
+    const result = isNaN(number) ? 0 : number;
+    
+    // Debug logging para valores problemáticos
+    if (str.length > 0 && result === 0 && str !== '0') {
+      console.warn(`⚠️ parseNumberFromString: "${str}" -> ${result}`);
+    }
+    
+    return result;
   };
 
   // Función para ordenar meses cronológicamente (mejorada)
@@ -255,21 +267,27 @@ const Dashboard = () => {
     const rows = rawData.slice(1);
     const result = {};
     
-    console.log('Headers cobranza:', headers);
-    console.log('Raw data cobranza:', rawData);
+    console.log('🔄 Transformando datos de cobranza...');
+    console.log('📋 Headers cobranza:', headers);
+    console.log('📊 Filas de datos:', rows.length);
     
     // La primera columna es la escuela, las siguientes son meses
     const meses = headers.slice(1).filter(header => header && header.trim() !== '');
+    console.log('📅 Meses encontrados en headers:', meses);
     
     rows.forEach((row, rowIndex) => {
       const escuela = row[0];
-      if (!escuela || escuela.trim() === '') return;
+      if (!escuela || escuela.trim() === '') {
+        console.log(`⚠️ Fila ${rowIndex + 1}: escuela vacía, saltando`);
+        return;
+      }
       
       // Limpiar nombre de escuela
       const escuelaClean = escuela.trim();
       result[escuelaClean] = {};
       
-      console.log(`Procesando escuela: ${escuelaClean}`);
+      console.log(`\n🏫 Procesando escuela: "${escuelaClean}" (fila ${rowIndex + 1})`);
+      console.log(`   Datos de fila completa:`, row);
       
       meses.forEach((mes, mesIndex) => {
         const cellValue = row[mesIndex + 1]; // +1 porque la primera columna es la escuela
@@ -279,11 +297,11 @@ const Dashboard = () => {
         const mesClean = mes.trim();
         result[escuelaClean][mesClean] = monto;
         
-        console.log(`  ${mesClean}: ${cellValue} -> ${monto}`);
+        console.log(`   📈 ${mesClean} (columna ${mesIndex + 1}): "${cellValue}" -> ${monto.toLocaleString()}`);
       });
     });
     
-    console.log('Resultado transformado:', result);
+    console.log('\n✅ Resultado final de transformación:', result);
     return result;
   };
 
@@ -1250,27 +1268,50 @@ const Dashboard = () => {
       return mesesOrdenados;
     }, [cobranzaData]);
 
-    // Calcular totales por mes (corregido)
+    // Calcular totales por mes (corregido con debug)
     const totalesPorMes = useMemo(() => {
       const totales = {};
+      
+      console.log('💰 Iniciando cálculo de totales por mes');
+      console.log('📊 Datos de cobranza completos:', cobranzaData);
       
       // Inicializar todos los meses con 0
       mesesCobranza.forEach(mes => {
         totales[mes] = 0;
+        console.log(`📅 Inicializando mes "${mes}" en 0`);
       });
       
       // Sumar los montos de cada escuela para cada mes
       Object.entries(cobranzaData).forEach(([escuela, datosEscuela]) => {
+        console.log(`\n🏫 Procesando escuela: "${escuela}"`);
+        console.log(`   Datos de escuela:`, datosEscuela);
+        
         Object.entries(datosEscuela).forEach(([mes, monto]) => {
-          if (mes && mes.trim() !== '' && mesesCobranza.includes(mes.trim())) {
-            const mesLimpio = mes.trim();
+          const mesLimpio = mes.trim();
+          
+          if (mes && mesLimpio !== '' && mesesCobranza.includes(mesLimpio)) {
+            const montoOriginal = monto;
             const montoNumerico = parseNumberFromString(monto);
+            
+            console.log(`   📈 ${escuela} - ${mesLimpio}:`);
+            console.log(`      Valor original: "${montoOriginal}" (tipo: ${typeof montoOriginal})`);
+            console.log(`      Valor parseado: ${montoNumerico}`);
+            console.log(`      Total anterior: ${totales[mesLimpio]}`);
+            
             totales[mesLimpio] += montoNumerico;
+            
+            console.log(`      Nuevo total: ${totales[mesLimpio]}`);
+          } else {
+            console.log(`   ⚠️ Mes "${mes}" ignorado (limpio: "${mesLimpio}", incluido: ${mesesCobranza.includes(mesLimpio)})`);
           }
         });
       });
       
-      console.log('Totales por mes calculados:', totales);
+      console.log('\n🎯 Totales finales por mes:');
+      Object.entries(totales).forEach(([mes, total]) => {
+        console.log(`   ${mes}: ${total.toLocaleString()}`);
+      });
+      
       return totales;
     }, [cobranzaData, mesesCobranza]);
 
