@@ -314,7 +314,47 @@ const Dashboard = () => {
     return Object.keys(salesData).sort();
   }, [salesData]);
 
-  // Función para calcular tendencia
+  // Función para formatear fechas compatible con iOS
+  const formatDateForDisplay = (monthString) => {
+    try {
+      // Convertir "2024-07" a "2024/07/01" que es compatible con iOS
+      const [year, month] = monthString.split('-');
+      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+      
+      // Verificar si la fecha es válida
+      if (isNaN(date.getTime())) {
+        return monthString; // Fallback al string original
+      }
+      
+      return date.toLocaleDateString('es-ES', { 
+        year: 'numeric', 
+        month: 'long' 
+      });
+    } catch (error) {
+      console.warn('Error formatting date:', monthString, error);
+      return monthString; // Fallback al string original
+    }
+  };
+
+  // Función para formatear fechas cortas compatible con iOS
+  const formatDateShort = (monthString) => {
+    try {
+      const [year, month] = monthString.split('-');
+      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+      
+      if (isNaN(date.getTime())) {
+        return monthString;
+      }
+      
+      return date.toLocaleDateString('es-ES', { 
+        year: 'numeric', 
+        month: 'short' 
+      });
+    } catch (error) {
+      console.warn('Error formatting short date:', monthString, error);
+      return monthString;
+    }
+  };
   const calculateTrend = (values) => {
     if (values.length < 2) return "stable";
     const lastTwo = values.slice(-2);
@@ -1043,10 +1083,7 @@ const Dashboard = () => {
                   >
                     {months.map(month => (
                       <option key={month} value={month}>
-                        {new Date(month + "-01").toLocaleDateString('es-ES', { 
-                          year: 'numeric', 
-                          month: 'long' 
-                        })}
+                        {formatDateForDisplay(month)}
                       </option>
                     ))}
                   </select>
@@ -1102,10 +1139,7 @@ const Dashboard = () => {
                       >
                         {months.map(month => (
                           <option key={month} value={month}>
-                            {new Date(month + "-01").toLocaleDateString('es-ES', { 
-                              year: 'numeric', 
-                              month: 'short' 
-                            })}
+                            {formatDateShort(month)}
                           </option>
                         ))}
                       </select>
@@ -1253,7 +1287,7 @@ const Dashboard = () => {
                       key={month} 
                       dataKey={month} 
                       fill={index === 0 ? "#22C55E" : "#6B7280"} 
-                      name={new Date(month + "-01").toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                      name={formatDateForDisplay(month)}
                     />
                   ))}
                 </BarChart>
