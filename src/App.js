@@ -64,26 +64,27 @@ const Dashboard = () => {
   const [alerts, setAlerts] = useState([]);
 
   const parseNumberFromString = (value) => {
-    if (!value) return 0;
-    if (typeof value === 'number') return value;
+    // Si es undefined, null, o string vacío, retornar 0
+    if (value === undefined || value === null || value === '') return 0;
     
+    // Si ya es un número, retornarlo directamente
+    if (typeof value === 'number') return isNaN(value) ? 0 : value;
+    
+    // Convertir a string y limpiar
     const str = value.toString().trim();
-    if (!str || str === '' || str.toLowerCase() === 'null' || str.toLowerCase() === 'undefined') return 0;
+    if (str === '' || str.toLowerCase() === 'null' || str.toLowerCase() === 'undefined') return 0;
     
-    // Remover símbolos de moneda, comas, espacios y otros caracteres no numéricos excepto punto y guión
+    // Remover símbolos de moneda, comas, espacios y otros caracteres no numéricos
+    // Mantener solo dígitos, punto decimal y signo negativo
     const cleaned = str
       .replace(/[$,\s]/g, '')           // Remover $, comas y espacios
       .replace(/[^\d.-]/g, '');         // Mantener solo dígitos, punto y guión
     
+    // Si después de limpiar no queda nada o solo caracteres especiales, retornar 0
+    if (cleaned === '' || cleaned === '.' || cleaned === '-') return 0;
+    
     const number = parseFloat(cleaned);
-    const result = isNaN(number) ? 0 : number;
-    
-    // Debug logging para valores problemáticos
-    if (str.length > 0 && result === 0 && str !== '0') {
-      console.warn(`⚠️ parseNumberFromString: "${str}" -> ${result}`);
-    }
-    
-    return result;
+    return isNaN(number) ? 0 : number;
   };
 
   // Función para ordenar meses cronológicamente (mejorada)
@@ -1240,32 +1241,25 @@ const Dashboard = () => {
   const CobranzaDashboard = () => {
     // Obtener todos los meses únicos de los datos de cobranza y ordenarlos cronológicamente
     const mesesCobranza = useMemo(() => {
+      // Si no hay datos, retornar array vacío
+      if (!cobranzaData || Object.keys(cobranzaData).length === 0) {
+        return [];
+      }
+      
       const meses = new Set();
       
-      console.log('🚀 Iniciando extracción de meses de cobranzaData:', cobranzaData);
-      
-      Object.entries(cobranzaData).forEach(([escuela, datosEscuela]) => {
-        console.log(`📋 Procesando escuela: ${escuela}`);
-        console.log(`   Datos de escuela:`, datosEscuela);
-        
-        Object.keys(datosEscuela).forEach(mes => {
+      // Extraer todos los meses de todas las escuelas
+      Object.values(cobranzaData).forEach(escuelaData => {
+        Object.keys(escuelaData).forEach(mes => {
           if (mes && mes.trim() !== '') {
-            const mesLimpio = mes.trim();
-            meses.add(mesLimpio);
-            console.log(`   ✅ Mes agregado: "${mesLimpio}"`);
+            meses.add(mes.trim());
           }
         });
       });
       
-      // Convertir a array y mostrar antes del ordenamiento
+      // Convertir a array y ordenar cronológicamente
       const mesesArray = Array.from(meses);
-      console.log('📅 Meses extraídos (antes de ordenar):', mesesArray);
-      
-      // Usar la función de ordenamiento cronológico mejorada
-      const mesesOrdenados = sortMonthsChronologically(mesesArray);
-      console.log('🎯 Meses después de ordenar:', mesesOrdenados);
-      
-      return mesesOrdenados;
+      return sortMonthsChronologically(mesesArray);
     }, [cobranzaData]);
 
     // Calcular totales por mes (corregido con debug)
@@ -1315,17 +1309,23 @@ const Dashboard = () => {
       return totales;
     }, [cobranzaData, mesesCobranza]);
 
-    // Calcular totales por escuela (corregido)
+    // Calcular totales por escuela (simplificado)
     const totalesPorEscuela = useMemo(() => {
       const totales = {};
+      
+      // Si no hay datos, retornar objeto vacío
+      if (!cobranzaData || Object.keys(cobranzaData).length === 0) {
+        return totales;
+      }
+      
       Object.entries(cobranzaData).forEach(([escuela, datosEscuela]) => {
         totales[escuela] = 0;
-        Object.entries(datosEscuela).forEach(([mes, monto]) => {
-          const montoNumerico = parseNumberFromString(monto);
-          totales[escuela] += montoNumerico;
+        Object.values(datosEscuela).forEach(valor => {
+          const valorNumerico = parseNumberFromString(valor);
+          totales[escuela] += valorNumerico;
         });
       });
-      console.log('Totales por escuela calculados:', totales);
+      
       return totales;
     }, [cobranzaData]);
 
