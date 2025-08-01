@@ -1177,31 +1177,53 @@ const Dashboard = () => {
           }
         });
       });
-      return sortMonthsChronologically(Array.from(meses));
+      
+      // Convertir a array y ordenar cronológicamente
+      const mesesArray = Array.from(meses);
+      console.log('Meses antes de ordenar:', mesesArray);
+      
+      // Usar la función de ordenamiento cronológico existente
+      const mesesOrdenados = sortMonthsChronologically(mesesArray);
+      console.log('Meses después de ordenar:', mesesOrdenados);
+      
+      return mesesOrdenados;
     }, [cobranzaData]);
 
     // Calcular totales por mes (corregido)
     const totalesPorMes = useMemo(() => {
       const totales = {};
+      
+      // Inicializar todos los meses con 0
       mesesCobranza.forEach(mes => {
         totales[mes] = 0;
-        Object.values(cobranzaData).forEach(escuela => {
-          const monto = escuela[mes] || 0;
-          totales[mes] += monto;
+      });
+      
+      // Sumar los montos de cada escuela para cada mes
+      Object.entries(cobranzaData).forEach(([escuela, datosEscuela]) => {
+        Object.entries(datosEscuela).forEach(([mes, monto]) => {
+          if (mes && mes.trim() !== '' && mesesCobranza.includes(mes.trim())) {
+            const mesLimpio = mes.trim();
+            const montoNumerico = parseNumberFromString(monto);
+            totales[mesLimpio] += montoNumerico;
+          }
         });
       });
+      
+      console.log('Totales por mes calculados:', totales);
       return totales;
     }, [cobranzaData, mesesCobranza]);
 
-    // Calcular totales por escuela (nuevo)
+    // Calcular totales por escuela (corregido)
     const totalesPorEscuela = useMemo(() => {
       const totales = {};
-      Object.entries(cobranzaData).forEach(([escuela, montos]) => {
+      Object.entries(cobranzaData).forEach(([escuela, datosEscuela]) => {
         totales[escuela] = 0;
-        Object.values(montos).forEach(monto => {
-          totales[escuela] += monto || 0;
+        Object.entries(datosEscuela).forEach(([mes, monto]) => {
+          const montoNumerico = parseNumberFromString(monto);
+          totales[escuela] += montoNumerico;
         });
       });
+      console.log('Totales por escuela calculados:', totales);
       return totales;
     }, [cobranzaData]);
 
@@ -1288,7 +1310,7 @@ const Dashboard = () => {
                       </div>
                     </td>
                     {mesesCobranza.map(mes => {
-                      const monto = cobranzaData[escuela]?.[mes] || 0;
+                      const monto = parseNumberFromString(cobranzaData[escuela]?.[mes]) || 0;
                       return (
                         <td key={`${escuela}-${mes}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           <span className={monto > 0 ? 'font-medium' : 'text-gray-400'}>
@@ -1380,7 +1402,10 @@ const Dashboard = () => {
                     <div>
                       <p className="font-medium text-sm">{escuela}</p>
                       <p className="text-xs text-gray-500">
-                        {mesesCobranza.filter(mes => (cobranzaData[escuela]?.[mes] || 0) > 0).length} meses activos
+                        {mesesCobranza.filter(mes => {
+                          const monto = parseNumberFromString(cobranzaData[escuela]?.[mes]);
+                          return monto > 0;
+                        }).length} meses activos
                       </p>
                     </div>
                   </div>
@@ -1400,7 +1425,7 @@ const Dashboard = () => {
           <h3 className="text-lg font-semibold mb-4">Análisis de Rendimiento por Escuela</h3>
           <div className="space-y-4">
             {escuelas.map(escuela => {
-              const montos = mesesCobranza.map(mes => cobranzaData[escuela]?.[mes] || 0);
+              const montos = mesesCobranza.map(mes => parseNumberFromString(cobranzaData[escuela]?.[mes]) || 0);
               const total = totalesPorEscuela[escuela] || 0;
               const promedio = total / Math.max(mesesCobranza.length, 1);
               const mesesActivos = montos.filter(m => m > 0).length;
