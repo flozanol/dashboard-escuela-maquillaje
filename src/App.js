@@ -5,7 +5,10 @@ import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, Refres
 const GOOGLE_SHEETS_CONFIG = {
   apiKey: 'AIzaSyBXvaWWirK1_29g7x6uIq2qlmLdBL9g3TE',
   spreadsheetId: '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg',
-  range: 'Ventas!A:G'
+  ranges: {
+    ventas: 'Ventas!A:G',
+    cobranza: 'Cobranza!A:Z'
+  }
 };
 
 const fallbackData = {
@@ -52,6 +55,7 @@ const Dashboard = () => {
   const [metricType, setMetricType] = useState("ventas");
   const [compareMonths, setCompareMonths] = useState(["2024-06", "2024-07"]);
   const [salesData, setSalesData] = useState(fallbackData);
+  const [cobranzaData, setCobranzaData] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
@@ -75,21 +79,26 @@ const Dashboard = () => {
     setIsManualRefresh(showLoading);
     
     try {
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.range}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
-      const response = await fetch(url);
+      // Fetch datos de ventas
+      const ventasUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.ventas}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
+      const ventasResponse = await fetch(ventasUrl);
       
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
+      if (!ventasResponse.ok) throw new Error(`Error ${ventasResponse.status}: ${ventasResponse.statusText}`);
       
-      const data = await response.json();
+      const ventasData = await ventasResponse.json();
+      const transformedVentas = transformGoogleSheetsData(ventasData.values);
+      setSalesData(transformedVentas);
       
-      if (!data.values || data.values.length === 0) {
-        throw new Error('No se encontraron datos en la hoja de cálculo');
-      }
+      // Fetch datos de cobranza
+      const cobranzaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.cobranza}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
+      const cobranzaResponse = await fetch(cobranzaUrl);
       
-      const transformedData = transformGoogleSheetsData(data.values);
-      setSalesData(transformedData);
+      if (!cobranzaResponse.ok) throw new Error(`Error ${cobranzaResponse.status}: ${cobranzaResponse.statusText}`);
+      
+      const cobranzaData = await cobranzaResponse.json();
+      const transformedCobranza = transformCobranzaData(cobranzaData.values);
+      setCobranzaData(transformedCobranza);
+      
       setConnectionStatus('connected');
       setLastUpdated(new Date());
       setErrorMessage('');
@@ -150,6 +159,31 @@ const Dashboard = () => {
     });
     
     return transformedData;
+  };
+
+  const transformCobranzaData = (rawData) => {
+    if (!rawData || rawData.length === 0) return {};
+    
+    const headers = rawData[0];
+    const rows = rawData.slice(1);
+    const result = {};
+    
+    // Asumimos que la primera columna es la escuela y las siguientes son meses
+    const meses = headers.slice(1);
+    
+    rows.forEach(row => {
+      const escuela = row[0];
+      if (!escuela) return;
+      
+      result[escuela] = {};
+      
+      meses.forEach((mes, index) => {
+        const monto = parseNumberFromString(row[index + 1]);
+        result[escuela][mes] = monto;
+      });
+    });
+    
+    return result;
   };
 
   useEffect(() => {
@@ -1084,6 +1118,80 @@ const Dashboard = () => {
     );
   };
 
+  const CobranzaDashboard = () => {
+    // Obtener todos los meses únicos de los datos de cobranza
+    const mesesCobranza = useMemo(() => {
+      const meses = new Set();
+      Object.values(cobranzaData).forEach(escuela => {
+        Object.keys(escuela).forEach(mes => meses.add(mes));
+      });
+      return Array.from(meses).sort();
+    }, [cobranzaData]);
+
+    // Calcular totales por mes
+    const totalesPorMes = useMemo(() => {
+      const totales = {};
+      mesesCobranza.forEach(mes => {
+        totales[mes] = 0;
+        Object.values(cobranzaData).forEach(escuela => {
+          totales[mes] += escuela[mes] || 0;
+        });
+      });
+      return totales;
+    }, [cobranzaData, mesesCobranza]);
+
+    return (
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <h2 className="text-xl font-semibold text-gray-800 mb-6">
+          Cobranza por Escuela
+        </h2>
+        
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Escuela
+                </th>
+                {mesesCobranza.map(mes => (
+                  <th key={mes} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {mes}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {Object.entries(cobranzaData).map(([escuela, montos]) => (
+                <tr key={escuela}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <div className="flex items-center gap-2">
+                      <Building className="w-4 h-4 text-gray-500" />
+                      {escuela}
+                    </div>
+                  </td>
+                  {mesesCobranza.map(mes => (
+                    <td key={`${escuela}-${mes}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      ${(montos[mes] || 0).toLocaleString()}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+              {/* Fila de totales */}
+              <tr className="bg-gray-50 font-medium">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Total</td>
+                {mesesCobranza.map(mes => (
+                  <td key={`total-${mes}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    ${(totalesPorMes[mes] || 0).toLocaleString()}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -1175,10 +1283,20 @@ const Dashboard = () => {
               <Activity className="w-4 h-4" />
               Comparar Meses
             </button>
+            <button
+              onClick={() => setViewType("cobranza")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "cobranza" 
+                ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg" 
+                : "bg-gray-100 text-gray-700 hover:bg-blue-50 hover:text-blue-700"
+              }`}
+            >
+              <DollarSign className="w-4 h-4" />
+              Cobranza
+            </button>
           </div>
 
           {/* Controles específicos según la vista */}
-          {viewType !== "executive" && (
+          {viewType !== "executive" && viewType !== "cobranza" && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Métrica</label>
@@ -1279,6 +1397,7 @@ const Dashboard = () => {
         )}
 
         {viewType === "executive" && <ExecutiveDashboard />}
+        {viewType === "cobranza" && <CobranzaDashboard />}
 
         {/* Vistas de tablas */}
         {(viewType === "escuela" || viewType === "area" || viewType === "instructor" || viewType === "curso") && !isLoading && (
