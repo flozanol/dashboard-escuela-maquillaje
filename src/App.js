@@ -726,7 +726,7 @@ const Dashboard = () => {
               className={`flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium ${
                 isLoading 
                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                  : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                  : 'bg-green-100 text-green-700 hover:bg-green-200'
               }`}
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -754,51 +754,51 @@ const Dashboard = () => {
 
       {/* KPIs Principales */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-100 text-sm">Ventas Totales</p>
-              <p className="text-3xl font-bold">${executiveKPIs.totalVentas.toLocaleString()}</p>
-              <p className="text-blue-100 text-sm">
-                {executiveKPIs.ventasGrowth > 0 ? '+' : ''}{executiveKPIs.ventasGrowth.toFixed(1)}% vs mes anterior
-              </p>
-            </div>
-            <DollarSign className="w-8 h-8 text-blue-200" />
-          </div>
-        </div>
-        
         <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow p-6 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-100 text-sm">Cursos Vendidos</p>
-              <p className="text-3xl font-bold">{executiveKPIs.totalCursos.toLocaleString()}</p>
+              <p className="text-green-100 text-sm">Ventas Totales</p>
+              <p className="text-3xl font-bold">${executiveKPIs.totalVentas.toLocaleString()}</p>
               <p className="text-green-100 text-sm">
+                {executiveKPIs.ventasGrowth > 0 ? '+' : ''}{executiveKPIs.ventasGrowth.toFixed(1)}% vs mes anterior
+              </p>
+            </div>
+            <DollarSign className="w-8 h-8 text-green-200" />
+          </div>
+        </div>
+        
+        <div className="bg-gradient-to-r from-gray-600 to-gray-700 rounded-lg shadow p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-100 text-sm">Cursos Vendidos</p>
+              <p className="text-3xl font-bold">{executiveKPIs.totalCursos.toLocaleString()}</p>
+              <p className="text-gray-100 text-sm">
                 {executiveKPIs.cursosGrowth > 0 ? '+' : ''}{executiveKPIs.cursosGrowth.toFixed(1)}% vs mes anterior
               </p>
             </div>
-            <ShoppingCart className="w-8 h-8 text-green-200" />
+            <ShoppingCart className="w-8 h-8 text-gray-200" />
           </div>
         </div>
         
-        <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow p-6 text-white">
+        <div className="bg-gradient-to-r from-green-400 to-green-500 rounded-lg shadow p-6 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-purple-100 text-sm">Ticket Promedio</p>
+              <p className="text-green-100 text-sm">Ticket Promedio</p>
               <p className="text-3xl font-bold">${executiveKPIs.ticketPromedio.toFixed(0)}</p>
-              <p className="text-purple-100 text-sm">Por curso vendido</p>
+              <p className="text-green-100 text-sm">Por curso vendido</p>
             </div>
-            <Target className="w-8 h-8 text-purple-200" />
+            <Target className="w-8 h-8 text-green-200" />
           </div>
         </div>
         
-        <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg shadow p-6 text-white">
+        <div className="bg-gradient-to-r from-gray-500 to-gray-600 rounded-lg shadow p-6 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-orange-100 text-sm">Alertas Activas</p>
+              <p className="text-gray-100 text-sm">Alertas Activas</p>
               <p className="text-3xl font-bold">{alerts.length}</p>
-              <p className="text-orange-100 text-sm">{schools.length} escuelas monitoreadas</p>
+              <p className="text-gray-100 text-sm">{schools.length} escuelas monitoreadas</p>
             </div>
-            <Bell className="w-8 h-8 text-orange-200" />
+            <Bell className="w-8 h-8 text-gray-200" />
           </div>
         </div>
       </div>
@@ -827,8 +827,8 @@ const Dashboard = () => {
                 <YAxis yAxisId="cursos" orientation="right" />
                 <Tooltip />
                 <Legend />
-                <Line yAxisId="ventas" type="monotone" dataKey="ventas" stroke="#3B82F6" strokeWidth={3} name="Ventas ($)" />
-                <Line yAxisId="cursos" type="monotone" dataKey="cursos" stroke="#10B981" strokeWidth={2} name="Cursos" />
+                <Line yAxisId="ventas" type="monotone" dataKey="ventas" stroke="#22C55E" strokeWidth={3} name="Ventas ($)" />
+                <Line yAxisId="cursos" type="monotone" dataKey="cursos" stroke="#6B7280" strokeWidth={2} name="Cursos" />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -837,18 +837,18 @@ const Dashboard = () => {
 
       {/* Top Performers */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Top Instructores */}
+        {/* Top Vendedores */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center gap-2 mb-4">
             <Star className="w-5 h-5 text-yellow-500" />
-            <h3 className="text-lg font-semibold">Top Instructores</h3>
+            <h3 className="text-lg font-semibold">Top Vendedores</h3>
           </div>
           <div className="space-y-3">
             {Object.entries(getInstructorTotals(selectedMonth))
               .sort(([,a], [,b]) => b.ventas - a.ventas)
               .slice(0, 5)
-              .map(([instructor, data], index) => (
-                <div key={instructor} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              .map(([vendedor, data], index) => (
+                <div key={vendedor} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-3">
                     <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
                       index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-orange-500' : 'bg-gray-300'
@@ -856,7 +856,7 @@ const Dashboard = () => {
                       {index + 1}
                     </span>
                     <div>
-                      <p className="font-medium text-sm">{instructor}</p>
+                      <p className="font-medium text-sm">{vendedor}</p>
                       <p className="text-xs text-gray-500">{data.areas.length} áreas</p>
                     </div>
                   </div>
@@ -872,7 +872,7 @@ const Dashboard = () => {
         {/* Top Áreas */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center gap-2 mb-4">
-            <BarChart3 className="w-5 h-5 text-blue-500" />
+            <BarChart3 className="w-5 h-5 text-green-500" />
             <h3 className="text-lg font-semibold">Top Áreas</h3>
           </div>
           <div className="space-y-3">
@@ -882,7 +882,7 @@ const Dashboard = () => {
               .map(([area, data], index) => (
                 <div key={area} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-3">
-                    <BookOpen className="w-5 h-5 text-blue-500" />
+                    <BookOpen className="w-5 h-5 text-green-500" />
                     <div>
                       <p className="font-medium text-sm">{area}</p>
                       <p className="text-xs text-gray-500">Área de estudio</p>
@@ -900,7 +900,7 @@ const Dashboard = () => {
         {/* Top Cursos */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center gap-2 mb-4">
-            <Book className="w-5 h-5 text-green-500" />
+            <Book className="w-5 h-5 text-gray-600" />
             <h3 className="text-lg font-semibold">Top Cursos</h3>
           </div>
           <div className="space-y-3">
@@ -928,9 +928,30 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8 text-center">
-          Dashboard - Escuela de Maquillaje
-        </h1>
+        {/* Header con logo */}
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-4 mb-4">
+            {/* Logo IDIP */}
+            <div className="flex items-center bg-white rounded-lg shadow-md p-4">
+              <div className="flex">
+                <div className="w-3 h-16 bg-gradient-to-b from-green-400 to-green-600 rounded-l-lg"></div>
+                <div className="flex flex-col justify-center px-2">
+                  <div className="text-4xl font-bold text-gray-700">IDIP</div>
+                </div>
+              </div>
+              <div className="ml-4 text-left">
+                <div className="text-lg font-medium text-gray-700">Maquillaje</div>
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <div className="text-lg font-medium text-gray-700">Imagen</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Dashboard IDIP
+          </h1>
+        </div>
 
         {/* Navegación principal */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
@@ -938,8 +959,8 @@ const Dashboard = () => {
             <button
               onClick={() => setViewType("executive")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "executive" 
-                ? "bg-blue-600 text-white" 
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                ? "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg" 
+                : "bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-700"
               }`}
             >
               <BarChart3 className="w-4 h-4" />
@@ -948,8 +969,8 @@ const Dashboard = () => {
             <button
               onClick={() => setViewType("escuela")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "escuela" 
-                ? "bg-blue-600 text-white" 
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                ? "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg" 
+                : "bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-700"
               }`}
             >
               <Building className="w-4 h-4" />
@@ -958,8 +979,8 @@ const Dashboard = () => {
             <button
               onClick={() => setViewType("area")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "area" 
-                ? "bg-blue-600 text-white" 
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                ? "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg" 
+                : "bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-700"
               }`}
             >
               <BookOpen className="w-4 h-4" />
@@ -968,18 +989,18 @@ const Dashboard = () => {
             <button
               onClick={() => setViewType("instructor")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "instructor" 
-                ? "bg-blue-600 text-white" 
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                ? "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg" 
+                : "bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-700"
               }`}
             >
               <User className="w-4 h-4" />
-              Por Instructor
+              Por Vendedor
             </button>
             <button
               onClick={() => setViewType("curso")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "curso" 
-                ? "bg-blue-600 text-white" 
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                ? "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg" 
+                : "bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-700"
               }`}
             >
               <Book className="w-4 h-4" />
@@ -988,8 +1009,8 @@ const Dashboard = () => {
             <button
               onClick={() => setViewType("comparacion")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "comparacion" 
-                ? "bg-blue-600 text-white" 
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                ? "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg" 
+                : "bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-700"
               }`}
             >
               <Activity className="w-4 h-4" />
@@ -1005,7 +1026,7 @@ const Dashboard = () => {
                 <select 
                   value={metricType}
                   onChange={(e) => setMetricType(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                 >
                   <option value="ventas">Ventas ($)</option>
                   <option value="cursos">Cursos Vendidos</option>
@@ -1018,7 +1039,7 @@ const Dashboard = () => {
                   <select 
                     value={selectedMonth}
                     onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                   >
                     {months.map(month => (
                       <option key={month} value={month}>
@@ -1038,7 +1059,7 @@ const Dashboard = () => {
                   <select 
                     value={selectedSchool}
                     onChange={(e) => setSelectedSchool(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                   >
                     <option value="">Todas las escuelas</option>
                     {schools.map(school => (
@@ -1077,7 +1098,7 @@ const Dashboard = () => {
                           newMonths[index] = e.target.value;
                           setCompareMonths(newMonths);
                         }}
-                        className="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                       >
                         {months.map(month => (
                           <option key={month} value={month}>
@@ -1113,7 +1134,7 @@ const Dashboard = () => {
               <h2 className="text-xl font-semibold text-gray-800">
                 {viewType === "escuela" && "Análisis por Escuela"}
                 {viewType === "area" && `Análisis por Área${selectedSchool ? ` - ${selectedSchool}` : ""}`}
-                {viewType === "instructor" && `Análisis por Instructor${selectedSchool ? ` - ${selectedSchool}` : ""}`}
+                {viewType === "instructor" && `Análisis por Vendedor${selectedSchool ? ` - ${selectedSchool}` : ""}`}
                 {viewType === "curso" && `Análisis por Curso${selectedSchool ? ` - ${selectedSchool}` : ""}${selectedArea ? ` - ${selectedArea}` : ""}`}
               </h2>
               <div className="flex items-center gap-2">
@@ -1133,7 +1154,7 @@ const Dashboard = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         {viewType === "escuela" ? "Escuela" : 
                          viewType === "area" ? "Área" : 
-                         viewType === "instructor" ? "Instructor" : "Curso"}
+                         viewType === "instructor" ? "Vendedor" : "Curso"}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         {metricType === "ventas" ? "Ventas" : "Cursos"}
@@ -1146,7 +1167,7 @@ const Dashboard = () => {
                       </th>
                       {(viewType === "instructor" || viewType === "curso") && (
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          {viewType === "instructor" ? "Áreas" : "Instructor"}
+                          {viewType === "instructor" ? "Áreas" : "Vendedor"}
                         </th>
                       )}
                     </tr>
@@ -1202,8 +1223,8 @@ const Dashboard = () => {
                       metricType === "ventas" ? `${value.toLocaleString()}` : value.toLocaleString(),
                       metricType === "ventas" ? "Ventas" : "Cursos"
                     ]} />
-                    <Bar dataKey="valor" fill="#3B82F6" />
-                    <Bar dataKey="promedio" fill="#EF4444" />
+                    <Bar dataKey="valor" fill="#22C55E" />
+                    <Bar dataKey="promedio" fill="#6B7280" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -1231,7 +1252,7 @@ const Dashboard = () => {
                     <Bar 
                       key={month} 
                       dataKey={month} 
-                      fill={index === 0 ? "#3B82F6" : "#EF4444"} 
+                      fill={index === 0 ? "#22C55E" : "#6B7280"} 
                       name={new Date(month + "-01").toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
                     />
                   ))}
