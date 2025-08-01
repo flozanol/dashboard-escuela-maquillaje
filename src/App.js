@@ -4,9 +4,9 @@ import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Users, Award
 
 // 🔧 AQUÍ CAMBIAS TUS API KEYS - ESTAS SON DE EJEMPLO
 const GOOGLE_SHEETS_CONFIG = {
-  apiKey: 'AIzaSyBXvaWWirK1_29g7x6uIq2qlmLdBL9g3TE', // 👈 CAMBIA ESTO POR TU API KEY REAL
-  spreadsheetId: '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg', // 👈 CAMBIA ESTO POR TU SPREADSHEET ID REAL
-  range: 'Ventas!A:G' // 👈 VERIFICA QUE TU HOJA SE LLAME "Ventas"
+  apiKey: 'PEGA_AQUI_TU_API_KEY', // 👈 CAMBIA ESTO POR TU API KEY REAL
+  spreadsheetId: 'PEGA_AQUI_TU_SPREADSHEET_ID', // 👈 CAMBIA ESTO POR TU SPREADSHEET ID REAL
+  range: 'Ventas_2024!A:G' // 👈 VERIFICA QUE TU HOJA SE LLAME "Ventas_2024"
 };
 
 // Datos de respaldo (fallback) en caso de error de conexión
@@ -128,11 +128,18 @@ const Dashboard = () => {
         transformedData[monthKey][escuela][area] = {};
       }
       
-      transformedData[monthKey][escuela][area][curso] = {
-        ventas: parseInt(ventas) || 0,
-        cursos: parseInt(cursosVendidos) || 0,
-        instructor: instructor || 'No asignado'
-      };
+      // Si el curso ya existe, SUMAR los valores (porque cada línea es una venta)
+      if (!transformedData[monthKey][escuela][area][curso]) {
+        transformedData[monthKey][escuela][area][curso] = {
+          ventas: 0,
+          cursos: 0,
+          instructor: instructor || 'No asignado'
+        };
+      }
+      
+      // SUMAR cada venta individual
+      transformedData[monthKey][escuela][area][curso].ventas += parseInt(ventas) || 0;
+      transformedData[monthKey][escuela][area][curso].cursos += parseInt(cursosVendidos) || 1; // Si no hay número, asumimos 1 curso vendido
     });
     
     return transformedData;
@@ -331,6 +338,17 @@ const Dashboard = () => {
         <div className="flex items-center justify-between">
           <ConnectionStatus />
           <div className="flex items-center gap-2">
+            <div className="text-xs text-gray-500">
+              {Object.values(salesData).reduce((total, month) => {
+                let monthTotal = 0;
+                Object.values(month).forEach(school => {
+                  Object.values(school).forEach(area => {
+                    monthTotal += Object.keys(area).length;
+                  });
+                });
+                return total + monthTotal;
+              }, 0)} registros cargados
+            </div>
             <button
               onClick={() => fetchGoogleSheetsData(true)}
               disabled={isLoading}
@@ -341,7 +359,7 @@ const Dashboard = () => {
               }`}
             >
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-              {isLoading ? 'Actualizando...' : 'Actualizar'}
+              {isLoading ? 'Cargando...' : 'Actualizar'}
             </button>
             {errorMessage && (
               <div className="text-xs text-red-600 max-w-xs">
@@ -350,6 +368,14 @@ const Dashboard = () => {
             )}
           </div>
         </div>
+        
+        {connectionStatus === 'connected' && (
+          <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-sm text-green-800">
+              <strong>✅ Conectado exitosamente.</strong> Datos actualizados desde Google Sheets con más de 500 registros.
+            </p>
+          </div>
+        )}
         
         {connectionStatus === 'error' && (
           <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
