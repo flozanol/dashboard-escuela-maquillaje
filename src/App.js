@@ -178,8 +178,13 @@ const Dashboard = () => {
       result[escuela] = {};
       
       meses.forEach((mes, index) => {
-        const monto = parseNumberFromString(row[index + 1]);
-        result[escuela][mes] = monto;
+        // Asegurarse de que el índice no exceda la longitud de la fila
+        if (index + 1 < row.length) {
+          const monto = parseNumberFromString(row[index + 1]);
+          result[escuela][mes] = monto;
+        } else {
+          result[escuela][mes] = 0; // Si no hay dato, establecer a 0
+        }
       });
     });
     
