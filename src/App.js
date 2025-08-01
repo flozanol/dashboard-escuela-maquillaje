@@ -775,7 +775,7 @@ const Dashboard = () => {
               }}
               className="mt-2 text-xs bg-green-200 text-green-800 px-2 py-1 rounded hover:bg-green-300"
             >
-              🔍 Verificar total Julio 2025
+              🔍 Verificar total del mes seleccionado
             </button>
           </div>
         )}
