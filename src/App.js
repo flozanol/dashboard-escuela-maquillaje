@@ -2,11 +2,11 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Users, Award, Scissors, Eye, Book, Package, AlertTriangle, Mail, Calendar, Star, Target, Activity, Bell, RefreshCw, Wifi, WifiOff, User, Building, BookOpen, BarChart3 } from 'lucide-react';
 
-// 🔧 AQUÍ CAMBIAS TUS API KEYS - ESTAS SON DE EJEMPLO
+// 🔧 CONFIGURACIÓN DE GOOGLE SHEETS - YA CONFIGURADO
 const GOOGLE_SHEETS_CONFIG = {
-  apiKey: 'AIzaSyBXvaWWirK1_29g7x6uIq2qlmLdBL9g3TE', // 👈 CAMBIA ESTO POR TU API KEY REAL
-  spreadsheetId: '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg', // 👈 CAMBIA ESTO POR TU SPREADSHEET ID REAL
-  range: 'Ventas!A:G' // 👈 VERIFICA QUE TU HOJA SE LLAME "Ventas_2024"
+  apiKey: 'AIzaSyBXvaWWirK1_29g7x6uIq2qlmLdBL9g3TE', // ✅ Tu API Key real
+  spreadsheetId: '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg', // ✅ Tu Spreadsheet ID real
+  range: 'Ventas!A:G' // ✅ Tu hoja se llama "Ventas"
 };
 
 // Datos de respaldo (fallback) en caso de error de conexión
@@ -104,7 +104,20 @@ const Dashboard = () => {
     }
   };
 
-  // Función para transformar datos de Google Sheets
+  // Función para formatear moneda mexicana
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  // Función para formatear números
+  const formatNumber = (number) => {
+    return new Intl.NumberFormat('es-MX').format(number);
+  };
   const transformGoogleSheetsData = (rawData) => {
     const headers = rawData[0];
     const rows = rawData.slice(1);
@@ -186,7 +199,7 @@ const Dashboard = () => {
                   type: 'warning',
                   category: 'ventas',
                   message: `${course} en ${school} bajó ${Math.abs(ventasChange).toFixed(1)}% en ventas`,
-                  details: `De $${previous.ventas.toLocaleString()} a $${current.ventas.toLocaleString()}`,
+                  details: `De ${formatCurrency(previous.ventas)} a ${formatCurrency(current.ventas)}`,
                   priority: ventasChange < -40 ? 'urgent' : 'high',
                   curso: course,
                   escuela: school,
@@ -199,7 +212,7 @@ const Dashboard = () => {
                   type: 'danger',
                   category: 'cursos',
                   message: `${course} en ${school} bajó ${Math.abs(cursosChange).toFixed(1)}% en cursos vendidos`,
-                  details: `De ${previous.cursos} a ${current.cursos} cursos`,
+                  details: `De ${formatNumber(previous.cursos)} a ${formatNumber(current.cursos)} cursos`,
                   priority: 'urgent',
                   curso: course,
                   escuela: school,
@@ -212,7 +225,7 @@ const Dashboard = () => {
                   type: 'success',
                   category: 'crecimiento',
                   message: `¡${course} en ${school} creció ${ventasChange.toFixed(1)}% en ventas!`,
-                  details: `De $${previous.ventas.toLocaleString()} a $${current.ventas.toLocaleString()}`,
+                  details: `De ${formatCurrency(previous.ventas)} a ${formatCurrency(current.ventas)}`,
                   priority: 'info',
                   curso: course,
                   escuela: school,
@@ -732,7 +745,7 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-100 text-sm">Ventas Totales</p>
-              <p className="text-3xl font-bold">${executiveKPIs.totalVentas.toLocaleString()}</p>
+              <p className="text-3xl font-bold">{formatCurrency(executiveKPIs.totalVentas)}</p>
               <p className="text-blue-100 text-sm">
                 {executiveKPIs.ventasGrowth > 0 ? '+' : ''}{executiveKPIs.ventasGrowth.toFixed(1)}% vs mes anterior
               </p>
@@ -745,7 +758,7 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-green-100 text-sm">Cursos Vendidos</p>
-              <p className="text-3xl font-bold">{executiveKPIs.totalCursos.toLocaleString()}</p>
+              <p className="text-3xl font-bold">{formatNumber(executiveKPIs.totalCursos)}</p>
               <p className="text-green-100 text-sm">
                 {executiveKPIs.cursosGrowth > 0 ? '+' : ''}{executiveKPIs.cursosGrowth.toFixed(1)}% vs mes anterior
               </p>
@@ -758,7 +771,7 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-purple-100 text-sm">Ticket Promedio</p>
-              <p className="text-3xl font-bold">${executiveKPIs.ticketPromedio.toFixed(0)}</p>
+              <p className="text-3xl font-bold">{formatCurrency(executiveKPIs.ticketPromedio)}</p>
               <p className="text-purple-100 text-sm">Por curso vendido</p>
             </div>
             <Target className="w-8 h-8 text-purple-200" />
@@ -835,8 +848,8 @@ const Dashboard = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-sm">${data.ventas.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500">{data.cursos} cursos</p>
+                    <p className="font-bold text-sm">{formatCurrency(data.ventas)}</p>
+                    <p className="text-xs text-gray-500">{formatNumber(data.cursos)} cursos</p>
                   </div>
                 </div>
               ))}
@@ -863,8 +876,8 @@ const Dashboard = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-sm">${data.ventas.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500">{data.cursos} cursos</p>
+                    <p className="font-bold text-sm">{formatCurrency(data.ventas)}</p>
+                    <p className="text-xs text-gray-500">{formatNumber(data.cursos)} cursos</p>
                   </div>
                 </div>
               ))}
@@ -888,8 +901,8 @@ const Dashboard = () => {
                     <p className="text-xs text-gray-500">{data.instructor}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-sm">${data.ventas.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500">{data.cursos} vendidos</p>
+                    <p className="font-bold text-sm">{formatCurrency(data.ventas)}</p>
+                    <p className="text-xs text-gray-500">{formatNumber(data.cursos)} vendidos</p>
                   </div>
                 </div>
               ))}
