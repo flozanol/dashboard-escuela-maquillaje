@@ -1593,19 +1593,32 @@ const Dashboard = () => {
         {/* Header con logo */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-4 mb-4">
-            {/* Logo IDIP */}
+            {/* Logo IDIP desde URL oficial */}
             <div className="flex items-center bg-white rounded-lg shadow-md p-4">
-              <div className="flex">
-                <div className="w-3 h-16 bg-gradient-to-b from-green-400 to-green-600 rounded-l-lg"></div>
-                <div className="flex flex-col justify-center px-2">
-                  <div className="text-4xl font-bold text-gray-700">IDIP</div>
+              <img 
+                src="https://idip.com.mx/wp-content/uploads/2024/08/logos-IDIP-sin-fondo-1-2.png" 
+                alt="IDIP - Instituto de Imagen Personal"
+                className="h-16 w-auto object-contain"
+                onError={(e) => {
+                  // Fallback en caso de que la imagen no cargue
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+              {/* Fallback logo en caso de que la imagen no cargue */}
+              <div className="hidden">
+                <div className="flex">
+                  <div className="w-3 h-16 bg-gradient-to-b from-green-400 to-green-600 rounded-l-lg"></div>
+                  <div className="flex flex-col justify-center px-2">
+                    <div className="text-4xl font-bold text-gray-700">IDIP</div>
+                  </div>
                 </div>
-              </div>
-              <div className="ml-4 text-left">
-                <div className="text-lg font-medium text-gray-700">Maquillaje</div>
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <div className="text-lg font-medium text-gray-700">Imagen</div>
+                <div className="ml-4 text-left">
+                  <div className="text-lg font-medium text-gray-700">Maquillaje</div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <div className="text-lg font-medium text-gray-700">Imagen</div>
+                  </div>
                 </div>
               </div>
             </div>
