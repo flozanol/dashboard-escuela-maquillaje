@@ -1146,41 +1146,51 @@ const Dashboard = () => {
         </div>
 
         {/* Tabla de Ventas por Escuela y Mes */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">Ventas por Escuela (en pesos)</h3>
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-800">Ventas por Escuela (en pesos)</h3>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gradient-to-r from-green-50 to-green-100">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Escuela</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-green-800 uppercase tracking-wider">
+                    <div className="flex items-center gap-2">
+                      <Building className="w-4 h-4" />
+                      Escuela
+                    </div>
+                  </th>
                   {months.map(month => (
-                    <th key={month} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th key={month} className="px-6 py-4 text-left text-xs font-semibold text-green-800 uppercase tracking-wider">
                       {formatDateShort(month)}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {schools.map(school => (
-                  <tr key={school}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+              <tbody className="bg-white divide-y divide-gray-100">
+                {schools.map((school, index) => (
+                  <tr key={school} className={`hover:bg-green-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                       <div className="flex items-center gap-2">
-                        <Building className="w-4 h-4 text-gray-500" />
+                        <Building className="w-4 h-4 text-green-600" />
                         {school}
                       </div>
                     </td>
                     {months.map(month => (
-                      <td key={`${school}-${month}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td key={`${school}-${month}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
                         ${salesBySchool[school][month]?.toLocaleString() || '0'}
                       </td>
                     ))}
                   </tr>
                 ))}
                 {/* Fila de Totales */}
-                <tr className="bg-gray-50 font-medium">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Total</td>
+                <tr className="bg-gradient-to-r from-green-100 to-green-200 font-bold border-t-2 border-green-300">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-green-900">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4" />
+                      Total
+                    </div>
+                  </td>
                   {months.map(month => (
-                    <td key={`total-${month}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td key={`total-${month}`} className="px-6 py-4 whitespace-nowrap text-sm text-green-900 font-bold">
                       ${monthlySalesTotals[month]?.toLocaleString() || '0'}
                     </td>
                   ))}
@@ -1191,41 +1201,51 @@ const Dashboard = () => {
         </div>
 
         {/* Tabla de Cursos por Escuela y Mes */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">Cursos Vendidos por Escuela</h3>
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-800">Cursos Vendidos por Escuela</h3>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Escuela</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-800 uppercase tracking-wider">
+                    <div className="flex items-center gap-2">
+                      <Building className="w-4 h-4" />
+                      Escuela
+                    </div>
+                  </th>
                   {months.map(month => (
-                    <th key={month} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th key={month} className="px-6 py-4 text-left text-xs font-semibold text-gray-800 uppercase tracking-wider">
                       {formatDateShort(month)}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {schools.map(school => (
-                  <tr key={school}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+              <tbody className="bg-white divide-y divide-gray-100">
+                {schools.map((school, index) => (
+                  <tr key={school} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                       <div className="flex items-center gap-2">
-                        <Building className="w-4 h-4 text-gray-500" />
+                        <Building className="w-4 h-4 text-gray-600" />
                         {school}
                       </div>
                     </td>
                     {months.map(month => (
-                      <td key={`${school}-${month}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td key={`${school}-${month}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
                         {coursesBySchool[school][month]?.toLocaleString() || '0'}
                       </td>
                     ))}
                   </tr>
                 ))}
                 {/* Fila de Totales */}
-                <tr className="bg-gray-50 font-medium">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Total</td>
+                <tr className="bg-gradient-to-r from-gray-100 to-gray-200 font-bold border-t-2 border-gray-300">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4" />
+                      Total
+                    </div>
+                  </td>
                   {months.map(month => (
-                    <td key={`total-${month}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td key={`total-${month}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">
                       {monthlyCoursesTotals[month]?.toLocaleString() || '0'}
                     </td>
                   ))}
