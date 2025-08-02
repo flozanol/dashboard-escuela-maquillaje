@@ -636,16 +636,32 @@ const Dashboard = () => {
   const executiveKPIs = useMemo(() => {
     const currentMonth = salesData[selectedMonth];
     if (!currentMonth) {
-      return { totalVentas: 0, totalCursos: 0, ventasGrowth: 0, cursosGrowth: 0, ticketPromedio: 0 };
+      return { 
+        totalVentas: 0, 
+        totalCursos: 0, 
+        ventasGrowth: 0, 
+        cursosGrowth: 0, 
+        ticketPromedio: 0,
+        objetivosProgress: { polanco: 0, online: 0, total: 0 }
+      };
     }
 
     let totalVentas = 0, totalCursos = 0;
+    let cursosPolanco = 0, cursosOnline = 0;
     
     Object.keys(currentMonth).forEach(school => {
       Object.keys(currentMonth[school]).forEach(area => {
         Object.keys(currentMonth[school][area]).forEach(course => {
-          totalVentas += currentMonth[school][area][course].ventas;
-          totalCursos += currentMonth[school][area][course].cursos;
+          const courseData = currentMonth[school][area][course];
+          totalVentas += courseData.ventas;
+          totalCursos += courseData.cursos;
+          
+          // Contabilizar cursos por escuela para objetivos
+          if (school.toLowerCase().includes('polanco')) {
+            cursosPolanco += courseData.cursos;
+          } else if (school.toLowerCase().includes('online')) {
+            cursosOnline += courseData.cursos;
+          }
         });
       });
     });
@@ -673,12 +689,28 @@ const Dashboard = () => {
     
     const ticketPromedio = totalCursos ? totalVentas / totalCursos : 0;
     
+    // Calcular progreso de objetivos (solo para agosto 2024)
+    const objetivos = { polanco: 90, online: 20 };
+    const isAgosto2024 = selectedMonth === '2024-08';
+    
+    const objetivosProgress = {
+      polanco: isAgosto2024 ? (cursosPolanco / objetivos.polanco) * 100 : 0,
+      online: isAgosto2024 ? (cursosOnline / objetivos.online) * 100 : 0,
+      total: isAgosto2024 ? ((cursosPolanco + cursosOnline) / (objetivos.polanco + objetivos.online)) * 100 : 0,
+      cursosPolanco,
+      cursosOnline,
+      objetivoPolanco: objetivos.polanco,
+      objetivoOnline: objetivos.online,
+      isAgosto2024
+    };
+    
     return {
       totalVentas,
       totalCursos,
       ventasGrowth,
       cursosGrowth,
-      ticketPromedio
+      ticketPromedio,
+      objetivosProgress
     };
   }, [selectedMonth, salesData, months]);
 
@@ -975,7 +1007,7 @@ const Dashboard = () => {
         </div>
 
         {/* KPIs Principales */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow p-6 text-white">
             <div className="flex items-center justify-between">
               <div>
@@ -1013,6 +1045,38 @@ const Dashboard = () => {
             </div>
           </div>
           
+          {/* Nuevo KPI de Objetivos */}
+          <div className={`bg-gradient-to-r rounded-lg shadow p-6 text-white ${
+            executiveKPIs.objetivosProgress.isAgosto2024
+              ? executiveKPIs.objetivosProgress.total >= 100 
+                ? 'from-green-500 to-green-600' 
+                : executiveKPIs.objetivosProgress.total >= 80 
+                  ? 'from-yellow-500 to-yellow-600' 
+                  : 'from-red-500 to-red-600'
+              : 'from-blue-500 to-blue-600'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-white text-opacity-90 text-sm">
+                  {executiveKPIs.objetivosProgress.isAgosto2024 ? 'Objetivo Agosto' : 'Objetivos'}
+                </p>
+                <p className="text-2xl font-bold">
+                  {executiveKPIs.objetivosProgress.isAgosto2024 
+                    ? `${executiveKPIs.objetivosProgress.total.toFixed(0)}%`
+                    : 'N/A'
+                  }
+                </p>
+                <p className="text-white text-opacity-90 text-sm">
+                  {executiveKPIs.objetivosProgress.isAgosto2024 
+                    ? `${executiveKPIs.objetivosProgress.cursosPolanco + executiveKPIs.objetivosProgress.cursosOnline}/110 cursos`
+                    : 'Solo para Agosto 2024'
+                  }
+                </p>
+              </div>
+              <Target className="w-8 h-8 text-white text-opacity-80" />
+            </div>
+          </div>
+          
           <div className="bg-gradient-to-r from-gray-500 to-gray-600 rounded-lg shadow p-6 text-white">
             <div className="flex items-center justify-between">
               <div>
@@ -1024,6 +1088,88 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
+
+        {/* Panel de desglose de objetivos (solo visible en agosto) */}
+        {executiveKPIs.objetivosProgress.isAgosto2024 && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Target className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-800">Desglose de Objetivos - Agosto 2024</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Polanco */}
+              <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Building className="w-5 h-5 text-green-600" />
+                    <h4 className="font-semibold text-green-800">Polanco</h4>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    executiveKPIs.objetivosProgress.polanco >= 100 
+                      ? 'bg-green-200 text-green-800' 
+                      : executiveKPIs.objetivosProgress.polanco >= 80
+                        ? 'bg-yellow-200 text-yellow-800'
+                        : 'bg-red-200 text-red-800'
+                  }`}>
+                    {executiveKPIs.objetivosProgress.polanco.toFixed(0)}%
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Actual:</span>
+                    <span className="font-semibold">{executiveKPIs.objetivosProgress.cursosPolanco} cursos</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Objetivo:</span>
+                    <span className="font-semibold">{executiveKPIs.objetivosProgress.objetivoPolanco} cursos</span>
+                  </div>
+                  <div className="w-full bg-green-200 rounded-full h-3">
+                    <div 
+                      className="bg-green-600 h-3 rounded-full transition-all duration-300"
+                      style={{ width: `${Math.min(executiveKPIs.objetivosProgress.polanco, 100)}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Online */}
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-blue-600" />
+                    <h4 className="font-semibold text-blue-800">Online</h4>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    executiveKPIs.objetivosProgress.online >= 100 
+                      ? 'bg-green-200 text-green-800' 
+                      : executiveKPIs.objetivosProgress.online >= 80
+                        ? 'bg-yellow-200 text-yellow-800'
+                        : 'bg-red-200 text-red-800'
+                  }`}>
+                    {executiveKPIs.objetivosProgress.online.toFixed(0)}%
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Actual:</span>
+                    <span className="font-semibold">{executiveKPIs.objetivosProgress.cursosOnline} cursos</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Objetivo:</span>
+                    <span className="font-semibold">{executiveKPIs.objetivosProgress.objetivoOnline} cursos</span>
+                  </div>
+                  <div className="w-full bg-blue-200 rounded-full h-3">
+                    <div 
+                      className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+                      style={{ width: `${Math.min(executiveKPIs.objetivosProgress.online, 100)}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Alertas y Tendencias */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1146,41 +1292,51 @@ const Dashboard = () => {
         </div>
 
         {/* Tabla de Ventas por Escuela y Mes */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">Ventas por Escuela (en pesos)</h3>
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-800">Ventas por Escuela (en pesos)</h3>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gradient-to-r from-green-50 to-green-100">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Escuela</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-green-800 uppercase tracking-wider">
+                    <div className="flex items-center gap-2">
+                      <Building className="w-4 h-4" />
+                      Escuela
+                    </div>
+                  </th>
                   {months.map(month => (
-                    <th key={month} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th key={month} className="px-6 py-4 text-left text-xs font-semibold text-green-800 uppercase tracking-wider">
                       {formatDateShort(month)}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {schools.map(school => (
-                  <tr key={school}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+              <tbody className="bg-white divide-y divide-gray-100">
+                {schools.map((school, index) => (
+                  <tr key={school} className={`hover:bg-green-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                       <div className="flex items-center gap-2">
-                        <Building className="w-4 h-4 text-gray-500" />
+                        <Building className="w-4 h-4 text-green-600" />
                         {school}
                       </div>
                     </td>
                     {months.map(month => (
-                      <td key={`${school}-${month}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td key={`${school}-${month}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
                         ${salesBySchool[school][month]?.toLocaleString() || '0'}
                       </td>
                     ))}
                   </tr>
                 ))}
                 {/* Fila de Totales */}
-                <tr className="bg-gray-50 font-medium">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Total</td>
+                <tr className="bg-gradient-to-r from-green-100 to-green-200 font-bold border-t-2 border-green-300">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-green-900">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4" />
+                      Total
+                    </div>
+                  </td>
                   {months.map(month => (
-                    <td key={`total-${month}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td key={`total-${month}`} className="px-6 py-4 whitespace-nowrap text-sm text-green-900 font-bold">
                       ${monthlySalesTotals[month]?.toLocaleString() || '0'}
                     </td>
                   ))}
@@ -1191,41 +1347,51 @@ const Dashboard = () => {
         </div>
 
         {/* Tabla de Cursos por Escuela y Mes */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">Cursos Vendidos por Escuela</h3>
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h3 className="text-lg font-semibold mb-4 text-gray-800">Cursos Vendidos por Escuela</h3>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Escuela</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-800 uppercase tracking-wider">
+                    <div className="flex items-center gap-2">
+                      <Building className="w-4 h-4" />
+                      Escuela
+                    </div>
+                  </th>
                   {months.map(month => (
-                    <th key={month} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th key={month} className="px-6 py-4 text-left text-xs font-semibold text-gray-800 uppercase tracking-wider">
                       {formatDateShort(month)}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {schools.map(school => (
-                  <tr key={school}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+              <tbody className="bg-white divide-y divide-gray-100">
+                {schools.map((school, index) => (
+                  <tr key={school} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                       <div className="flex items-center gap-2">
-                        <Building className="w-4 h-4 text-gray-500" />
+                        <Building className="w-4 h-4 text-gray-600" />
                         {school}
                       </div>
                     </td>
                     {months.map(month => (
-                      <td key={`${school}-${month}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td key={`${school}-${month}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
                         {coursesBySchool[school][month]?.toLocaleString() || '0'}
                       </td>
                     ))}
                   </tr>
                 ))}
                 {/* Fila de Totales */}
-                <tr className="bg-gray-50 font-medium">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Total</td>
+                <tr className="bg-gradient-to-r from-gray-100 to-gray-200 font-bold border-t-2 border-gray-300">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4" />
+                      Total
+                    </div>
+                  </td>
                   {months.map(month => (
-                    <td key={`total-${month}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td key={`total-${month}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">
                       {monthlyCoursesTotals[month]?.toLocaleString() || '0'}
                     </td>
                   ))}
