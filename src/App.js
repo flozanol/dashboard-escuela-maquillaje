@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Star, Target, AlertTriangle, Activity } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Star, Target, AlertTriangle, Activity, Phone, Mail, Globe, MessageSquare, Users } from 'lucide-react';
 
 const GOOGLE_SHEETS_CONFIG = {
   apiKey: 'AIzaSyBXvaWWirK1_29g7x6uIq2qlmLdBL9g3TE',
   spreadsheetId: '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg',
   ranges: {
-    ventas: 'Ventas!A:G',
+    ventas: 'Ventas!A:H', // Ampliamos hasta la columna H para incluir medio de contacto
     cobranza: 'Cobranza!A:Z'
   }
 };
@@ -46,6 +46,24 @@ const fallbackData = {
   }
 };
 
+// Datos de fallback para medios de contacto
+const fallbackContactData = {
+  "2024-01": {
+    "WhatsApp": { ventas: 45000, cursos: 35 },
+    "Instagram": { ventas: 32000, cursos: 28 },
+    "Facebook": { ventas: 28000, cursos: 22 },
+    "Teléfono": { ventas: 18000, cursos: 15 },
+    "Email": { ventas: 15000, cursos: 12 }
+  },
+  "2024-07": {
+    "WhatsApp": { ventas: 52000, cursos: 42 },
+    "Instagram": { ventas: 38000, cursos: 35 },
+    "Facebook": { ventas: 35000, cursos: 28 },
+    "Teléfono": { ventas: 22000, cursos: 18 },
+    "Email": { ventas: 18000, cursos: 15 }
+  }
+};
+
 const Dashboard = () => {
   const [selectedMonth, setSelectedMonth] = useState("2024-07");
   const [selectedSchool, setSelectedSchool] = useState("Polanco");
@@ -56,6 +74,7 @@ const Dashboard = () => {
   const [compareMonths, setCompareMonths] = useState(["2024-06", "2024-07"]);
   const [salesData, setSalesData] = useState(fallbackData);
   const [cobranzaData, setCobranzaData] = useState({});
+  const [contactData, setContactData] = useState(fallbackContactData); // Nuevo estado para medios de contacto
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
@@ -187,7 +206,9 @@ const Dashboard = () => {
       
       const ventasData = await ventasResponse.json();
       const transformedVentas = transformGoogleSheetsData(ventasData.values);
+      const transformedContact = transformContactData(ventasData.values); // Nueva transformación para medios de contacto
       setSalesData(transformedVentas);
+      setContactData(transformedContact);
       
       // Fetch datos de cobranza
       const cobranzaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.cobranza}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
@@ -209,6 +230,7 @@ const Dashboard = () => {
       
       if (Object.keys(salesData).length === 0) {
         setSalesData(fallbackData);
+        setContactData(fallbackContactData);
       }
     } finally {
       setIsLoading(false);
@@ -258,6 +280,46 @@ const Dashboard = () => {
       }
     });
     
+    return transformedData;
+  };
+
+  // Nueva función para transformar datos de medios de contacto
+  const transformContactData = (rawData) => {
+    const headers = rawData[0];
+    const rows = rawData.slice(1);
+    const transformedData = {};
+    
+    console.log('📞 Transformando datos de medios de contacto...');
+    console.log('Headers:', headers);
+    
+    rows.forEach((row, index) => {
+      const [fecha, escuela, area, curso, ventas, cursosVendidos, instructor, medioContacto] = row;
+      
+      if (!fecha || !medioContacto) {
+        return; // Saltar filas sin fecha o medio de contacto
+      }
+      
+      const monthKey = fecha.substring(0, 7);
+      const medio = medioContacto.trim();
+      
+      if (!transformedData[monthKey]) {
+        transformedData[monthKey] = {};
+      }
+      
+      if (!transformedData[monthKey][medio]) {
+        transformedData[monthKey][medio] = { ventas: 0, cursos: 0 };
+      }
+      
+      const ventasNum = parseNumberFromString(ventas);
+      const cursosNum = parseNumberFromString(cursosVendidos) || 1;
+      
+      transformedData[monthKey][medio].ventas += ventasNum;
+      transformedData[monthKey][medio].cursos += cursosNum;
+      
+      console.log(`📱 ${monthKey} - ${medio}: +${ventasNum} ventas, +${cursosNum} cursos`);
+    });
+    
+    console.log('✅ Datos de contacto transformados:', transformedData);
     return transformedData;
   };
 
@@ -443,6 +505,17 @@ const Dashboard = () => {
   const months = useMemo(() => {
     return Object.keys(salesData).sort();
   }, [salesData]);
+
+  // Nuevo computed para medios de contacto
+  const contactMethods = useMemo(() => {
+    const methodsSet = new Set();
+    Object.values(contactData).forEach(monthData => {
+      Object.keys(monthData).forEach(method => {
+        methodsSet.add(method);
+      });
+    });
+    return Array.from(methodsSet);
+  }, [contactData]);
 
   const formatDateForDisplay = (monthString) => {
     try {
@@ -633,6 +706,18 @@ const Dashboard = () => {
     return courses;
   };
 
+  // Nueva función para obtener totales por medio de contacto
+  const getContactTotals = (month) => {
+    const totals = {};
+    if (!contactData[month]) return totals;
+    
+    Object.keys(contactData[month]).forEach(method => {
+      totals[method] = contactData[month][method];
+    });
+    
+    return totals;
+  };
+
   const executiveKPIs = useMemo(() => {
     const currentMonth = salesData[selectedMonth];
     if (!currentMonth) {
@@ -763,6 +848,34 @@ const Dashboard = () => {
           };
         });
 
+      case "contacto":
+        const contactTotals = getContactTotals(selectedMonth);
+        return Object.keys(contactTotals).map(method => {
+          const methodValues = months.map(month => {
+            const totals = getContactTotals(month);
+            return totals[method] ? totals[method][metricType] : 0;
+          });
+          const average = methodValues.reduce((a, b) => a + b, 0) / methodValues.length;
+          const trend = calculateTrend(methodValues);
+          
+          const getContactIcon = (method) => {
+            const methodLower = method.toLowerCase();
+            if (methodLower.includes('whatsapp')) return MessageSquare;
+            if (methodLower.includes('instagram') || methodLower.includes('facebook')) return Users;
+            if (methodLower.includes('teléfono') || methodLower.includes('telefono')) return Phone;
+            if (methodLower.includes('email') || methodLower.includes('correo')) return Mail;
+            return Globe;
+          };
+          
+          return {
+            nombre: method,
+            valor: contactTotals[method] ? contactTotals[method][metricType] : 0,
+            promedio: Math.round(average),
+            tendencia: trend,
+            icono: getContactIcon(method)
+          };
+        });
+
       case "comparacion":
         return schools.map(school => {
           const data = { escuela: school };
@@ -776,7 +889,7 @@ const Dashboard = () => {
       default:
         return [];
     }
-  }, [viewType, selectedMonth, selectedSchool, selectedArea, metricType, months, schools, compareMonths]);
+  }, [viewType, selectedMonth, selectedSchool, selectedArea, metricType, months, schools, compareMonths, contactData]);
 
   const AlertsPanel = () => (
     <div className="bg-white rounded-lg shadow p-6">
@@ -857,6 +970,284 @@ const Dashboard = () => {
       )}
     </div>
   );
+
+  // Nuevo componente para el dashboard de medios de contacto
+  const ContactDashboard = () => {
+    const COLORS = ['#22C55E', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899'];
+    
+    const contactTotals = getContactTotals(selectedMonth);
+    const totalVentas = Object.values(contactTotals).reduce((sum, method) => sum + method.ventas, 0);
+    const totalCursos = Object.values(contactTotals).reduce((sum, method) => sum + method.cursos, 0);
+    
+    const pieData = Object.entries(contactTotals).map(([method, data]) => ({
+      name: method,
+      value: data[metricType],
+      percentage: totalVentas > 0 ? ((data.ventas / totalVentas) * 100).toFixed(1) : 0
+    }));
+
+    const trendData = months.map(month => {
+      const monthData = getContactTotals(month);
+      const result = { month: formatDateShort(month) };
+      
+      Object.keys(contactTotals).forEach(method => {
+        result[method] = monthData[method] ? monthData[method][metricType] : 0;
+      });
+      
+      return result;
+    });
+
+    return (
+      <div className="space-y-6">
+        {/* KPIs de Medios de Contacto */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-100 text-sm">Total Ventas</p>
+                <p className="text-3xl font-bold">${totalVentas.toLocaleString()}</p>
+                <p className="text-purple-100 text-sm">Por medios de contacto</p>
+              </div>
+              <DollarSign className="w-8 h-8 text-purple-200" />
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg shadow p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-indigo-100 text-sm">Total Cursos</p>
+                <p className="text-3xl font-bold">{totalCursos.toLocaleString()}</p>
+                <p className="text-indigo-100 text-sm">Cursos vendidos</p>
+              </div>
+              <ShoppingCart className="w-8 h-8 text-indigo-200" />
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-pink-500 to-pink-600 rounded-lg shadow p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-pink-100 text-sm">Canales Activos</p>
+                <p className="text-3xl font-bold">{Object.keys(contactTotals).length}</p>
+                <p className="text-pink-100 text-sm">Medios de contacto</p>
+              </div>
+              <Users className="w-8 h-8 text-pink-200" />
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg shadow p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-orange-100 text-sm">Ticket Promedio</p>
+                <p className="text-3xl font-bold">${totalCursos > 0 ? (totalVentas / totalCursos).toFixed(0) : '0'}</p>
+                <p className="text-orange-100 text-sm">Por canal</p>
+              </div>
+              <Target className="w-8 h-8 text-orange-200" />
+            </div>
+          </div>
+        </div>
+
+        {/* Gráficas */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Gráfico de Pastel */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-4">
+              Distribución por Medio de Contacto
+              <span className="text-sm font-normal text-gray-500 ml-2">
+                ({metricType === 'ventas' ? 'Ventas' : 'Cursos'})
+              </span>
+            </h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percentage }) => `${name}: ${percentage}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [
+                    metricType === 'ventas' ? `${value.toLocaleString()}` : value.toLocaleString(),
+                    metricType === 'ventas' ? 'Ventas' : 'Cursos'
+                  ]} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Gráfico de Tendencias */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-4">
+              Tendencia por Medio de Contacto
+            </h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis tickFormatter={(value) => 
+                    metricType === "ventas" ? `${(value/1000).toFixed(0)}k` : value.toString()
+                  } />
+                  <Tooltip />
+                  <Legend />
+                  {Object.keys(contactTotals).map((method, index) => (
+                    <Line 
+                      key={method}
+                      type="monotone" 
+                      dataKey={method} 
+                      stroke={COLORS[index % COLORS.length]} 
+                      strokeWidth={2}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabla Detallada */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4">Análisis Detallado por Medio de Contacto</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Medio de Contacto
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ventas ($)
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Cursos
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ticket Promedio
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    % del Total
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Rendimiento
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {Object.entries(contactTotals)
+                  .sort(([,a], [,b]) => b.ventas - a.ventas)
+                  .map(([method, data], index) => {
+                    const ticketPromedio = data.cursos > 0 ? data.ventas / data.cursos : 0;
+                    const porcentaje = totalVentas > 0 ? (data.ventas / totalVentas) * 100 : 0;
+                    
+                    const getContactIcon = (method) => {
+                      const methodLower = method.toLowerCase();
+                      if (methodLower.includes('whatsapp')) return MessageSquare;
+                      if (methodLower.includes('instagram') || methodLower.includes('facebook')) return Users;
+                      if (methodLower.includes('teléfono') || methodLower.includes('telefono')) return Phone;
+                      if (methodLower.includes('email') || methodLower.includes('correo')) return Mail;
+                      return Globe;
+                    };
+                    
+                    const IconComponent = getContactIcon(method);
+                    
+                    return (
+                      <tr key={method} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          <div className="flex items-center gap-2">
+                            <IconComponent className="w-5 h-5 text-gray-500" />
+                            {method}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                          ${data.ventas.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {data.cursos.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          ${ticketPromedio.toFixed(0)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <div className="flex items-center">
+                            <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                              <div 
+                                className="bg-blue-500 h-2 rounded-full" 
+                                style={{ width: `${porcentaje}%` }}
+                              ></div>
+                            </div>
+                            {porcentaje.toFixed(1)}%
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            porcentaje > 25 ? 'bg-green-100 text-green-800' :
+                            porcentaje > 15 ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {porcentaje > 25 ? 'Excelente' :
+                             porcentaje > 15 ? 'Bueno' :
+                             'Mejorable'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Insights y Recomendaciones */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4">📊 Insights y Recomendaciones</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h4 className="font-medium text-gray-800">🎯 Canal más efectivo:</h4>
+              {Object.entries(contactTotals).length > 0 && (
+                <div className="p-4 bg-green-50 rounded-lg">
+                  <p className="text-green-800 font-medium">
+                    {Object.entries(contactTotals).sort(([,a], [,b]) => b.ventas - a.ventas)[0][0]}
+                  </p>
+                  <p className="text-green-600 text-sm">
+                    ${Object.entries(contactTotals).sort(([,a], [,b]) => b.ventas - a.ventas)[0][1].ventas.toLocaleString()} en ventas
+                  </p>
+                </div>
+              )}
+              
+              <h4 className="font-medium text-gray-800">💡 Recomendaciones:</h4>
+              <ul className="text-sm text-gray-600 space-y-1">
+                <li>• Potenciar inversión en el canal más rentable</li>
+                <li>• Diversificar estrategias en canales con bajo rendimiento</li>
+                <li>• Implementar seguimiento cross-canal</li>
+              </ul>
+            </div>
+            
+            <div className="space-y-4">
+              <h4 className="font-medium text-gray-800">📈 Oportunidades de mejora:</h4>
+              {Object.entries(contactTotals)
+                .sort(([,a], [,b]) => a.ventas - b.ventas)
+                .slice(0, 2)
+                .map(([method, data]) => (
+                  <div key={method} className="p-3 bg-orange-50 rounded-lg">
+                    <p className="text-orange-800 font-medium text-sm">{method}</p>
+                    <p className="text-orange-600 text-xs">
+                      Potencial de crecimiento - Solo ${data.ventas.toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const ExecutiveDashboard = () => {
     const getSalesBySchoolAndMonth = () => {
@@ -1712,6 +2103,16 @@ const Dashboard = () => {
               Comparar Meses
             </button>
             <button
+              onClick={() => setViewType("contacto")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "contacto" 
+                ? "bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg" 
+                : "bg-gray-100 text-gray-700 hover:bg-purple-50 hover:text-purple-700"
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              Medio de Contacto
+            </button>
+            <button
               onClick={() => setViewType("cobranza")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "cobranza" 
                 ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg" 
@@ -1826,9 +2227,10 @@ const Dashboard = () => {
 
         {viewType === "executive" && <ExecutiveDashboard />}
         {viewType === "cobranza" && <CobranzaDashboard />}
+        {viewType === "contacto" && <ContactDashboard />}
 
         {/* Vistas de tablas */}
-        {(viewType === "escuela" || viewType === "area" || viewType === "instructor" || viewType === "curso") && !isLoading && (
+        {(viewType === "escuela" || viewType === "area" || viewType === "instructor" || viewType === "curso" || viewType === "contacto") && !isLoading && viewType !== "contacto" && (
           <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold text-gray-800">
