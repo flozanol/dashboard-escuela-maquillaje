@@ -118,40 +118,30 @@ const Dashboard = () => {
     return isNaN(number) ? 0 : number;
   };
 
-  // Función para ordenar meses cronológicamente (mejorada)
+  // Función para ordenar meses cronológicamente
   const sortMonthsChronologically = (months) => {
-    console.log('🔍 Función sortMonthsChronologically recibió:', months);
-    
     return months.sort((a, b) => {
-      console.log(`🔀 Comparando: "${a}" vs "${b}"`);
-      
       // Función para convertir diferentes formatos a YYYY-MM
       const parseToStandardDate = (dateStr) => {
         if (!dateStr) return null;
         
         const str = dateStr.toString().trim();
-        console.log(`  📅 Parseando: "${str}"`);
         
         // Formato YYYY-MM
         if (str.match(/^\d{4}-\d{2}$/)) {
-          console.log(`    ✅ Formato YYYY-MM detectado: ${str}`);
           return str;
         }
         
         // Formato MM/YYYY
         if (str.match(/^\d{1,2}\/\d{4}$/)) {
           const [month, year] = str.split('/');
-          const result = `${year}-${month.padStart(2, '0')}`;
-          console.log(`    ✅ Formato MM/YYYY convertido: ${str} -> ${result}`);
-          return result;
+          return `${year}-${month.padStart(2, '0')}`;
         }
         
         // Formato MM-YYYY
         if (str.match(/^\d{1,2}-\d{4}$/)) {
           const [month, year] = str.split('-');
-          const result = `${year}-${month.padStart(2, '0')}`;
-          console.log(`    ✅ Formato MM-YYYY convertido: ${str} -> ${result}`);
-          return result;
+          return `${year}-${month.padStart(2, '0')}`;
         }
         
         // Formato "Mes YYYY" en español
@@ -169,9 +159,7 @@ const Dashboard = () => {
           const month = monthNames[parts[0]];
           const year = parts[1];
           if (month && year && year.match(/^\d{4}$/)) {
-            const result = `${year}-${month}`;
-            console.log(`    ✅ Formato español convertido: ${str} -> ${result}`);
-            return result;
+            return `${year}-${month}`;
           }
         }
         
@@ -180,13 +168,10 @@ const Dashboard = () => {
           const month = monthNames[parts[1]];
           const year = parts[0];
           if (month && year && year.match(/^\d{4}$/)) {
-            const result = `${year}-${month}`;
-            console.log(`    ✅ Formato español invertido convertido: ${str} -> ${result}`);
-            return result;
+            return `${year}-${month}`;
           }
         }
         
-        console.log(`    ❌ Formato no reconocido: ${str}`);
         return str; // Devolver original si no se puede parsear
       };
       
@@ -194,14 +179,10 @@ const Dashboard = () => {
       const dateB = parseToStandardDate(b);
       
       if (!dateA || !dateB) {
-        console.log(`    ⚠️ No se pudieron parsear las fechas`);
-        return a.localeCompare(b); // Fallback a orden alfabético
+        return a.localeCompare(b);
       }
       
-      const comparison = new Date(dateA + '-01') - new Date(dateB + '-01');
-      console.log(`    📊 Resultado: ${dateA} ${comparison < 0 ? '<' : comparison > 0 ? '>' : '='} ${dateB}`);
-      
-      return comparison;
+      return new Date(dateA + '-01') - new Date(dateB + '-01');
     });
   };
 
@@ -312,9 +293,6 @@ const Dashboard = () => {
     const rows = rawData.slice(1);
     const transformedData = {};
     
-    console.log('📞 Transformando datos de medios de contacto...');
-    console.log('Headers:', headers);
-    
     rows.forEach((row, index) => {
       const [fecha, escuela, area, curso, ventas, cursosVendidos, instructor, medioContacto] = row;
       
@@ -338,11 +316,8 @@ const Dashboard = () => {
       
       transformedData[monthKey][medio].ventas += ventasNum;
       transformedData[monthKey][medio].cursos += cursosNum;
-      
-      console.log(`📱 ${monthKey} - ${medio}: +${ventasNum} ventas, +${cursosNum} cursos`);
     });
     
-    console.log('✅ Datos de contacto transformados:', transformedData);
     return transformedData;
   };
 
@@ -353,27 +328,18 @@ const Dashboard = () => {
     const rows = rawData.slice(1);
     const result = {};
     
-    console.log('📄 Transformando datos de cobranza...');
-    console.log('📋 Headers cobranza:', headers);
-    console.log('📊 Filas de datos:', rows.length);
-    
     // La primera columna es la escuela, las siguientes son meses
     const meses = headers.slice(1).filter(header => header && header.trim() !== '');
-    console.log('📅 Meses encontrados en headers:', meses);
     
     rows.forEach((row, rowIndex) => {
       const escuela = row[0];
       if (!escuela || escuela.trim() === '') {
-        console.log(`⚠️ Fila ${rowIndex + 1}: escuela vacía, saltando`);
         return;
       }
       
       // Limpiar nombre de escuela
       const escuelaClean = escuela.trim();
       result[escuelaClean] = {};
-      
-      console.log(`\n🏫 Procesando escuela: "${escuelaClean}" (fila ${rowIndex + 1})`);
-      console.log(`   Datos de fila completa:`, row);
       
       meses.forEach((mes, mesIndex) => {
         const cellValue = row[mesIndex + 1]; // +1 porque la primera columna es la escuela
@@ -382,12 +348,9 @@ const Dashboard = () => {
         // Limpiar nombre del mes
         const mesClean = mes.trim();
         result[escuelaClean][mesClean] = monto;
-        
-        console.log(`   📈 ${mesClean} (columna ${mesIndex + 1}): "${cellValue}" -> ${monto.toLocaleString()}`);
       });
     });
     
-    console.log('\n✅ Resultado final de transformación:', result);
     return result;
   };
 
@@ -398,14 +361,10 @@ const Dashboard = () => {
     const rows = rawData.slice(1); // Saltar la primera fila (headers)
     const result = [];
     
-    console.log('💰 Transformando datos de ingresos...');
-    console.log('📊 Filas de datos ingresos:', rows.length);
-    
     rows.forEach((row, index) => {
       const [concepto, monto] = row;
       
       if (!concepto || concepto.trim() === '') {
-        console.log(`⚠️ Fila ${index + 2}: concepto vacío, saltando`);
         return;
       }
       
@@ -417,12 +376,9 @@ const Dashboard = () => {
           concepto: conceptoClean,
           monto: montoNumerico
         });
-        
-        console.log(`📈 ${conceptoClean}: ${montoNumerico.toLocaleString()}`);
       }
     });
     
-    console.log('✅ Datos de ingresos transformados:', result);
     return result.length > 0 ? result : fallbackIngresosData;
   };
 
