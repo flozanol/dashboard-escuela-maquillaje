@@ -8,7 +8,7 @@ const GOOGLE_SHEETS_CONFIG = {
   ranges: {
     ventas: 'Ventas!A:H', // Ampliamos hasta la columna H para incluir medio de contacto
     cobranza: 'Cobranza!A:Z',
-    ingresos: 'Tabla Ingresos!A:B' // Nuevo rango de ingresos
+    ingresos: 'Tabla Ingresos!A:B' // Nuevo rango de ingresos 
   }
 };
 
@@ -47,7 +47,7 @@ const fallbackData = {
     }
   }
 };
-// Datos de fallback para medios de contacto
+// Datos de fallback para medios de contacto [cite: 7]
 const fallbackContactData = {
   "2024-01": {
     "WhatsApp": { ventas: 45000, cursos: 35 },
@@ -75,7 +75,7 @@ const Dashboard = () => {
   const [compareMonths, setCompareMonths] = useState(["2024-06", "2024-07"]);
   const [salesData, setSalesData] = useState(fallbackData);
   const [cobranzaData, setCobranzaData] = useState({});
-  const [contactData, setContactData] = useState(fallbackContactData); // Nuevo estado para medios de contacto
+  const [contactData, setContactData] = useState(fallbackContactData); // Nuevo estado para medios de contacto [cite: 12]
   const [ingresosData, setIngresosData] = useState({}); // Nuevo estado para datos de ingresos
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -85,28 +85,28 @@ const Dashboard = () => {
   const [alerts, setAlerts] = useState([]);
 
   const parseNumberFromString = (value) => {
-    // Si es undefined, null, o string vacío, retornar 0
+    // Si es undefined, null, o string vacío, retornar 0 [cite: 14]
     if (value === undefined || value === null || value === '') return 0;
-    // Si ya es un número, retornarlo directamente
+    // Si ya es un número, retornarlo directamente [cite: 15]
     if (typeof value === 'number') return isNaN(value) ?
       0 : value;
 
-    // Convertir a string y limpiar
+    // Convertir a string y limpiar [cite: 16]
     const str = value.toString().trim();
     if (str === '' || str.toLowerCase() === 'null' || str.toLowerCase() === 'undefined') return 0;
-    // Remover símbolos de moneda, comas, espacios y otros caracteres no numéricos
-    // Mantener solo dígitos, punto decimal y signo negativo
+    // Remover símbolos de moneda, comas, espacios y otros caracteres no numéricos [cite: 18]
+    // Mantener solo dígitos, punto decimal y signo negativo [cite: 18]
     const cleaned = str
-      .replace(/[$,\s]/g, '')           // Remover $, comas y espacios
+      .replace(/[$,\s]/g, '') // Remover $, comas y espacios [cite: 18]
       .replace(/[^\d.-]/g, '');
-    // Mantener solo dígitos, punto y guión
+    // Mantener solo dígitos, punto y guión [cite: 19]
 
-    // Si después de limpiar no queda nada o solo caracteres especiales, retornar 0
+    // Si después de limpiar no queda nada o solo caracteres especiales, retornar 0 [cite: 19]
     if (cleaned === '' || cleaned === '.' || cleaned === '-') return 0;
     const number = parseFloat(cleaned);
     return isNaN(number) ? 0 : number;
   };
-  // Función para ordenar meses cronológicamente (mejorada)
+  // Función para ordenar meses cronológicamente (mejorada) [cite: 21]
   const sortMonthsChronologically = (months) => {
     console.log('🔍 Función sortMonthsChronologically recibió:', months);
     return months.sort((a, b) => {
@@ -120,13 +120,13 @@ const Dashboard = () => {
         console.log(`  📅 Parseando: "${str}"`);
 
 
-        // Formato YYYY-MM
+        // Formato YYYY-MM [cite: 23]
         if (str.match(/^\d{4}-\d{2}$/)) {
           console.log(`    ✅ Formato YYYY-MM detectado: ${str}`);
           return str;
         }
 
-        // Formato MM/YYYY
+        // Formato MM/YYYY [cite: 23]
         if (str.match(/^\d{1,2}\/\d{4}$/)) {
           const [month, year] = str.split('/');
           const result = `${year}-${month.padStart(2, '0')}`;
@@ -134,7 +134,7 @@ const Dashboard = () => {
           return result;
         }
 
-        // Formato MM-YYYY
+        // Formato MM-YYYY [cite: 24]
         if (str.match(/^\d{1,2}-\d{4}$/)) {
           const [month, year] = str.split('-');
           const result
@@ -143,7 +143,7 @@ const Dashboard = () => {
           return result;
         }
 
-        // Formato "Mes YYYY" en español
+        // Formato "Mes YYYY" en español [cite: 26]
         const monthNames = {
           'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
           'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
@@ -164,7 +164,7 @@ const Dashboard = () => {
           }
         }
 
-        // Formato "YYYY Mes" en español
+        // Formato "YYYY Mes" en español [cite: 31]
         if (parts.length === 2) {
           const month = monthNames[parts[1]];
           const year = parts[0];
@@ -176,7 +176,7 @@ const Dashboard = () => {
         }
 
         console.log(`    ❌ Formato no reconocido: ${str}`);
-        return str; // Devolver original si no se puede parsear
+        return str; // Devolver original si no se puede parsear [cite: 35]
       };
 
       const dateA = parseToStandardDate(a);
@@ -184,7 +184,7 @@ const Dashboard = () => {
 
       if (!dateA || !dateB) {
         console.log(`    ⚠️ No se pudieron parsear las fechas`);
-        return a.localeCompare(b); // Fallback a orden alfabético
+        return a.localeCompare(b); // Fallback a orden alfabético [cite: 37]
       }
 
       const comparison = new Date(dateA + '-01') - new Date(dateB + '-01');
@@ -197,7 +197,7 @@ const Dashboard = () => {
     if (showLoading) setIsLoading(true);
     setIsManualRefresh(showLoading);
     try {
-      // Fetch datos de ventas
+      // Fetch datos de ventas [cite: 40]
       const ventasUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.ventas}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
       const ventasResponse = await fetch(ventasUrl);
 
@@ -205,11 +205,11 @@ const Dashboard = () => {
 
       const ventasData = await ventasResponse.json();
       const transformedVentas = transformGoogleSheetsData(ventasData.values);
-      const transformedContact = transformContactData(ventasData.values); // Nueva transformación para medios de contacto
+      const transformedContact = transformContactData(ventasData.values); // Nueva transformación para medios de contacto [cite: 42]
       setSalesData(transformedVentas);
       setContactData(transformedContact);
 
-      // Fetch datos de cobranza
+      // Fetch datos de cobranza [cite: 43]
       const cobranzaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.cobranza}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
       const cobranzaResponse = await fetch(cobranzaUrl);
       if (!cobranzaResponse.ok) throw new Error(`Error ${cobranzaResponse.status}: ${cobranzaResponse.statusText}`);
@@ -290,7 +290,7 @@ const Dashboard = () => {
 
     return transformedData;
   };
-  // Nueva función para transformar datos de medios de contacto
+  // Nueva función para transformar datos de medios de contacto [cite: 53]
   const transformContactData = (rawData) => {
     const headers = rawData[0];
     const rows = rawData.slice(1);
@@ -340,7 +340,7 @@ const Dashboard = () => {
     console.log('📋 Headers cobranza:', headers);
     console.log('📊 Filas de datos:', rows.length);
 
-    // La primera columna es la escuela, las siguientes son meses
+    // La primera columna es la escuela, las siguientes son meses [cite: 60]
     const meses = headers.slice(1).filter(header => header && header.trim() !== '');
     console.log('📅 Meses encontrados en headers:', meses);
 
@@ -351,7 +351,7 @@ const Dashboard = () => {
         return;
       }
 
-      // Limpiar nombre de escuela
+      // Limpiar nombre de escuela [cite: 61]
       const escuelaClean = escuela.trim();
       result[escuelaClean] = {};
 
@@ -360,10 +360,10 @@ const Dashboard = () => {
       console.log(`   Datos de fila completa:`, row);
 
       meses.forEach((mes, mesIndex) => {
-        const cellValue = row[mesIndex + 1]; // +1 porque la primera columna es la escuela
+        const cellValue = row[mesIndex + 1]; // +1 porque la primera columna es la escuela [cite: 62]
         const monto = parseNumberFromString(cellValue);
 
-        // Limpiar nombre del mes
+        // Limpiar nombre del mes [cite: 63]
         const mesClean = mes.trim();
         result[escuelaClean][mesClean] = monto;
 
@@ -374,7 +374,7 @@ const Dashboard = () => {
     return result;
   };
 
-  // Nueva función para transformar datos de ingresos
+  // Nueva función para transformar datos de ingresos 
   const transformIngresosData = (rawData) => {
     if (!rawData || rawData.length < 2) return {};
     const headers = rawData[0];
@@ -384,24 +384,23 @@ const Dashboard = () => {
     // Asumimos que la primera columna es la fecha y la segunda el monto
     const fechaHeader = headers[0];
     const montoHeader = headers[1];
-    
-    // Convertimos las filas en un objeto con fecha como clave
-    rows.forEach((row) => {
-        const [fecha, monto] = row;
-        if (fecha) {
-            const dateObj = new Date(fecha);
-            const formattedDate = dateObj.toLocaleDateString('es-ES', { year: 'numeric', month: '2-digit' }).replace('/', '-');
-            const monthKey = formattedDate.substring(3) + '-' + formattedDate.substring(0, 2);
 
-            if (!result[monthKey]) {
-                result[monthKey] = 0;
-            }
-            result[monthKey] += parseNumberFromString(monto);
+    rows.forEach((row) => {
+      const [fecha, monto] = row;
+      if (fecha) {
+        const standardDate = parseToStandardDate(fecha);
+        
+        if (standardDate) {
+          if (!result[standardDate]) {
+            result[standardDate] = 0;
+          }
+          result[standardDate] += parseNumberFromString(monto);
         }
+      }
     });
 
     return result;
-};
+  };
 
 
   useEffect(() => {
@@ -538,7 +537,7 @@ const Dashboard = () => {
   const months = useMemo(() => {
     return Object.keys(salesData).sort();
   }, [salesData]);
-  // Nuevo computed para medios de contacto
+  // Nuevo computed para medios de contacto [cite: 87]
   const contactMethods = useMemo(() => {
     const methodsSet = new Set();
     Object.values(contactData).forEach(monthData => {
@@ -730,7 +729,7 @@ const Dashboard = () => {
     return courses;
   };
 
-  // Nueva función para obtener totales por medio de contacto
+  // Nueva función para obtener totales por medio de contacto [cite: 121]
   const getContactTotals = (month) => {
     const totals = {};
     if (!contactData[month]) return totals;
@@ -1014,7 +1013,7 @@ const Dashboard = () => {
       )}
     </div>
   );
-  // Nuevo componente para el dashboard de medios de contacto
+  // Nuevo componente para el dashboard de medios de contacto [cite: 170]
   const ContactDashboard = () => {
     const COLORS = ['#22C55E', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899'];
     const contactTotals = getContactTotals(selectedMonth);
@@ -1037,7 +1036,7 @@ const Dashboard = () => {
     });
     return (
       <div className="space-y-6">
-        {/* KPIs de Medios de Contacto */}
+        {/* KPIs de Medios de Contacto [cite: 175]*/}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow p-6 text-white">
             <div className="flex items-center justify-between">
@@ -1089,14 +1088,14 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Gráficas */}
+        {/* Gráficas [cite: 183] */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Gráfico de Pastel */}
+          {/* Gráfico de Pastel [cite: 183] */}
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold mb-4">
-              Distribución por Medio de Contacto
+              Distribución por Medio de Contacto [cite: 183]
               <span className="text-sm font-normal text-gray-500 ml-2">
-                ({metricType === 'ventas' ? 'Ventas' : 'Cursos'})
+                ({metricType === 'ventas' ? 'Ventas' : 'Cursos'}) [cite: 184]
               </span>
             </h3>
             <div className="h-80">
@@ -1130,10 +1129,10 @@ const Dashboard = () => {
           </div>
 
 
-          {/* Gráfico de Tendencias */}
+          {/* Gráfico de Tendencias [cite: 191] */}
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold mb-4">
-              Tendencia por Medio de Contacto
+              Tendencia por Medio de Contacto [cite: 191]
             </h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
@@ -1161,7 +1160,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Tabla Detallada */}
+        {/* Tabla Detallada [cite: 196] */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold mb-4">Análisis Detallado por Medio de Contacto</h3>
           <div className="overflow-x-auto">
@@ -1259,7 +1258,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Insights y Recomendaciones */}
+        {/* Insights y Recomendaciones [cite: 221] */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold mb-4">📊 Insights y Recomendaciones</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1370,7 +1369,7 @@ const Dashboard = () => {
     const monthlyCoursesTotals = calculateMonthlyCoursesTotals();
     return (
       <div className="space-y-6">
-        {/* Estado de conexión */}
+        {/* Estado de conexión [cite: 240] */}
         <div className="bg-white rounded-lg shadow p-4">
           <div className="flex items-center justify-between">
             <ConnectionStatus />
@@ -1422,7 +1421,7 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* KPIs Principales */}
+        {/* KPIs Principales [cite: 249] */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow p-6 text-white">
             <div className="flex items-center justify-between">
@@ -1476,11 +1475,11 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Alertas y Tendencias */}
+        {/* Alertas y Tendencias [cite: 257] */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <AlertsPanel />
 
-          {/* Gráfica de Tendencias */}
+          {/* Gráfica de Tendencias [cite: 257] */}
           <div className="bg-white rounded-lg shadow p-6">
 
             <h3 className="text-lg font-semibold mb-4">Tendencia Mensual de Ventas</h3>
@@ -1510,9 +1509,9 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Top Performers */}
+        {/* Top Performers [cite: 263] */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Top Vendedores */}
+          {/* Top Vendedores [cite: 263] */}
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center
               gap-2 mb-4">
@@ -1547,7 +1546,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Top Áreas */}
+          {/* Top Áreas [cite: 271] */}
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center gap-2 mb-4">
               <BarChart3 className="w-5 h-5 text-green-500" />
@@ -1575,7 +1574,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Top Cursos */}
+          {/* Top Cursos [cite: 276] */}
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center gap-2 mb-4">
               <Book className="w-5 h-5 text-gray-600" />
@@ -1602,7 +1601,7 @@ const Dashboard = () => {
         </div>
 
         {/*
-          Tabla de Ventas por Escuela y Mes */}
+          Tabla de Ventas por Escuela y Mes [cite: 281] */}
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h3 className="text-lg font-semibold mb-4 text-gray-800">Ventas por Escuela (en pesos)</h3>
           <div className="overflow-x-auto">
@@ -1639,7 +1638,7 @@ const Dashboard = () => {
                     ))}
                   </tr>
                 ))}
-                {/* Fila de Totales */}
+                {/* Fila de Totales [cite: 289] */}
                 <tr className="bg-gradient-to-r from-green-100 to-green-200 font-bold border-t-2 border-green-300">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-green-900">
                     <div className="flex items-center gap-2">
@@ -1660,7 +1659,7 @@ const Dashboard = () => {
         </div>
 
         {/*
-          Tabla de Cursos por Escuela y Mes */}
+          Tabla de Cursos por Escuela y Mes [cite: 293] */}
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h3 className="text-lg font-semibold mb-4 text-gray-800">Cursos Vendidos por Escuela</h3>
           <div className="overflow-x-auto">
@@ -1697,7 +1696,7 @@ const Dashboard = () => {
                     ))}
                   </tr>
                 ))}
-                {/* Fila de Totales */}
+                {/* Fila de Totales [cite: 301] */}
                 <tr className="bg-gradient-to-r from-gray-100 to-gray-200 font-bold border-t-2 border-gray-300">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div className="flex items-center gap-2">
@@ -1720,16 +1719,16 @@ const Dashboard = () => {
     );
   };
   const CobranzaDashboard = () => {
-    // Obtener todos los meses únicos de los datos de cobranza y ordenarlos cronológicamente
+    // Obtener todos los meses únicos de los datos de cobranza y ordenarlos cronológicamente [cite: 306]
     const mesesCobranza = useMemo(() => {
-      // Si no hay datos, retornar array vacío
+      // Si no hay datos, retornar array vacío [cite: 306]
       if (!cobranzaData || Object.keys(cobranzaData).length === 0) {
         return [];
       }
 
       const meses = new Set();
 
-      //
+      // [cite: 307]
       Object.values(cobranzaData).forEach(escuelaData => {
         Object.keys(escuelaData).forEach(mes => {
           if (mes && mes.trim() !== '') {
@@ -1738,25 +1737,25 @@ const Dashboard = () => {
         });
       });
 
-      // Convertir a array y ordenar cronológicamente
+      // Convertir a array y ordenar cronológicamente [cite: 308]
       const mesesArray = Array.from(meses);
       return sortMonthsChronologically(mesesArray);
     }, [cobranzaData]);
-    // Calcular totales por mes (corregido con debug)
+    // Calcular totales por mes (corregido con debug) [cite: 309]
     const totalesPorMes = useMemo(() => {
       const totales = {};
 
       console.log('💰 Iniciando cálculo de totales por mes');
       console.log('📊 Datos de cobranza completos:', cobranzaData);
 
-      // Inicializar todos los meses con 0
+      // Inicializar todos los meses con 0 [cite: 309]
       mesesCobranza.forEach(mes => {
         totales[mes] = 0;
         console.log(`📅 Inicializando
           mes "${mes}" en 0`);
       });
 
-      // Sumar los montos de cada escuela para cada mes
+      // Sumar los montos de cada escuela para cada mes [cite: 310]
       Object.entries(cobranzaData).forEach(([escuela, datosEscuela]) => {
         console.log(`\n🏫 Procesando escuela: "${escuela}"`);
         console.log(`   Datos de escuela:`, datosEscuela);
@@ -1787,11 +1786,11 @@ const Dashboard = () => {
       return totales;
     }, [cobranzaData, mesesCobranza]);
 
-    // Calcular totales por escuela (simplificado)
+    // Calcular totales por escuela (simplificado) [cite: 318]
     const totalesPorEscuela = useMemo(() => {
       const totales = {};
 
-      // Si no hay datos, retornar objeto vacío
+      // Si no hay datos, retornar objeto vacío [cite: 318]
       if (!cobranzaData || Object.keys(cobranzaData).length === 0) {
         return totales;
       }
@@ -1810,7 +1809,7 @@ const Dashboard = () => {
 
     return (
       <div className="space-y-6">
-        {/* Resumen de Cobranza */}
+        {/* Resumen de Cobranza [cite: 320] */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow p-6 text-white">
             <div className="flex items-center justify-between">
@@ -1852,7 +1851,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Tabla Principal de Cobranza */}
+        {/* Tabla Principal de Cobranza [cite: 327] */}
         <div className="bg-white rounded-lg shadow-lg p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-800">
@@ -1907,7 +1906,7 @@ const Dashboard = () => {
                     </td>
                   </tr>
                 ))}
-                {/* Fila de totales */}
+                {/* Fila de totales [cite: 338] */}
                 <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 sticky left-0 bg-gray-100 z-10">
                     <div className="flex items-center gap-2">
@@ -1929,7 +1928,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Gráfico de Tendencia de Cobranza */}
+        {/* Gráfico de Tendencia de Cobranza [cite: 342] */}
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h3 className="text-lg font-semibold mb-4">Tendencia de Cobranza Total</h3>
           <div className="h-80">
@@ -1963,7 +1962,7 @@ const Dashboard = () => {
         </div>
 
 
-        {/* Top Escuelas por Cobranza */}
+        {/* Top Escuelas por Cobranza [cite: 348] */}
         <div className="bg-white rounded-lg shadow-lg p-6">
           <div className="flex items-center gap-2 mb-4">
             <Star className="w-5 h-5 text-yellow-500" />
@@ -2008,7 +2007,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Análisis de Rendimiento */}
+        {/* Análisis de Rendimiento [cite: 358] */}
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h3 className="text-lg font-semibold mb-4">Análisis de Rendimiento por Escuela</h3>
           <div className="space-y-4">
@@ -2051,7 +2050,7 @@ const Dashboard = () => {
                     </div>
                   </div>
 
-                  {/* Barra de progreso de consistencia */}
+                  {/* Barra de progreso de consistencia [cite: 368] */}
                   <div className="mt-3">
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
@@ -2075,9 +2074,9 @@ const Dashboard = () => {
     );
   };
 
-  // Nuevo componente para el dashboard de Ingresos
+  // Nuevo componente para el dashboard de Ingresos 
   const IngresosDashboard = () => {
-    // Obtener meses únicos de los datos de ingresos y ordenarlos cronológicamente
+    // Obtener meses únicos de los datos de ingresos y ordenarlos cronológicamente 
     const mesesIngresos = useMemo(() => {
       if (!ingresosData || Object.keys(ingresosData).length === 0) {
         return [];
@@ -2085,12 +2084,12 @@ const Dashboard = () => {
       return sortMonthsChronologically(Object.keys(ingresosData));
     }, [ingresosData]);
 
-    // Calcular el total de ingresos
+    // Calcular el total de ingresos 
     const totalIngresos = useMemo(() => {
       return Object.values(ingresosData).reduce((sum, monto) => sum + monto, 0);
     }, [ingresosData]);
     
-    // Obtener los datos en formato de array para el gráfico
+    // Obtener los datos en formato de array para el gráfico 
     const chartData = mesesIngresos.map(mes => ({
         mes: mes,
         total: ingresosData[mes]
@@ -2123,7 +2122,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Gráfico de Tendencia de Ingresos */}
+        {/* Gráfico de Tendencia de Ingresos  */}
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h3 className="text-lg font-semibold mb-4">Tendencia de Ingresos Totales</h3>
           <div className="h-80">
@@ -2152,7 +2151,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Tabla de Ingresos */}
+        {/* Tabla de Ingresos  */}
         <div className="bg-white rounded-lg shadow-lg p-6">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-800">
@@ -2182,7 +2181,7 @@ const Dashboard = () => {
                     </td>
                   </tr>
                 ))}
-                {/* Fila de totales */}
+                {/* Fila de totales  */}
                 <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     Total General
@@ -2202,22 +2201,22 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header con logo */}
+        {/* Header con logo [cite: 374] */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-4 mb-4">
-            {/* Logo IDIP desde URL oficial */}
+            {/* Logo IDIP desde URL oficial [cite: 374] */}
             <div className="flex items-center bg-white rounded-lg shadow-md p-4">
               <img
                 src="https://idip.com.mx/wp-content/uploads/2024/08/logos-IDIP-sin-fondo-1-2.png"
                 alt="IDIP - Instituto de Imagen Personal"
                 className="h-16 w-auto object-contain"
                 onError={(e) => {
-                  // Fallback en
+                  // Fallback en [cite: 376]
                   e.target.style.display = 'none';
                   e.target.nextSibling.style.display = 'flex';
                 }}
               />
-              {/* Fallback logo en caso de que la imagen no
+              {/* Fallback logo en caso de que la imagen no [cite: 377]
                 cargue */}
               <div className="hidden">
                 <div className="flex">
@@ -2242,7 +2241,7 @@ const Dashboard = () => {
           </h1>
         </div>
 
-        {/* Navegación principal */}
+        {/* Navegación principal [cite: 380] */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
           <div className="flex flex-wrap gap-4 mb-6">
             <button
@@ -2346,7 +2345,7 @@ const Dashboard = () => {
             </button>
           </div>
 
-          {/* Controles específicos según la vista */}
+          {/* Controles específicos según la vista [cite: 397] */}
           {viewType !== "executive" && viewType !== "cobranza" && viewType !== "ingresos" && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
@@ -2443,7 +2442,7 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Contenido principal */}
+        {/* Contenido principal [cite: 415] */}
         {isLoading && isManualRefresh && (
           <div className="bg-white rounded-lg shadow-lg p-8 mb-8 text-center">
             <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-500" />
@@ -2456,7 +2455,7 @@ const Dashboard = () => {
         {viewType === "contacto" && <ContactDashboard />}
         {viewType === "ingresos" && <IngresosDashboard />}
 
-        {/* Vistas de tablas */}
+        {/* Vistas de tablas [cite: 416] */}
         {(viewType === "escuela" ||
           viewType === "area" || viewType === "instructor" || viewType === "curso" ||
           viewType === "contacto") && !isLoading && viewType !== "contacto" && (
@@ -2480,7 +2479,7 @@ const Dashboard = () => {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Tabla */}
+                {/* Tabla [cite: 421] */}
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
@@ -2545,7 +2544,7 @@ const Dashboard = () => {
                   </table>
                 </div>
 
-                {/* Gráfica */}
+                {/* Gráfica [cite: 439] */}
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={getViewData}>
@@ -2576,7 +2575,7 @@ const Dashboard = () => {
             </div>
           )}
 
-        {/* Vista de Comparación */}
+        {/* Vista de Comparación [cite: 446] */}
         {viewType === "comparacion" && !isLoading && (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h2
