@@ -6,9 +6,9 @@ const GOOGLE_SHEETS_CONFIG = {
   apiKey: 'AIzaSyBXvaWWirK1_29g7x6uIq2qlmLdBL9g3TE',
   spreadsheetId: '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg',
   ranges: {
-    ventas: 'Ventas!A:H', // Ampliamos hasta la columna H para incluir medio de contacto
+    ventas: 'Ventas!A:H',
     cobranza: 'Cobranza!A:Z',
-    ingresos: 'Tabla Ingresos!A:B' // Nueva hoja para ingresos
+    ingresos: 'Tabla Ingresos!A:B'
   }
 };
 
@@ -16,56 +16,54 @@ const fallbackData = {
   "2024-01": {
     "Polanco": {
       "Maquillaje": {
-        "Maquillaje Básico": { ventas: 24000, cursos: 20, instructor: "Ana Martínez" },
-        "Maquillaje Profesional": { ventas: 35000, cursos: 14, instructor: "Sofia López" }
+        "Maquillaje Basico": { ventas: 24000, cursos: 20, instructor: "Ana Martinez" },
+        "Maquillaje Profesional": { ventas: 35000, cursos: 14, instructor: "Sofia Lopez" }
       },
       "Certificaciones": {
-        "Certificación Básica": { ventas: 25000, cursos: 25, instructor: "Roberto Silva" }
+        "Certificacion Basica": { ventas: 25000, cursos: 25, instructor: "Roberto Silva" }
       }
     },
     "Online": {
       "Maquillaje": {
-        "Curso Online Básico": { ventas: 18000, cursos: 36, instructor: "Ana Martínez" }
+        "Curso Online Basico": { ventas: 18000, cursos: 36, instructor: "Ana Martinez" }
       }
     }
   },
   "2024-07": {
     "Polanco": {
       "Maquillaje": {
-        "Maquillaje Básico": { ventas: 28000, cursos: 24, instructor: "Ana Martínez" },
-        "Maquillaje Profesional": { ventas: 42000, cursos: 18, instructor: "Sofia López" }
+        "Maquillaje Basico": { ventas: 28000, cursos: 24, instructor: "Ana Martinez" },
+        "Maquillaje Profesional": { ventas: 42000, cursos: 18, instructor: "Sofia Lopez" }
       },
       "Certificaciones": {
-        "Certificación Básica": { ventas: 35000, cursos: 35, instructor: "Roberto Silva" }
+        "Certificacion Basica": { ventas: 35000, cursos: 35, instructor: "Roberto Silva" }
       }
     },
     "Online": {
       "Maquillaje": {
-        "Curso Online Básico": { ventas: 25000, cursos: 50, instructor: "Ana Martínez" }
+        "Curso Online Basico": { ventas: 25000, cursos: 50, instructor: "Ana Martinez" }
       }
     }
   }
 };
 
-// Datos de fallback para medios de contacto
 const fallbackContactData = {
   "2024-01": {
     "WhatsApp": { ventas: 45000, cursos: 35 },
     "Instagram": { ventas: 32000, cursos: 28 },
     "Facebook": { ventas: 28000, cursos: 22 },
-    "Teléfono": { ventas: 18000, cursos: 15 },
+    "Telefono": { ventas: 18000, cursos: 15 },
     "Email": { ventas: 15000, cursos: 12 }
   },
   "2024-07": {
     "WhatsApp": { ventas: 52000, cursos: 42 },
     "Instagram": { ventas: 38000, cursos: 35 },
     "Facebook": { ventas: 35000, cursos: 28 },
-    "Teléfono": { ventas: 22000, cursos: 18 },
+    "Telefono": { ventas: 22000, cursos: 18 },
     "Email": { ventas: 18000, cursos: 15 }
   }
 };
 
-// Datos de fallback para ingresos
 const fallbackIngresosData = [
   { concepto: "Cursos Presenciales", monto: 150000 },
   { concepto: "Cursos Online", monto: 85000 },
@@ -79,13 +77,12 @@ const Dashboard = () => {
   const [selectedMonth, setSelectedMonth] = useState("2024-07");
   const [selectedSchool, setSelectedSchool] = useState("Polanco");
   const [selectedArea, setSelectedArea] = useState("Maquillaje");
-  const [selectedInstructor, setSelectedInstructor] = useState("");
   const [viewType, setViewType] = useState("executive");
   const [metricType, setMetricType] = useState("ventas");
   const [compareMonths, setCompareMonths] = useState(["2024-06", "2024-07"]);
   const [salesData, setSalesData] = useState(fallbackData);
   const [cobranzaData, setCobranzaData] = useState({});
-  const [ingresosData, setIngresosData] = useState(fallbackIngresosData); // Nuevo estado para ingresos
+  const [ingresosData, setIngresosData] = useState(fallbackIngresosData);
   const [contactData, setContactData] = useState(fallbackContactData);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -95,56 +92,43 @@ const Dashboard = () => {
   const [alerts, setAlerts] = useState([]);
 
   const parseNumberFromString = (value) => {
-    // Si es undefined, null, o string vacío, retornar 0
     if (value === undefined || value === null || value === '') return 0;
-    
-    // Si ya es un número, retornarlo directamente
     if (typeof value === 'number') return isNaN(value) ? 0 : value;
     
-    // Convertir a string y limpiar
     const str = value.toString().trim();
     if (str === '' || str.toLowerCase() === 'null' || str.toLowerCase() === 'undefined') return 0;
     
-    // Remover símbolos de moneda, comas, espacios y otros caracteres no numéricos
-    // Mantener solo dígitos, punto decimal y signo negativo
     const cleaned = str
-      .replace(/[$,\s]/g, '')           // Remover $, comas y espacios
-      .replace(/[^\d.-]/g, '');         // Mantener solo dígitos, punto y guión
+      .replace(/[$,\s]/g, '')
+      .replace(/[^\d.-]/g, '');
     
-    // Si después de limpiar no queda nada o solo caracteres especiales, retornar 0
     if (cleaned === '' || cleaned === '.' || cleaned === '-') return 0;
     
     const number = parseFloat(cleaned);
     return isNaN(number) ? 0 : number;
   };
 
-  // Función para ordenar meses cronológicamente
   const sortMonthsChronologically = (months) => {
     return months.sort((a, b) => {
-      // Función para convertir diferentes formatos a YYYY-MM
       const parseToStandardDate = (dateStr) => {
         if (!dateStr) return null;
         
         const str = dateStr.toString().trim();
         
-        // Formato YYYY-MM
         if (str.match(/^\d{4}-\d{2}$/)) {
           return str;
         }
         
-        // Formato MM/YYYY
         if (str.match(/^\d{1,2}\/\d{4}$/)) {
           const [month, year] = str.split('/');
           return `${year}-${month.padStart(2, '0')}`;
         }
         
-        // Formato MM-YYYY
         if (str.match(/^\d{1,2}-\d{4}$/)) {
           const [month, year] = str.split('-');
           return `${year}-${month.padStart(2, '0')}`;
         }
         
-        // Formato "Mes YYYY" en español
         const monthNames = {
           'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
           'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
@@ -163,7 +147,6 @@ const Dashboard = () => {
           }
         }
         
-        // Formato "YYYY Mes" en español
         if (parts.length === 2) {
           const month = monthNames[parts[1]];
           const year = parts[0];
@@ -172,7 +155,7 @@ const Dashboard = () => {
           }
         }
         
-        return str; // Devolver original si no se puede parsear
+        return str;
       };
       
       const dateA = parseToStandardDate(a);
@@ -191,7 +174,6 @@ const Dashboard = () => {
     setIsManualRefresh(showLoading);
     
     try {
-      // Fetch datos de ventas
       const ventasUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.ventas}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
       const ventasResponse = await fetch(ventasUrl);
       
@@ -203,31 +185,28 @@ const Dashboard = () => {
       setSalesData(transformedVentas);
       setContactData(transformedContact);
       
-      // Fetch datos de cobranza
       const cobranzaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.cobranza}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
       const cobranzaResponse = await fetch(cobranzaUrl);
       
       if (!cobranzaResponse.ok) throw new Error(`Error ${cobranzaResponse.status}: ${cobranzaResponse.statusText}`);
       
-      const cobranzaData = await cobranzaResponse.json();
-      const transformedCobranza = transformCobranzaData(cobranzaData.values);
+      const cobranzaDataResult = await cobranzaResponse.json();
+      const transformedCobranza = transformCobranzaData(cobranzaDataResult.values);
       setCobranzaData(transformedCobranza);
       
-      // Fetch datos de ingresos (NUEVO)
       const ingresosUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.ingresos}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
       const ingresosResponse = await fetch(ingresosUrl);
       
       if (!ingresosResponse.ok) throw new Error(`Error ${ingresosResponse.status}: ${ingresosResponse.statusText}`);
       
-      const ingresosData = await ingresosResponse.json();
-      const transformedIngresos = transformIngresosData(ingresosData.values);
+      const ingresosDataResult = await ingresosResponse.json();
+      const transformedIngresos = transformIngresosData(ingresosDataResult.values);
       setIngresosData(transformedIngresos);
       
       setConnectionStatus('connected');
       setLastUpdated(new Date());
       setErrorMessage('');
     } catch (error) {
-      console.error('Error fetching Google Sheets data:', error);
       setConnectionStatus('error');
       setErrorMessage(error.message);
       
@@ -243,7 +222,6 @@ const Dashboard = () => {
   };
 
   const transformGoogleSheetsData = (rawData) => {
-    const headers = rawData[0];
     const rows = rawData.slice(1);
     const transformedData = {};
     
@@ -251,7 +229,6 @@ const Dashboard = () => {
       const [fecha, escuela, area, curso, ventas, cursosVendidos, instructor] = row;
       
       if (!fecha || !escuela || !area || !curso) {
-        console.warn(`Fila ${index + 2} incompleta:`, row);
         return;
       }
       
@@ -287,17 +264,15 @@ const Dashboard = () => {
     return transformedData;
   };
 
-  // Nueva función para transformar datos de medios de contacto
   const transformContactData = (rawData) => {
-    const headers = rawData[0];
     const rows = rawData.slice(1);
     const transformedData = {};
     
-    rows.forEach((row, index) => {
+    rows.forEach((row) => {
       const [fecha, escuela, area, curso, ventas, cursosVendidos, instructor, medioContacto] = row;
       
       if (!fecha || !medioContacto) {
-        return; // Saltar filas sin fecha o medio de contacto
+        return;
       }
       
       const monthKey = fecha.substring(0, 7);
@@ -328,24 +303,20 @@ const Dashboard = () => {
     const rows = rawData.slice(1);
     const result = {};
     
-    // La primera columna es la escuela, las siguientes son meses
     const meses = headers.slice(1).filter(header => header && header.trim() !== '');
     
-    rows.forEach((row, rowIndex) => {
+    rows.forEach((row) => {
       const escuela = row[0];
       if (!escuela || escuela.trim() === '') {
         return;
       }
       
-      // Limpiar nombre de escuela
       const escuelaClean = escuela.trim();
       result[escuelaClean] = {};
       
       meses.forEach((mes, mesIndex) => {
-        const cellValue = row[mesIndex + 1]; // +1 porque la primera columna es la escuela
+        const cellValue = row[mesIndex + 1];
         const monto = parseNumberFromString(cellValue);
-        
-        // Limpiar nombre del mes
         const mesClean = mes.trim();
         result[escuelaClean][mesClean] = monto;
       });
@@ -354,14 +325,13 @@ const Dashboard = () => {
     return result;
   };
 
-  // Nueva función para transformar datos de ingresos
   const transformIngresosData = (rawData) => {
     if (!rawData || rawData.length === 0) return fallbackIngresosData;
     
-    const rows = rawData.slice(1); // Saltar la primera fila (headers)
+    const rows = rawData.slice(1);
     const result = [];
     
-    rows.forEach((row, index) => {
+    rows.forEach((row) => {
       const [concepto, monto] = row;
       
       if (!concepto || concepto.trim() === '') {
@@ -418,7 +388,7 @@ const Dashboard = () => {
                 newAlerts.push({
                   type: 'warning',
                   category: 'ventas',
-                  message: `${course} en ${school} bajó ${Math.abs(ventasChange).toFixed(1)}% en ventas`,
+                  message: `${course} en ${school} bajo ${Math.abs(ventasChange).toFixed(1)}% en ventas`,
                   details: `De $${previous.ventas.toLocaleString()} a $${current.ventas.toLocaleString()}`,
                   priority: ventasChange < -40 ? 'urgent' : 'high',
                   curso: course,
@@ -431,7 +401,7 @@ const Dashboard = () => {
                 newAlerts.push({
                   type: 'danger',
                   category: 'cursos',
-                  message: `${course} en ${school} bajó ${Math.abs(cursosChange).toFixed(1)}% en cursos vendidos`,
+                  message: `${course} en ${school} bajo ${Math.abs(cursosChange).toFixed(1)}% en cursos vendidos`,
                   details: `De ${previous.cursos} a ${current.cursos} cursos`,
                   priority: 'urgent',
                   curso: course,
@@ -444,7 +414,7 @@ const Dashboard = () => {
                 newAlerts.push({
                   type: 'success',
                   category: 'crecimiento',
-                  message: `¡${course} en ${school} creció ${ventasChange.toFixed(1)}% en ventas!`,
+                  message: `${course} en ${school} crecio ${ventasChange.toFixed(1)}% en ventas!`,
                   details: `De $${previous.ventas.toLocaleString()} a $${current.ventas.toLocaleString()}`,
                   priority: 'info',
                   curso: course,
@@ -500,27 +470,10 @@ const Dashboard = () => {
     return Array.from(areasSet);
   }, [salesData]);
 
-  const instructors = useMemo(() => {
-    const instructorsSet = new Set();
-    Object.values(salesData).forEach(monthData => {
-      Object.values(monthData).forEach(schoolData => {
-        Object.values(schoolData).forEach(areaData => {
-          Object.values(areaData).forEach(courseData => {
-            if (courseData.instructor && courseData.instructor !== 'No asignado') {
-              instructorsSet.add(courseData.instructor);
-            }
-          });
-        });
-      });
-    });
-    return Array.from(instructorsSet);
-  }, [salesData]);
-
   const months = useMemo(() => {
     return Object.keys(salesData).sort();
   }, [salesData]);
 
-  // Nuevo computed para medios de contacto
   const contactMethods = useMemo(() => {
     const methodsSet = new Set();
     Object.values(contactData).forEach(monthData => {
@@ -545,7 +498,6 @@ const Dashboard = () => {
         month: 'long' 
       });
     } catch (error) {
-      console.warn('Error formatting date:', monthString, error);
       return monthString;
     }
   };
@@ -564,7 +516,6 @@ const Dashboard = () => {
         month: 'short' 
       });
     } catch (error) {
-      console.warn('Error formatting short date:', monthString, error);
       return monthString;
     }
   };
@@ -611,7 +562,7 @@ const Dashboard = () => {
       )}
       {lastUpdated && (
         <span className="text-gray-500 ml-2">
-          • Actualizado: {lastUpdated.toLocaleTimeString()}
+          Actualizado: {lastUpdated.toLocaleTimeString()}
         </span>
       )}
     </div>
@@ -720,7 +671,6 @@ const Dashboard = () => {
     return courses;
   };
 
-  // Nueva función para obtener totales por medio de contacto
   const getContactTotals = (month) => {
     const totals = {};
     if (!contactData[month]) return totals;
@@ -781,299 +731,206 @@ const Dashboard = () => {
     };
   }, [selectedMonth, salesData, months]);
 
-  const getViewData = useMemo(() => {
-    switch (viewType) {
-      case "escuela":
-        const schoolTotals = getSchoolTotals(selectedMonth);
-        return schools.map(school => {
-          const schoolValues = months.map(month => {
-            const totals = getSchoolTotals(month);
-            return totals[school] ? totals[school][metricType] : 0;
-          });
-          const average = schoolValues.reduce((a, b) => a + b, 0) / schoolValues.length;
-          const trend = calculateTrend(schoolValues);
-          
-          return {
-            nombre: school,
-            valor: schoolTotals[school] ? schoolTotals[school][metricType] : 0,
-            promedio: Math.round(average),
-            tendencia: trend,
-            icono: Building
-          };
-        });
-
-      case "area":
-        const areaTotals = getAreaTotals(selectedMonth, selectedSchool);
-        return Object.keys(areaTotals).map(area => {
-          const areaValues = months.map(month => {
-            const totals = getAreaTotals(month, selectedSchool);
-            return totals[area] ? totals[area][metricType] : 0;
-          });
-          const average = areaValues.reduce((a, b) => a + b, 0) / areaValues.length;
-          const trend = calculateTrend(areaValues);
-          
-          return {
-            nombre: area,
-            valor: areaTotals[area][metricType],
-            promedio: Math.round(average),
-            tendencia: trend,
-            icono: BookOpen
-          };
-        });
-
-      case "instructor":
-        const instructorTotals = getInstructorTotals(selectedMonth, selectedSchool);
-        return Object.keys(instructorTotals).map(instructor => {
-          const instructorValues = months.map(month => {
-            const totals = getInstructorTotals(month, selectedSchool);
-            return totals[instructor] ? totals[instructor][metricType] : 0;
-          });
-          const average = instructorValues.reduce((a, b) => a + b, 0) / instructorValues.length;
-          const trend = calculateTrend(instructorValues);
-          
-          return {
-            nombre: instructor,
-            valor: instructorTotals[instructor][metricType],
-            promedio: Math.round(average),
-            tendencia: trend,
-            areas: instructorTotals[instructor].areas.join(', '),
-            escuelas: instructorTotals[instructor].escuelas.join(', '),
-            icono: User
-          };
-        });
-
-      case "curso":
-        const courses = getCourses(selectedMonth, selectedSchool, selectedArea);
-        return Object.keys(courses).map(courseName => {
-          const courseValues = months.map(month => {
-            const coursesInMonth = getCourses(month, selectedSchool, selectedArea);
-            return coursesInMonth[courseName] ? coursesInMonth[courseName][metricType] : 0;
-          });
-          const average = courseValues.reduce((a, b) => a + b, 0) / courseValues.length;
-          const trend = calculateTrend(courseValues);
-          
-          return {
-            nombre: courseName,
-            valor: courses[courseName][metricType],
-            promedio: Math.round(average),
-            tendencia: trend,
-            instructor: courses[courseName].instructor,
-            icono: Book
-          };
-        });
-
-      case "contacto":
-        const contactTotals = getContactTotals(selectedMonth);
-        return Object.keys(contactTotals).map(method => {
-          const methodValues = months.map(month => {
-            const totals = getContactTotals(month);
-            return totals[method] ? totals[method][metricType] : 0;
-          });
-          const average = methodValues.reduce((a, b) => a + b, 0) / methodValues.length;
-          const trend = calculateTrend(methodValues);
-          
-          const getContactIcon = (method) => {
-            const methodLower = method.toLowerCase();
-            if (methodLower.includes('whatsapp')) return MessageSquare;
-            if (methodLower.includes('instagram') || methodLower.includes('facebook')) return Users;
-            if (methodLower.includes('teléfono') || methodLower.includes('telefono')) return Phone;
-            if (methodLower.includes('email') || methodLower.includes('correo')) return Mail;
-            return Globe;
-          };
-          
-          return {
-            nombre: method,
-            valor: contactTotals[method] ? contactTotals[method][metricType] : 0,
-            promedio: Math.round(average),
-            tendencia: trend,
-            icono: getContactIcon(method)
-          };
-        });
-
-      case "comparacion":
-        return schools.map(school => {
-          const data = { escuela: school };
-          compareMonths.forEach(month => {
-            const totals = getSchoolTotals(month);
-            data[month] = totals[school] ? totals[school][metricType] : 0;
-          });
-          return data;
-        });
-
-      default:
+  const CobranzaDashboard = () => {
+    const mesesCobranza = useMemo(() => {
+      if (!cobranzaData || Object.keys(cobranzaData).length === 0) {
         return [];
-    }
-  }, [viewType, selectedMonth, selectedSchool, selectedArea, metricType, months, schools, compareMonths, contactData]);
-
-  const AlertsPanel = () => (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Bell className="w-5 h-5 text-red-500" />
-          <h3 className="text-lg font-semibold">Alertas Automáticas</h3>
-          <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">
-            {alerts.length}
-          </span>
-        </div>
-        <button 
-          onClick={() => setAlerts([])}
-          className="text-xs text-gray-500 hover:text-gray-700"
-        >
-          Limpiar todas
-        </button>
-      </div>
+      }
       
-      <div className="space-y-3 max-h-80 overflow-y-auto">
-        {alerts.length === 0 ? (
-          <div className="text-center py-8">
-            <Bell className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-            <p className="text-gray-500">No hay alertas en este momento</p>
-          </div>
-        ) : (
-          alerts.map((alert, index) => (
-            <div key={index} className={`p-3 rounded-lg border-l-4 ${
-              alert.type === 'danger' ? 'bg-red-50 border-red-500' :
-              alert.type === 'warning' ? 'bg-yellow-50 border-yellow-500' :
-              'bg-green-50 border-green-500'
-            }`}>
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    {alert.type === 'danger' && <AlertTriangle className="w-4 h-4 text-red-500" />}
-                    {alert.type === 'warning' && <AlertTriangle className="w-4 h-4 text-yellow-500" />}
-                    {alert.type === 'success' && <TrendingUp className="w-4 h-4 text-green-500" />}
-                    <p className="text-sm font-medium">{alert.message}</p>
-                  </div>
-                  <p className="text-xs text-gray-600 mt-1">{alert.details}</p>
-                  <div className="flex gap-2 mt-2">
-                    <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">
-                      {alert.escuela}
-                    </span>
-                    <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded">
-                      {alert.area}
-                    </span>
-                  </div>
-                </div>
-                <span className={`text-xs px-2 py-1 rounded-full ${
-                  alert.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                  alert.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                  alert.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-green-100 text-green-800'
-                }`}>
-                  {alert.priority === 'urgent' ? 'Urgente' :
-                   alert.priority === 'high' ? 'Alto' :
-                   alert.priority === 'medium' ? 'Medio' :
-                   'Info'}
-                </span>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+      const meses = new Set();
       
-      {alerts.length > 0 && (
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-          <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Recomendaciones automáticas:</h4>
-          <ul className="text-xs text-blue-700 space-y-1">
-            <li>• Revisar cursos con caída >20% en ventas</li>
-            <li>• Considerar promociones para cursos sin ventas</li>
-            <li>• Replicar estrategias de cursos con alto crecimiento</li>
-            <li>• Programar reunión con instructores de cursos en riesgo</li>
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-
-  // Nuevo componente para el dashboard de medios de contacto
-  const ContactDashboard = () => {
-    const COLORS = ['#22C55E', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899'];
-    
-    const contactTotals = getContactTotals(selectedMonth);
-    const totalVentas = Object.values(contactTotals).reduce((sum, method) => sum + method.ventas, 0);
-    const totalCursos = Object.values(contactTotals).reduce((sum, method) => sum + method.cursos, 0);
-    
-    const pieData = Object.entries(contactTotals).map(([method, data]) => ({
-      name: method,
-      value: data[metricType],
-      percentage: totalVentas > 0 ? ((data.ventas / totalVentas) * 100).toFixed(1) : 0
-    }));
-
-    const trendData = months.map(month => {
-      const monthData = getContactTotals(month);
-      const result = { month: formatDateShort(month) };
-      
-      Object.keys(contactTotals).forEach(method => {
-        result[method] = monthData[method] ? monthData[method][metricType] : 0;
+      Object.values(cobranzaData).forEach(escuelaData => {
+        Object.keys(escuelaData).forEach(mes => {
+          if (mes && mes.trim() !== '') {
+            meses.add(mes.trim());
+          }
+        });
       });
       
-      return result;
-    });
+      const mesesArray = Array.from(meses);
+      return sortMonthsChronologically(mesesArray);
+    }, [cobranzaData]);
+
+    const totalesPorMes = useMemo(() => {
+      const totales = {};
+      
+      mesesCobranza.forEach(mes => {
+        totales[mes] = 0;
+      });
+      
+      Object.entries(cobranzaData).forEach(([escuela, datosEscuela]) => {
+        Object.entries(datosEscuela).forEach(([mes, monto]) => {
+          const mesLimpio = mes.trim();
+          
+          if (mes && mesLimpio !== '' && mesesCobranza.includes(mesLimpio)) {
+            const montoNumerico = parseNumberFromString(monto);
+            totales[mesLimpio] += montoNumerico;
+          }
+        });
+      });
+      
+      return totales;
+    }, [cobranzaData, mesesCobranza]);
+
+    const totalesPorEscuela = useMemo(() => {
+      const totales = {};
+      
+      if (!cobranzaData || Object.keys(cobranzaData).length === 0) {
+        return totales;
+      }
+      
+      Object.entries(cobranzaData).forEach(([escuela, datosEscuela]) => {
+        totales[escuela] = 0;
+        Object.values(datosEscuela).forEach(valor => {
+          const valorNumerico = parseNumberFromString(valor);
+          totales[escuela] += valorNumerico;
+        });
+      });
+      
+      return totales;
+    }, [cobranzaData]);
+
+    const totalIngresos = useMemo(() => {
+      return ingresosData.reduce((sum, item) => sum + item.monto, 0);
+    }, [ingresosData]);
+
+    const escuelas = Object.keys(cobranzaData);
 
     return (
       <div className="space-y-6">
-        {/* KPIs de Medios de Contacto */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow p-6 text-white">
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow p-6 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100 text-sm">Total Ventas</p>
-                <p className="text-3xl font-bold">${totalVentas.toLocaleString()}</p>
-                <p className="text-purple-100 text-sm">Por medios de contacto</p>
+                <p className="text-blue-100 text-sm">Total Cobranza</p>
+                <p className="text-3xl font-bold">
+                  ${Object.values(totalesPorMes).reduce((sum, val) => sum + val, 0).toLocaleString()}
+                </p>
+                <p className="text-blue-100 text-sm">{mesesCobranza.length} meses registrados</p>
               </div>
-              <DollarSign className="w-8 h-8 text-purple-200" />
+              <DollarSign className="w-8 h-8 text-blue-200" />
             </div>
           </div>
           
           <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg shadow p-6 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-indigo-100 text-sm">Total Cursos</p>
-                <p className="text-3xl font-bold">{totalCursos.toLocaleString()}</p>
-                <p className="text-indigo-100 text-sm">Cursos vendidos</p>
+                <p className="text-indigo-100 text-sm">Total Ingresos</p>
+                <p className="text-3xl font-bold">${totalIngresos.toLocaleString()}</p>
+                <p className="text-indigo-100 text-sm">Tabla de ingresos</p>
               </div>
-              <ShoppingCart className="w-8 h-8 text-indigo-200" />
+              <BarChart3 className="w-8 h-8 text-indigo-200" />
             </div>
           </div>
           
-          <div className="bg-gradient-to-r from-pink-500 to-pink-600 rounded-lg shadow p-6 text-white">
+          <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow p-6 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-pink-100 text-sm">Canales Activos</p>
-                <p className="text-3xl font-bold">{Object.keys(contactTotals).length}</p>
-                <p className="text-pink-100 text-sm">Medios de contacto</p>
+                <p className="text-purple-100 text-sm">Escuelas Activas</p>
+                <p className="text-3xl font-bold">{escuelas.length}</p>
+                <p className="text-purple-100 text-sm">Generando ingresos</p>
               </div>
-              <Users className="w-8 h-8 text-pink-200" />
+              <Building className="w-8 h-8 text-purple-200" />
             </div>
           </div>
           
-          <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg shadow p-6 text-white">
+          <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow p-6 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-orange-100 text-sm">Ticket Promedio</p>
-                <p className="text-3xl font-bold">${totalCursos > 0 ? (totalVentas / totalCursos).toFixed(0) : '0'}</p>
-                <p className="text-orange-100 text-sm">Por canal</p>
+                <p className="text-green-100 text-sm">Promedio Mensual</p>
+                <p className="text-3xl font-bold">
+                  ${mesesCobranza.length > 0 ? Math.round(Object.values(totalesPorMes).reduce((sum, val) => sum + val, 0) / mesesCobranza.length).toLocaleString() : '0'}
+                </p>
+                <p className="text-green-100 text-sm">Por mes</p>
               </div>
-              <Target className="w-8 h-8 text-orange-200" />
+              <Target className="w-8 h-8 text-green-200" />
             </div>
           </div>
         </div>
 
-        {/* Gráficas */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Gráfico de Pastel */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">
-              Distribución por Medio de Contacto
-              <span className="text-sm font-normal text-gray-500 ml-2">
-                ({metricType === 'ventas' ? 'Ventas' : 'Cursos'})
-              </span>
-            </h3>
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-800">
+                Tabla de Ingresos
+              </h2>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <BarChart3 className="w-4 h-4" />
+                <span>{ingresosData.length} conceptos</span>
+              </div>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Concepto
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Monto
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      % del Total
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {ingresosData
+                    .sort((a, b) => b.monto - a.monto)
+                    .map((item, index) => {
+                      const porcentaje = totalIngresos > 0 ? (item.monto / totalIngresos) * 100 : 0;
+                      return (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {item.concepto}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">
+                            ${item.monto.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <div className="flex items-center">
+                              <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                <div 
+                                  className="bg-indigo-500 h-2 rounded-full" 
+                                  style={{ width: `${porcentaje}%` }}
+                                ></div>
+                              </div>
+                              {porcentaje.toFixed(1)}%
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+                <tfoot className="bg-gray-50">
+                  <tr>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                      Total
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-indigo-900">
+                      ${totalIngresos.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                      100%
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h3 className="text-lg font-semibold mb-4">Distribucion de Ingresos por Concepto</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={pieData}
+                    data={ingresosData.map(item => ({
+                      name: item.concepto,
+                      value: item.monto,
+                      percentage: totalIngresos > 0 ? ((item.monto / totalIngresos) * 100).toFixed(1) : 0
+                    }))}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
@@ -1082,193 +939,170 @@ const Dashboard = () => {
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    {ingresosData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={[
+                        '#3B82F6', '#8B5CF6', '#22C55E', '#F59E0B', 
+                        '#EF4444', '#06B6D4', '#EC4899', '#84CC16'
+                      ][index % 8]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => [
-                    metricType === 'ventas' ? `${value.toLocaleString()}` : value.toLocaleString(),
-                    metricType === 'ventas' ? 'Ventas' : 'Cursos'
-                  ]} />
+                  <Tooltip formatter={(value) => [`${value.toLocaleString()}`, 'Monto']} />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
             </div>
           </div>
-
-          {/* Gráfico de Tendencias */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">
-              Tendencia por Medio de Contacto
-            </h3>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trendData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis tickFormatter={(value) => 
-                    metricType === "ventas" ? `${(value/1000).toFixed(0)}k` : value.toString()
-                  } />
-                  <Tooltip />
-                  <Legend />
-                  {Object.keys(contactTotals).map((method, index) => (
-                    <Line 
-                      key={method}
-                      type="monotone" 
-                      dataKey={method} 
-                      stroke={COLORS[index % COLORS.length]} 
-                      strokeWidth={2}
-                    />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
         </div>
 
-        {/* Tabla Detallada */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">Análisis Detallado por Medio de Contacto</h3>
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-gray-800">
+              Cobranza por Escuela
+            </h2>
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Building className="w-4 h-4" />
+              <span>{escuelas.length} escuelas - {mesesCobranza.length} meses</span>
+            </div>
+          </div>
+          
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Medio de Contacto
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10">
+                    Escuela
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ventas ($)
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Cursos
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ticket Promedio
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    % del Total
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Rendimiento
+                  {mesesCobranza.map(mes => (
+                    <th key={mes} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                      {mes}
+                    </th>
+                  ))}
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50 min-w-[120px]">
+                    Total
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {Object.entries(contactTotals)
-                  .sort(([,a], [,b]) => b.ventas - a.ventas)
-                  .map(([method, data], index) => {
-                    const ticketPromedio = data.cursos > 0 ? data.ventas / data.cursos : 0;
-                    const porcentaje = totalVentas > 0 ? (data.ventas / totalVentas) * 100 : 0;
-                    
-                    const getContactIcon = (method) => {
-                      const methodLower = method.toLowerCase();
-                      if (methodLower.includes('whatsapp')) return MessageSquare;
-                      if (methodLower.includes('instagram') || methodLower.includes('facebook')) return Users;
-                      if (methodLower.includes('teléfono') || methodLower.includes('telefono')) return Phone;
-                      if (methodLower.includes('email') || methodLower.includes('correo')) return Mail;
-                      return Globe;
-                    };
-                    
-                    const IconComponent = getContactIcon(method);
-                    
-                    return (
-                      <tr key={method} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          <div className="flex items-center gap-2">
-                            <IconComponent className="w-5 h-5 text-gray-500" />
-                            {method}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                          ${data.ventas.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {data.cursos.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          ${ticketPromedio.toFixed(0)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <div className="flex items-center">
-                            <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                              <div 
-                                className="bg-blue-500 h-2 rounded-full" 
-                                style={{ width: `${porcentaje}%` }}
-                              ></div>
-                            </div>
-                            {porcentaje.toFixed(1)}%
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            porcentaje > 25 ? 'bg-green-100 text-green-800' :
-                            porcentaje > 15 ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {porcentaje > 25 ? 'Excelente' :
-                             porcentaje > 15 ? 'Bueno' :
-                             'Mejorable'}
+                {escuelas.map(escuela => (
+                  <tr key={escuela} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white z-10">
+                      <div className="flex items-center gap-2">
+                        <Building className="w-4 h-4 text-gray-500" />
+                        {escuela}
+                      </div>
+                    </td>
+                    {mesesCobranza.map(mes => {
+                      const monto = parseNumberFromString(cobranzaData[escuela]?.[mes]) || 0;
+                      return (
+                        <td key={`${escuela}-${mes}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <span className={monto > 0 ? 'font-medium' : 'text-gray-400'}>
+                            ${monto.toLocaleString()}
                           </span>
                         </td>
-                      </tr>
-                    );
-                  })}
+                      );
+                    })}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-900 bg-blue-50">
+                      ${totalesPorEscuela[escuela]?.toLocaleString() || '0'}
+                    </td>
+                  </tr>
+                ))}
+                <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 sticky left-0 bg-gray-100 z-10">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-gray-700" />
+                      Total por Mes
+                    </div>
+                  </td>
+                  {mesesCobranza.map(mes => (
+                    <td key={`total-${mes}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      ${totalesPorMes[mes]?.toLocaleString() || '0'}
+                    </td>
+                  ))}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-900 bg-blue-100">
+                    ${Object.values(totalesPorMes).reduce((sum, val) => sum + val, 0).toLocaleString()}
+                  </td>
+                </tr>
               </tbody>
             </table>
-          </div>
-        </div>
-
-        {/* Insights y Recomendaciones */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">📊 Insights y Recomendaciones</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <h4 className="font-medium text-gray-800">🎯 Canal más efectivo:</h4>
-              {Object.entries(contactTotals).length > 0 && (
-                <div className="p-4 bg-green-50 rounded-lg">
-                  <p className="text-green-800 font-medium">
-                    {Object.entries(contactTotals).sort(([,a], [,b]) => b.ventas - a.ventas)[0][0]}
-                  </p>
-                  <p className="text-green-600 text-sm">
-                    ${Object.entries(contactTotals).sort(([,a], [,b]) => b.ventas - a.ventas)[0][1].ventas.toLocaleString()} en ventas
-                  </p>
-                </div>
-              )}
-              
-              <h4 className="font-medium text-gray-800">💡 Recomendaciones:</h4>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Potenciar inversión en el canal más rentable</li>
-                <li>• Diversificar estrategias en canales con bajo rendimiento</li>
-                <li>• Implementar seguimiento cross-canal</li>
-              </ul>
-            </div>
-            
-            <div className="space-y-4">
-              <h4 className="font-medium text-gray-800">📈 Oportunidades de mejora:</h4>
-              {Object.entries(contactTotals)
-                .sort(([,a], [,b]) => a.ventas - b.ventas)
-                .slice(0, 2)
-                .map(([method, data]) => (
-                  <div key={method} className="p-3 bg-orange-50 rounded-lg">
-                    <p className="text-orange-800 font-medium text-sm">{method}</p>
-                    <p className="text-orange-600 text-xs">
-                      Potencial de crecimiento - Solo ${data.ventas.toLocaleString()}
-                    </p>
-                  </div>
-                ))}
-            </div>
           </div>
         </div>
       </div>
     );
   };
 
-  const ExecutiveDashboard = () => {
-    const getSalesBySchoolAndMonth = () => {
-      const data = {};
-      
-      schools.forEach(school => {
-        data[school] = {};
-        months.forEach(month => {
-          const totals = getSchoolTotals(month);
-          data[school][month] = totals[school] ? totals[school].ventas : 0
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-8">
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <div className="flex items-center bg-white rounded-lg shadow-md p-4">
+              <img 
+                src="https://idip.com.mx/wp-content/uploads/2024/08/logos-IDIP-sin-fondo-1-2.png" 
+                alt="IDIP - Instituto de Imagen Personal"
+                className="h-16 w-auto object-contain"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+              <div className="hidden">
+                <div className="flex">
+                  <div className="w-3 h-16 bg-gradient-to-b from-green-400 to-green-600 rounded-l-lg"></div>
+                  <div className="flex flex-col justify-center px-2">
+                    <div className="text-4xl font-bold text-gray-700">IDIP</div>
+                  </div>
+                </div>
+                <div className="ml-4 text-left">
+                  <div className="text-lg font-medium text-gray-700">Maquillaje</div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <div className="text-lg font-medium text-gray-700">Imagen</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Dashboard IDIP
+          </h1>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+          <div className="flex flex-wrap gap-4 mb-6">
+            <button
+              onClick={() => setViewType("executive")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "executive" 
+                ? "bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg" 
+                : "bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-700"
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              Dashboard Ejecutivo
+            </button>
+            <button
+              onClick={() => setViewType("cobranza")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "cobranza" 
+                ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg" 
+                : "bg-gray-100 text-gray-700 hover:bg-blue-50 hover:text-blue-700"
+              }`}
+            >
+              <DollarSign className="w-4 h-4" />
+              Cobranza
+            </button>
+          </div>
+        </div>
+
+        {isLoading && isManualRefresh && (
+          <div className="bg-white rounded-lg shadow-lg p-8 mb-8 text-center">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-500" />
+            <p className="text-gray-600">Cargando datos desde Google Sheets...</p>
+          </div>
+        )}
+
+        {viewType === "cobranza" && <CobranzaDashboard />}
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
