@@ -1,81 +1,79 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
-import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, Wifi, WifiOff, User, Building2, GraduationCap, Calendar, Search, Filter, BookOpen, Phone, Mail, Globe, MessageSquare, Users } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Star, Target, AlertTriangle, Activity, Phone, Mail, Globe, MessageSquare, Users } from 'lucide-react';
 
 const GOOGLE_SHEETS_CONFIG = {
-  apiKey: 'AIzaSyBXvaWWirK1_29g7x6uI... (tu API key aquí)',
-  spreadsheetId: '1R3... (tu spreadsheet aquí)',
+  apiKey: 'AIzaSyBXvaWWirK1_29g7x6uIq2qlmLdBL9g3TE',
+  spreadsheetId: '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg',
   ranges: {
-    ventas: 'Ventas!A:H', // Ampliamos hasta la columna H para incluir "Medio de Contacto"
+    ventas: 'Ventas!A:H', // Ampliamos hasta la columna H para incluir medio de contacto
     cobranza: 'Cobranza!A:Z',
-    tablaIngresos: 'Tabla Ingresos!A:B'
+    ingresos: 'Tabla Ingresos!A:B' // Nueva hoja para ingresos
   }
 };
 
-// ===== Datos de respaldo (fallback) y configuraciones iniciales (recortado por brevedad del ejemplo) =====
 const fallbackData = {
-  "2024-06": {
+  "2024-01": {
     "Polanco": {
       "Maquillaje": {
-        "Curso Intensivo Maquillaje": { ventas: 50000, cursos: 40, instructor: "Ana Martínez" },
-        "Taller de Maquillaje Social": { ventas: 32000, cursos: 25, instructor: "Luis Pérez" }
+        "Maquillaje Básico": { ventas: 24000, cursos: 20, instructor: "Ana Martínez" },
+        "Maquillaje Profesional": { ventas: 35000, cursos: 14, instructor: "Sofia López" }
       },
-      "Peluquería": {
-        "Corte y Color Avanzado": { ventas: 40000, cursos: 20, instructor: "Ana Martínez" },
-        "Barbería Moderna": { ventas: 28000, cursos: 22, instructor: "Carlos Gómez" }
+      "Certificaciones": {
+        "Certificación Básica": { ventas: 25000, cursos: 25, instructor: "Roberto Silva" }
       }
     },
-    "Coyoacán": {
+    "Online": {
       "Maquillaje": {
-        "Curso Intensivo Maquillaje": { ventas: 42000, cursos: 38, instructor: "María López" },
-        "Taller de Maquillaje Social": { ventas: 30000, cursos: 20, instructor: "Juan Hernández" }
-      },
-      "Peluquería": {
-        "Corte y Color Avanzado": { ventas: 35000, cursos: 25, instructor: "Ana Martínez" },
-        "Barbería Moderna": { ventas: 26000, cursos: 18, instructor: "Luis Pérez" }
+        "Curso Online Básico": { ventas: 18000, cursos: 36, instructor: "Ana Martínez" }
       }
     }
   },
   "2024-07": {
     "Polanco": {
       "Maquillaje": {
-        "Curso Intensivo Maquillaje": { ventas: 60000, cursos: 45, instructor: "Ana Martínez" },
-        "Taller de Maquillaje Social": { ventas: 35000, cursos: 30, instructor: "Luis Pérez" }
+        "Maquillaje Básico": { ventas: 28000, cursos: 24, instructor: "Ana Martínez" },
+        "Maquillaje Profesional": { ventas: 42000, cursos: 18, instructor: "Sofia López" }
       },
-      "Peluquería": {
-        "Corte y Color Avanzado": { ventas: 45000, cursos: 28, instructor: "María López" },
-        "Barbería Moderna": { ventas: 30000, cursos: 24, instructor: "Carlos Gómez" }
+      "Certificaciones": {
+        "Certificación Básica": { ventas: 35000, cursos: 35, instructor: "Roberto Silva" }
       }
     },
-    "Coyoacán": {
+    "Online": {
       "Maquillaje": {
-        "Curso Intensivo Maquillaje": { ventas: 50000, cursos: 40, instructor: "Juan Hernández" },
-        "Taller de Maquillaje Social": { ventas: 33000, cursos: 26, instructor: "Ana Martínez" }
-      },
-      "Peluquería": {
-        "Corte y Color Avanzado": { ventas: 37000, cursos: 22, instructor: "María López" },
-        "Barbería Moderna": { ventas: 27000, cursos: 20, instructor: "Luis Pérez" }
+        "Curso Online Básico": { ventas: 25000, cursos: 50, instructor: "Ana Martínez" }
       }
     }
   }
 };
 
+// Datos de fallback para medios de contacto
 const fallbackContactData = {
-  "2024-06": {
-    "WhatsApp": { ventas: 42000, cursos: 33 },
+  "2024-01": {
+    "WhatsApp": { ventas: 45000, cursos: 35 },
+    "Instagram": { ventas: 32000, cursos: 28 },
+    "Facebook": { ventas: 28000, cursos: 22 },
+    "Teléfono": { ventas: 18000, cursos: 15 },
+    "Email": { ventas: 15000, cursos: 12 }
+  },
+  "2024-07": {
+    "WhatsApp": { ventas: 52000, cursos: 42 },
     "Instagram": { ventas: 38000, cursos: 35 },
     "Facebook": { ventas: 35000, cursos: 28 },
     "Teléfono": { ventas: 22000, cursos: 18 },
     "Email": { ventas: 18000, cursos: 15 }
-  },
-  "2024-07": {
-    "WhatsApp": { ventas: 45000, cursos: 35 },
-    "Instagram": { ventas: 40000, cursos: 34 },
-    "Facebook": { ventas: 36000, cursos: 30 },
-    "Teléfono": { ventas: 25000, cursos: 20 },
-    "Email": { ventas: 20000, cursos: 16 }
   }
 };
+
+// Datos de fallback para ingresos
+const fallbackIngresosData = [
+  { concepto: "Cursos Presenciales", monto: 150000 },
+  { concepto: "Cursos Online", monto: 85000 },
+  { concepto: "Certificaciones", monto: 120000 },
+  { concepto: "Talleres Especiales", monto: 45000 },
+  { concepto: "Materiales y Productos", monto: 75000 },
+  { concepto: "Servicios Adicionales", monto: 35000 }
+];
 
 const Dashboard = () => {
   const [selectedMonth, setSelectedMonth] = useState("2024-07");
@@ -87,68 +85,163 @@ const Dashboard = () => {
   const [compareMonths, setCompareMonths] = useState(["2024-06", "2024-07"]);
   const [salesData, setSalesData] = useState(fallbackData);
   const [cobranzaData, setCobranzaData] = useState({});
-  const [tablaIngresos, setTablaIngresos] = useState([]); // ← NUEVO
-  const [contactData, setContactData] = useState(fallbackContactData); // Nuevo estado para medios de contacto
+  const [ingresosData, setIngresosData] = useState(fallbackIngresosData); // Nuevo estado para ingresos
+  const [contactData, setContactData] = useState(fallbackContactData);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [errorMessage, setErrorMessage] = useState('');
   const [isManualRefresh, setIsManualRefresh] = useState(false);
-
-  // ===== utilidades de formato y helpers (recortado) =====
-  const formatCurrency = (value) => {
-    const num = typeof value === 'number' ? value : parseFloat(value) || 0;
-    return num.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 });
-  };
+  const [alerts, setAlerts] = useState([]);
 
   const parseNumberFromString = (value) => {
+    // Si es undefined, null, o string vacío, retornar 0
+    if (value === undefined || value === null || value === '') return 0;
+    
     // Si ya es un número, retornarlo directamente
     if (typeof value === 'number') return isNaN(value) ? 0 : value;
+    
     // Convertir a string y limpiar
     const str = value.toString().trim();
     if (str === '' || str.toLowerCase() === 'null' || str.toLowerCase() === 'undefined') return 0;
+    
     // Remover símbolos de moneda, comas, espacios y otros caracteres no numéricos
     // Mantener solo dígitos, punto decimal y signo negativo
     const cleaned = str
-      .replace(/[$,\s]/g, '')
-      .replace(/[^\d.-]/g, '');
-    if (cleaned === '' || cleaned === '.' || cleaned === '-' || cleaned === '-.' || isNaN(Number(cleaned))) return 0;
-    const parsed = Number(cleaned);
-    return isNaN(parsed) ? 0 : parsed;
+      .replace(/[$,\s]/g, '')           // Remover $, comas y espacios
+      .replace(/[^\d.-]/g, '');         // Mantener solo dígitos, punto y guión
+    
+    // Si después de limpiar no queda nada o solo caracteres especiales, retornar 0
+    if (cleaned === '' || cleaned === '.' || cleaned === '-') return 0;
+    
+    const number = parseFloat(cleaned);
+    return isNaN(number) ? 0 : number;
   };
 
-  // ===== Fetch principal a Google Sheets =====
+  // Función para ordenar meses cronológicamente (mejorada)
+  const sortMonthsChronologically = (months) => {
+    console.log('🔍 Función sortMonthsChronologically recibió:', months);
+    
+    return months.sort((a, b) => {
+      console.log(`🔀 Comparando: "${a}" vs "${b}"`);
+      
+      // Función para convertir diferentes formatos a YYYY-MM
+      const parseToStandardDate = (dateStr) => {
+        if (!dateStr) return null;
+        
+        const str = dateStr.toString().trim();
+        console.log(`  📅 Parseando: "${str}"`);
+        
+        // Formato YYYY-MM
+        if (str.match(/^\d{4}-\d{2}$/)) {
+          console.log(`    ✅ Formato YYYY-MM detectado: ${str}`);
+          return str;
+        }
+        
+        // Formato MM/YYYY
+        if (str.match(/^\d{1,2}\/\d{4}$/)) {
+          const [month, year] = str.split('/');
+          const result = `${year}-${month.padStart(2, '0')}`;
+          console.log(`    ✅ Formato MM/YYYY convertido: ${str} -> ${result}`);
+          return result;
+        }
+        
+        // Formato MM-YYYY
+        if (str.match(/^\d{1,2}-\d{4}$/)) {
+          const [month, year] = str.split('-');
+          const result = `${year}-${month.padStart(2, '0')}`;
+          console.log(`    ✅ Formato MM-YYYY convertido: ${str} -> ${result}`);
+          return result;
+        }
+        
+        // Formato "Mes YYYY" en español
+        const monthNames = {
+          'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
+          'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
+          'septiembre': '09', 'octubre': '10', 'noviembre': '11', 'diciembre': '12',
+          'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04',
+          'may': '05', 'jun': '06', 'jul': '07', 'ago': '08',
+          'sep': '09', 'oct': '10', 'nov': '11', 'dic': '12'
+        };
+        
+        const parts = str.toLowerCase().split(/[\s-]+/);
+        if (parts.length === 2) {
+          const month = monthNames[parts[0]];
+          const year = parts[1];
+          if (month && year && year.match(/^\d{4}$/)) {
+            const result = `${year}-${month}`;
+            console.log(`    ✅ Formato español convertido: ${str} -> ${result}`);
+            return result;
+          }
+        }
+        
+        // Formato "YYYY Mes" en español
+        if (parts.length === 2) {
+          const month = monthNames[parts[1]];
+          const year = parts[0];
+          if (month && year && year.match(/^\d{4}$/)) {
+            const result = `${year}-${month}`;
+            console.log(`    ✅ Formato español invertido convertido: ${str} -> ${result}`);
+            return result;
+          }
+        }
+        
+        console.log(`    ❌ Formato no reconocido: ${str}`);
+        return str; // Devolver original si no se puede parsear
+      };
+      
+      const dateA = parseToStandardDate(a);
+      const dateB = parseToStandardDate(b);
+      
+      if (!dateA || !dateB) {
+        console.log(`    ⚠️ No se pudieron parsear las fechas`);
+        return a.localeCompare(b); // Fallback a orden alfabético
+      }
+      
+      const comparison = new Date(dateA + '-01') - new Date(dateB + '-01');
+      console.log(`    📊 Resultado: ${dateA} ${comparison < 0 ? '<' : comparison > 0 ? '>' : '='} ${dateB}`);
+      
+      return comparison;
+    });
+  };
+
   const fetchGoogleSheetsData = async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
     setIsManualRefresh(showLoading);
-
+    
     try {
-      // Ventas
-      const ventasUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${encodeURIComponent(GOOGLE_SHEETS_CONFIG.ranges.ventas)}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
+      // Fetch datos de ventas
+      const ventasUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.ventas}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
       const ventasResponse = await fetch(ventasUrl);
+      
       if (!ventasResponse.ok) throw new Error(`Error ${ventasResponse.status}: ${ventasResponse.statusText}`);
+      
       const ventasData = await ventasResponse.json();
       const transformedVentas = transformGoogleSheetsData(ventasData.values);
       const transformedContact = transformContactData(ventasData.values);
       setSalesData(transformedVentas);
       setContactData(transformedContact);
-
-      // Cobranza
-      const cobranzaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${encodeURIComponent(GOOGLE_SHEETS_CONFIG.ranges.cobranza)}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
+      
+      // Fetch datos de cobranza
+      const cobranzaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.cobranza}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
       const cobranzaResponse = await fetch(cobranzaUrl);
+      
       if (!cobranzaResponse.ok) throw new Error(`Error ${cobranzaResponse.status}: ${cobranzaResponse.statusText}`);
+      
       const cobranzaData = await cobranzaResponse.json();
       const transformedCobranza = transformCobranzaData(cobranzaData.values);
       setCobranzaData(transformedCobranza);
-
-      // ▶ Tabla Ingresos (A:B) — NUEVO
-      const ingresosUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${encodeURIComponent(GOOGLE_SHEETS_CONFIG.ranges.tablaIngresos)}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
+      
+      // Fetch datos de ingresos (NUEVO)
+      const ingresosUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.ingresos}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
       const ingresosResponse = await fetch(ingresosUrl);
+      
       if (!ingresosResponse.ok) throw new Error(`Error ${ingresosResponse.status}: ${ingresosResponse.statusText}`);
+      
       const ingresosData = await ingresosResponse.json();
-      const transformedIngresos = transformTablaIngresosData(ingresosData.values);
-      setTablaIngresos(transformedIngresos);
-
+      const transformedIngresos = transformIngresosData(ingresosData.values);
+      setIngresosData(transformedIngresos);
+      
       setConnectionStatus('connected');
       setLastUpdated(new Date());
       setErrorMessage('');
@@ -156,9 +249,11 @@ const Dashboard = () => {
       console.error('Error fetching Google Sheets data:', error);
       setConnectionStatus('error');
       setErrorMessage(error.message);
+      
       if (Object.keys(salesData).length === 0) {
         setSalesData(fallbackData);
         setContactData(fallbackContactData);
+        setIngresosData(fallbackIngresosData);
       }
     } finally {
       setIsLoading(false);
@@ -166,291 +261,1058 @@ const Dashboard = () => {
     }
   };
 
-  useEffect(() => {
-    fetchGoogleSheetsData(false);
-  }, []);
+  const transformGoogleSheetsData = (rawData) => {
+    const headers = rawData[0];
+    const rows = rawData.slice(1);
+    const transformedData = {};
+    
+    rows.forEach((row, index) => {
+      const [fecha, escuela, area, curso, ventas, cursosVendidos, instructor] = row;
+      
+      if (!fecha || !escuela || !area || !curso) {
+        console.warn(`Fila ${index + 2} incompleta:`, row);
+        return;
+      }
+      
+      const monthKey = fecha.substring(0, 7);
+      
+      if (!transformedData[monthKey]) {
+        transformedData[monthKey] = {};
+      }
+      
+      if (!transformedData[monthKey][escuela]) {
+        transformedData[monthKey][escuela] = {};
+      }
+      
+      if (!transformedData[monthKey][escuela][area]) {
+        transformedData[monthKey][escuela][area] = {};
+      }
+      
+      const ventasNum = parseNumberFromString(ventas);
+      const cursosNum = parseNumberFromString(cursosVendidos) || 1;
+      
+      if (transformedData[monthKey][escuela][area][curso]) {
+        transformedData[monthKey][escuela][area][curso].ventas += ventasNum;
+        transformedData[monthKey][escuela][area][curso].cursos += cursosNum;
+      } else {
+        transformedData[monthKey][escuela][area][curso] = {
+          ventas: ventasNum,
+          cursos: cursosNum,
+          instructor: instructor || 'No asignado'
+        };
+      }
+    });
+    
+    return transformedData;
+  };
 
-  // ===== Transformaciones =====
-
-  // (ya existente) transforma datos de contacto desde "Ventas!A:H"
+  // Nueva función para transformar datos de medios de contacto
   const transformContactData = (rawData) => {
     const headers = rawData[0];
     const rows = rawData.slice(1);
     const transformedData = {};
+    
     console.log('📞 Transformando datos de medios de contacto...');
     console.log('Headers:', headers);
-
+    
     rows.forEach((row, index) => {
       const [fecha, escuela, area, curso, ventas, cursosVendidos, instructor, medioContacto] = row;
-
-      if (!fecha || !medioContacto) return;
-
-      // Normalizar fecha a YYYY-MM (si viene dd/mm/aaaa)
-      let dateStr = fecha;
-      if (typeof fecha === 'number') {
-        const excelEpoch = new Date(Date.UTC(1899, 11, 30));
-        const jsDate = new Date(excelEpoch.getTime() + (fecha * 24 * 60 * 60 * 1000));
-        dateStr = `${jsDate.getFullYear()}-${String(jsDate.getMonth() + 1).padStart(2, '0')}-${String(jsDate.getDate()).padStart(2, '0')}`;
+      
+      if (!fecha || !medioContacto) {
+        return; // Saltar filas sin fecha o medio de contacto
       }
-      const monthKey = dateStr.slice(0, 7);
-      const medio = String(medioContacto).trim() || 'Otro';
-
-      if (!transformedData[monthKey]) transformedData[monthKey] = {};
-      if (!transformedData[monthKey][medio]) transformedData[monthKey][medio] = { ventas: 0, cursos: 0 };
-
+      
+      const monthKey = fecha.substring(0, 7);
+      const medio = medioContacto.trim();
+      
+      if (!transformedData[monthKey]) {
+        transformedData[monthKey] = {};
+      }
+      
+      if (!transformedData[monthKey][medio]) {
+        transformedData[monthKey][medio] = { ventas: 0, cursos: 0 };
+      }
+      
       const ventasNum = parseNumberFromString(ventas);
       const cursosNum = parseNumberFromString(cursosVendidos) || 1;
-
+      
       transformedData[monthKey][medio].ventas += ventasNum;
       transformedData[monthKey][medio].cursos += cursosNum;
+      
+      console.log(`📱 ${monthKey} - ${medio}: +${ventasNum} ventas, +${cursosNum} cursos`);
     });
-
+    
     console.log('✅ Datos de contacto transformados:', transformedData);
     return transformedData;
   };
 
-  // (nuevo) transforma "Tabla Ingresos!A:B" a [{label, value}]
-  const transformTablaIngresosData = (rawValues) => {
-    if (!rawValues || rawValues.length === 0) return [];
-    const rows = rawValues[0] && typeof rawValues[0][1] === 'string'
-      ? rawValues.slice(1)
-      : rawValues;
-    return rows
-      .filter(r => r && r[0] !== undefined && r[1] !== undefined && `${r[0]}`.trim() !== '')
-      .map(([label, value]) => ({
-        label: `${label}`.trim(),
-        value: parseNumberFromString(value) || 0
-      }));
-  };
-
-  // (ya existente) transforma "Cobranza"
   const transformCobranzaData = (rawData) => {
     if (!rawData || rawData.length === 0) return {};
+    
     const headers = rawData[0];
     const rows = rawData.slice(1);
     const result = {};
-
-    console.log('🔄 Transformando datos de cobranza...');
+    
+    console.log('📄 Transformando datos de cobranza...');
     console.log('📋 Headers cobranza:', headers);
     console.log('📊 Filas de datos:', rows.length);
-
+    
     // La primera columna es la escuela, las siguientes son meses
-    const meses = headers.slice(1).map(h => String(h).trim()).filter(Boolean);
-
+    const meses = headers.slice(1).filter(header => header && header.trim() !== '');
+    console.log('📅 Meses encontrados en headers:', meses);
+    
     rows.forEach((row, rowIndex) => {
       const escuela = row[0];
-      if (!escuela || escuela.trim() === '') return;
+      if (!escuela || escuela.trim() === '') {
+        console.log(`⚠️ Fila ${rowIndex + 1}: escuela vacía, saltando`);
+        return;
+      }
+      
+      // Limpiar nombre de escuela
       const escuelaClean = escuela.trim();
       result[escuelaClean] = {};
+      
+      console.log(`\n🏫 Procesando escuela: "${escuelaClean}" (fila ${rowIndex + 1})`);
+      console.log(`   Datos de fila completa:`, row);
+      
       meses.forEach((mes, mesIndex) => {
-        const rawValue = row[mesIndex + 1];
-        const value = parseNumberFromString(rawValue);
-        result[escuelaClean][mes] = value;
+        const cellValue = row[mesIndex + 1]; // +1 porque la primera columna es la escuela
+        const monto = parseNumberFromString(cellValue);
+        
+        // Limpiar nombre del mes
+        const mesClean = mes.trim();
+        result[escuelaClean][mesClean] = monto;
+        
+        console.log(`   📈 ${mesClean} (columna ${mesIndex + 1}): "${cellValue}" -> ${monto.toLocaleString()}`);
       });
     });
-
-    console.log('✅ Cobranza transformada:', result);
+    
+    console.log('\n✅ Resultado final de transformación:', result);
     return result;
   };
 
-  // ======= UI: Contenedor principal con tabs, etc. (recortado) =======
-  // ... aquí va tu navegación entre vistas (executive / cobranza / etc.) ...
+  // Nueva función para transformar datos de ingresos
+  const transformIngresosData = (rawData) => {
+    if (!rawData || rawData.length === 0) return fallbackIngresosData;
+    
+    const rows = rawData.slice(1); // Saltar la primera fila (headers)
+    const result = [];
+    
+    console.log('💰 Transformando datos de ingresos...');
+    console.log('📊 Filas de datos ingresos:', rows.length);
+    
+    rows.forEach((row, index) => {
+      const [concepto, monto] = row;
+      
+      if (!concepto || concepto.trim() === '') {
+        console.log(`⚠️ Fila ${index + 2}: concepto vacío, saltando`);
+        return;
+      }
+      
+      const conceptoClean = concepto.trim();
+      const montoNumerico = parseNumberFromString(monto);
+      
+      if (montoNumerico > 0) {
+        result.push({
+          concepto: conceptoClean,
+          monto: montoNumerico
+        });
+        
+        console.log(`📈 ${conceptoClean}: ${montoNumerico.toLocaleString()}`);
+      }
+    });
+    
+    console.log('✅ Datos de ingresos transformados:', result);
+    return result.length > 0 ? result : fallbackIngresosData;
+  };
 
-  // ==================== COBRANZA DASHBOARD ====================
-  const CobranzaDashboard = () => {
-    // Obtener todos los meses únicos de los datos de cobranza y ordenarlos cronológicamente
-    const mesesCobranza = useMemo(() => {
-      if (!cobranzaData || Object.keys(cobranzaData).length === 0) return [];
-      const meses = new Set();
-      Object.values(cobranzaData).forEach(escuelaData => {
-        Object.keys(escuelaData).forEach(mes => {
-          if (mes && mes.trim() !== '') meses.add(mes.trim());
+  useEffect(() => {
+    fetchGoogleSheetsData();
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchGoogleSheetsData(false);
+    }, 60 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const generateAlerts = () => {
+      const newAlerts = [];
+      const months = Object.keys(salesData).sort();
+      
+      if (months.length < 2) return;
+      
+      const currentMonth = months[months.length - 1];
+      const previousMonth = months[months.length - 2];
+      
+      Object.keys(salesData[currentMonth]).forEach(school => {
+        Object.keys(salesData[currentMonth][school]).forEach(area => {
+          Object.keys(salesData[currentMonth][school][area]).forEach(course => {
+            const current = salesData[currentMonth][school][area][course];
+            const previous = salesData[previousMonth]?.[school]?.[area]?.[course];
+            
+            if (previous) {
+              const ventasChange = ((current.ventas - previous.ventas) / previous.ventas) * 100;
+              const cursosChange = ((current.cursos - previous.cursos) / previous.cursos) * 100;
+              
+              if (ventasChange < -20) {
+                newAlerts.push({
+                  type: 'warning',
+                  category: 'ventas',
+                  message: `${course} en ${school} bajó ${Math.abs(ventasChange).toFixed(1)}% en ventas`,
+                  details: `De $${previous.ventas.toLocaleString()} a $${current.ventas.toLocaleString()}`,
+                  priority: ventasChange < -40 ? 'urgent' : 'high',
+                  curso: course,
+                  escuela: school,
+                  area: area
+                });
+              }
+              
+              if (cursosChange < -30) {
+                newAlerts.push({
+                  type: 'danger',
+                  category: 'cursos',
+                  message: `${course} en ${school} bajó ${Math.abs(cursosChange).toFixed(1)}% en cursos vendidos`,
+                  details: `De ${previous.cursos} a ${current.cursos} cursos`,
+                  priority: 'urgent',
+                  curso: course,
+                  escuela: school,
+                  area: area
+                });
+              }
+              
+              if (ventasChange > 50) {
+                newAlerts.push({
+                  type: 'success',
+                  category: 'crecimiento',
+                  message: `¡${course} en ${school} creció ${ventasChange.toFixed(1)}% en ventas!`,
+                  details: `De $${previous.ventas.toLocaleString()} a $${current.ventas.toLocaleString()}`,
+                  priority: 'info',
+                  curso: course,
+                  escuela: school,
+                  area: area
+                });
+              }
+            }
+            
+            if (current.ventas === 0) {
+              newAlerts.push({
+                type: 'warning',
+                category: 'sin_ventas',
+                message: `${course} en ${school} no tuvo ventas este mes`,
+                details: 'Revisar estrategia de marketing',
+                priority: 'medium',
+                curso: course,
+                escuela: school,
+                area: area
+              });
+            }
+          });
         });
       });
-      const mesesArray = Array.from(meses);
-      return sortMonthsChronologically(mesesArray);
-    }, [cobranzaData]);
+      
+      setAlerts(newAlerts.slice(0, 15));
+    };
 
-    // Calcular totales por mes
-    const totalesPorMes = useMemo(() => {
-      const totales = {};
-      Object.values(cobranzaData || {}).forEach(escuelaData => {
-        Object.entries(escuelaData).forEach(([mes, valor]) => {
-          if (!totales[mes]) totales[mes] = 0;
-          totales[mes] += Number(valor) || 0;
+    if (Object.keys(salesData).length > 0) {
+      generateAlerts();
+    }
+  }, [salesData]);
+
+  const schools = useMemo(() => {
+    const schoolsSet = new Set();
+    Object.values(salesData).forEach(monthData => {
+      Object.keys(monthData).forEach(school => {
+        schoolsSet.add(school);
+      });
+    });
+    return Array.from(schoolsSet);
+  }, [salesData]);
+
+  const areas = useMemo(() => {
+    const areasSet = new Set();
+    Object.values(salesData).forEach(monthData => {
+      Object.values(monthData).forEach(schoolData => {
+        Object.keys(schoolData).forEach(area => {
+          areasSet.add(area);
         });
       });
-      return totales;
-    }, [cobranzaData]);
+    });
+    return Array.from(areasSet);
+  }, [salesData]);
 
-    // Render
+  const instructors = useMemo(() => {
+    const instructorsSet = new Set();
+    Object.values(salesData).forEach(monthData => {
+      Object.values(monthData).forEach(schoolData => {
+        Object.values(schoolData).forEach(areaData => {
+          Object.values(areaData).forEach(courseData => {
+            if (courseData.instructor && courseData.instructor !== 'No asignado') {
+              instructorsSet.add(courseData.instructor);
+            }
+          });
+        });
+      });
+    });
+    return Array.from(instructorsSet);
+  }, [salesData]);
+
+  const months = useMemo(() => {
+    return Object.keys(salesData).sort();
+  }, [salesData]);
+
+  // Nuevo computed para medios de contacto
+  const contactMethods = useMemo(() => {
+    const methodsSet = new Set();
+    Object.values(contactData).forEach(monthData => {
+      Object.keys(monthData).forEach(method => {
+        methodsSet.add(method);
+      });
+    });
+    return Array.from(methodsSet);
+  }, [contactData]);
+
+  const formatDateForDisplay = (monthString) => {
+    try {
+      const [year, month] = monthString.split('-');
+      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+      
+      if (isNaN(date.getTime())) {
+        return monthString;
+      }
+      
+      return date.toLocaleDateString('es-ES', { 
+        year: 'numeric', 
+        month: 'long' 
+      });
+    } catch (error) {
+      console.warn('Error formatting date:', monthString, error);
+      return monthString;
+    }
+  };
+
+  const formatDateShort = (monthString) => {
+    try {
+      const [year, month] = monthString.split('-');
+      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+      
+      if (isNaN(date.getTime())) {
+        return monthString;
+      }
+      
+      return date.toLocaleDateString('es-ES', { 
+        year: 'numeric', 
+        month: 'short' 
+      });
+    } catch (error) {
+      console.warn('Error formatting short date:', monthString, error);
+      return monthString;
+    }
+  };
+
+  const calculateTrend = (values) => {
+    if (values.length < 2) return "stable";
+    const lastTwo = values.slice(-2);
+    const change = ((lastTwo[1] - lastTwo[0]) / lastTwo[0]) * 100;
+    if (change > 5) return "up";
+    if (change < -5) return "down";
+    return "stable";
+  };
+
+  const TrendIcon = ({ trend }) => {
+    switch (trend) {
+      case "up":
+        return <TrendingUp className="w-4 h-4 text-green-500" />;
+      case "down":
+        return <TrendingDown className="w-4 h-4 text-red-500" />;
+      default:
+        return <Minus className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
+  const ConnectionStatus = () => (
+    <div className="flex items-center gap-2 text-sm">
+      {connectionStatus === 'connected' && (
+        <>
+          <Wifi className="w-4 h-4 text-green-500" />
+          <span className="text-green-600">Conectado a Google Sheets</span>
+        </>
+      )}
+      {connectionStatus === 'disconnected' && (
+        <>
+          <WifiOff className="w-4 h-4 text-gray-500" />
+          <span className="text-gray-600">Usando datos de ejemplo</span>
+        </>
+      )}
+      {connectionStatus === 'error' && (
+        <>
+          <WifiOff className="w-4 h-4 text-red-500" />
+          <span className="text-red-600">Error - Usando datos de respaldo</span>
+        </>
+      )}
+      {lastUpdated && (
+        <span className="text-gray-500 ml-2">
+          • Actualizado: {lastUpdated.toLocaleTimeString()}
+        </span>
+      )}
+    </div>
+  );
+
+  const getSchoolTotals = (month) => {
+    const totals = {};
+    if (!salesData[month]) return totals;
+    
+    Object.keys(salesData[month]).forEach(school => {
+      totals[school] = { ventas: 0, cursos: 0 };
+      Object.keys(salesData[month][school]).forEach(area => {
+        Object.keys(salesData[month][school][area]).forEach(course => {
+          totals[school].ventas += salesData[month][school][area][course].ventas;
+          totals[school].cursos += salesData[month][school][area][course].cursos;
+        });
+      });
+    });
+    return totals;
+  };
+
+  const getAreaTotals = (month, school = null) => {
+    const totals = {};
+    if (!salesData[month]) return totals;
+    
+    const schoolsToProcess = school ? [school] : Object.keys(salesData[month]);
+    
+    schoolsToProcess.forEach(schoolKey => {
+      if (salesData[month][schoolKey]) {
+        Object.keys(salesData[month][schoolKey]).forEach(area => {
+          if (!totals[area]) {
+            totals[area] = { ventas: 0, cursos: 0 };
+          }
+          Object.keys(salesData[month][schoolKey][area]).forEach(course => {
+            totals[area].ventas += salesData[month][schoolKey][area][course].ventas;
+            totals[area].cursos += salesData[month][schoolKey][area][course].cursos;
+          });
+        });
+      }
+    });
+    return totals;
+  };
+
+  const getInstructorTotals = (month, school = null) => {
+    const totals = {};
+    if (!salesData[month]) return totals;
+    
+    const schoolsToProcess = school ? [school] : Object.keys(salesData[month]);
+    
+    schoolsToProcess.forEach(schoolKey => {
+      if (salesData[month][schoolKey]) {
+        Object.keys(salesData[month][schoolKey]).forEach(area => {
+          Object.keys(salesData[month][schoolKey][area]).forEach(course => {
+            const courseData = salesData[month][schoolKey][area][course];
+            const instructor = courseData.instructor;
+            
+            if (instructor && instructor !== 'No asignado') {
+              if (!totals[instructor]) {
+                totals[instructor] = { ventas: 0, cursos: 0, areas: new Set(), escuelas: new Set() };
+              }
+              totals[instructor].ventas += courseData.ventas;
+              totals[instructor].cursos += courseData.cursos;
+              totals[instructor].areas.add(area);
+              totals[instructor].escuelas.add(schoolKey);
+            }
+          });
+        });
+      }
+    });
+    
+    Object.keys(totals).forEach(instructor => {
+      totals[instructor].areas = Array.from(totals[instructor].areas);
+      totals[instructor].escuelas = Array.from(totals[instructor].escuelas);
+    });
+    
+    return totals;
+  };
+
+  const getCourses = (month, school = null, area = null) => {
+    const courses = {};
+    if (!salesData[month]) return courses;
+    
+    const schoolsToProcess = school ? [school] : Object.keys(salesData[month]);
+    
+    schoolsToProcess.forEach(schoolKey => {
+      if (salesData[month][schoolKey]) {
+        const areasToProcess = area ? [area] : Object.keys(salesData[month][schoolKey]);
+        
+        areasToProcess.forEach(areaKey => {
+          if (salesData[month][schoolKey][areaKey]) {
+            Object.keys(salesData[month][schoolKey][areaKey]).forEach(course => {
+              const key = `${course} (${schoolKey}${area ? '' : ' - ' + areaKey})`;
+              if (!courses[key]) {
+                courses[key] = { ventas: 0, cursos: 0, instructor: '', escuela: schoolKey, area: areaKey };
+              }
+              const courseData = salesData[month][schoolKey][areaKey][course];
+              courses[key].ventas += courseData.ventas;
+              courses[key].cursos += courseData.cursos;
+              courses[key].instructor = courseData.instructor;
+            });
+          }
+        });
+      }
+    });
+    
+    return courses;
+  };
+
+  // Nueva función para obtener totales por medio de contacto
+  const getContactTotals = (month) => {
+    const totals = {};
+    if (!contactData[month]) return totals;
+    
+    Object.keys(contactData[month]).forEach(method => {
+      totals[method] = contactData[month][method];
+    });
+    
+    return totals;
+  };
+
+  const executiveKPIs = useMemo(() => {
+    const currentMonth = salesData[selectedMonth];
+    if (!currentMonth) {
+      return { totalVentas: 0, totalCursos: 0, ventasGrowth: 0, cursosGrowth: 0, ticketPromedio: 0 };
+    }
+
+    let totalVentas = 0, totalCursos = 0;
+    
+    Object.keys(currentMonth).forEach(school => {
+      Object.keys(currentMonth[school]).forEach(area => {
+        Object.keys(currentMonth[school][area]).forEach(course => {
+          totalVentas += currentMonth[school][area][course].ventas;
+          totalCursos += currentMonth[school][area][course].cursos;
+        });
+      });
+    });
+    
+    const currentIndex = months.indexOf(selectedMonth);
+    const previousMonth = currentIndex > 0 ? months[currentIndex - 1] : null;
+    
+    let ventasGrowth = 0, cursosGrowth = 0;
+    
+    if (previousMonth && salesData[previousMonth]) {
+      let prevVentas = 0, prevCursos = 0;
+      
+      Object.keys(salesData[previousMonth]).forEach(school => {
+        Object.keys(salesData[previousMonth][school]).forEach(area => {
+          Object.keys(salesData[previousMonth][school][area]).forEach(course => {
+            prevVentas += salesData[previousMonth][school][area][course].ventas;
+            prevCursos += salesData[previousMonth][school][area][course].cursos;
+          });
+        });
+      });
+      
+      ventasGrowth = prevVentas ? ((totalVentas - prevVentas) / prevVentas) * 100 : 0;
+      cursosGrowth = prevCursos ? ((totalCursos - prevCursos) / prevCursos) * 100 : 0;
+    }
+    
+    const ticketPromedio = totalCursos ? totalVentas / totalCursos : 0;
+    
+    return {
+      totalVentas,
+      totalCursos,
+      ventasGrowth,
+      cursosGrowth,
+      ticketPromedio
+    };
+  }, [selectedMonth, salesData, months]);
+
+  const getViewData = useMemo(() => {
+    switch (viewType) {
+      case "escuela":
+        const schoolTotals = getSchoolTotals(selectedMonth);
+        return schools.map(school => {
+          const schoolValues = months.map(month => {
+            const totals = getSchoolTotals(month);
+            return totals[school] ? totals[school][metricType] : 0;
+          });
+          const average = schoolValues.reduce((a, b) => a + b, 0) / schoolValues.length;
+          const trend = calculateTrend(schoolValues);
+          
+          return {
+            nombre: school,
+            valor: schoolTotals[school] ? schoolTotals[school][metricType] : 0,
+            promedio: Math.round(average),
+            tendencia: trend,
+            icono: Building
+          };
+        });
+
+      case "area":
+        const areaTotals = getAreaTotals(selectedMonth, selectedSchool);
+        return Object.keys(areaTotals).map(area => {
+          const areaValues = months.map(month => {
+            const totals = getAreaTotals(month, selectedSchool);
+            return totals[area] ? totals[area][metricType] : 0;
+          });
+          const average = areaValues.reduce((a, b) => a + b, 0) / areaValues.length;
+          const trend = calculateTrend(areaValues);
+          
+          return {
+            nombre: area,
+            valor: areaTotals[area][metricType],
+            promedio: Math.round(average),
+            tendencia: trend,
+            icono: BookOpen
+          };
+        });
+
+      case "instructor":
+        const instructorTotals = getInstructorTotals(selectedMonth, selectedSchool);
+        return Object.keys(instructorTotals).map(instructor => {
+          const instructorValues = months.map(month => {
+            const totals = getInstructorTotals(month, selectedSchool);
+            return totals[instructor] ? totals[instructor][metricType] : 0;
+          });
+          const average = instructorValues.reduce((a, b) => a + b, 0) / instructorValues.length;
+          const trend = calculateTrend(instructorValues);
+          
+          return {
+            nombre: instructor,
+            valor: instructorTotals[instructor][metricType],
+            promedio: Math.round(average),
+            tendencia: trend,
+            areas: instructorTotals[instructor].areas.join(', '),
+            escuelas: instructorTotals[instructor].escuelas.join(', '),
+            icono: User
+          };
+        });
+
+      case "curso":
+        const courses = getCourses(selectedMonth, selectedSchool, selectedArea);
+        return Object.keys(courses).map(courseName => {
+          const courseValues = months.map(month => {
+            const coursesInMonth = getCourses(month, selectedSchool, selectedArea);
+            return coursesInMonth[courseName] ? coursesInMonth[courseName][metricType] : 0;
+          });
+          const average = courseValues.reduce((a, b) => a + b, 0) / courseValues.length;
+          const trend = calculateTrend(courseValues);
+          
+          return {
+            nombre: courseName,
+            valor: courses[courseName][metricType],
+            promedio: Math.round(average),
+            tendencia: trend,
+            instructor: courses[courseName].instructor,
+            icono: Book
+          };
+        });
+
+      case "contacto":
+        const contactTotals = getContactTotals(selectedMonth);
+        return Object.keys(contactTotals).map(method => {
+          const methodValues = months.map(month => {
+            const totals = getContactTotals(month);
+            return totals[method] ? totals[method][metricType] : 0;
+          });
+          const average = methodValues.reduce((a, b) => a + b, 0) / methodValues.length;
+          const trend = calculateTrend(methodValues);
+          
+          const getContactIcon = (method) => {
+            const methodLower = method.toLowerCase();
+            if (methodLower.includes('whatsapp')) return MessageSquare;
+            if (methodLower.includes('instagram') || methodLower.includes('facebook')) return Users;
+            if (methodLower.includes('teléfono') || methodLower.includes('telefono')) return Phone;
+            if (methodLower.includes('email') || methodLower.includes('correo')) return Mail;
+            return Globe;
+          };
+          
+          return {
+            nombre: method,
+            valor: contactTotals[method] ? contactTotals[method][metricType] : 0,
+            promedio: Math.round(average),
+            tendencia: trend,
+            icono: getContactIcon(method)
+          };
+        });
+
+      case "comparacion":
+        return schools.map(school => {
+          const data = { escuela: school };
+          compareMonths.forEach(month => {
+            const totals = getSchoolTotals(month);
+            data[month] = totals[school] ? totals[school][metricType] : 0;
+          });
+          return data;
+        });
+
+      default:
+        return [];
+    }
+  }, [viewType, selectedMonth, selectedSchool, selectedArea, metricType, months, schools, compareMonths, contactData]);
+
+  const AlertsPanel = () => (
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Bell className="w-5 h-5 text-red-500" />
+          <h3 className="text-lg font-semibold">Alertas Automáticas</h3>
+          <span className="bg-red-100 text-red-800 text-xs font-medium px-2 py-1 rounded-full">
+            {alerts.length}
+          </span>
+        </div>
+        <button 
+          onClick={() => setAlerts([])}
+          className="text-xs text-gray-500 hover:text-gray-700"
+        >
+          Limpiar todas
+        </button>
+      </div>
+      
+      <div className="space-y-3 max-h-80 overflow-y-auto">
+        {alerts.length === 0 ? (
+          <div className="text-center py-8">
+            <Bell className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+            <p className="text-gray-500">No hay alertas en este momento</p>
+          </div>
+        ) : (
+          alerts.map((alert, index) => (
+            <div key={index} className={`p-3 rounded-lg border-l-4 ${
+              alert.type === 'danger' ? 'bg-red-50 border-red-500' :
+              alert.type === 'warning' ? 'bg-yellow-50 border-yellow-500' :
+              'bg-green-50 border-green-500'
+            }`}>
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    {alert.type === 'danger' && <AlertTriangle className="w-4 h-4 text-red-500" />}
+                    {alert.type === 'warning' && <AlertTriangle className="w-4 h-4 text-yellow-500" />}
+                    {alert.type === 'success' && <TrendingUp className="w-4 h-4 text-green-500" />}
+                    <p className="text-sm font-medium">{alert.message}</p>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1">{alert.details}</p>
+                  <div className="flex gap-2 mt-2">
+                    <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">
+                      {alert.escuela}
+                    </span>
+                    <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded">
+                      {alert.area}
+                    </span>
+                  </div>
+                </div>
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  alert.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                  alert.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                  alert.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                  'bg-green-100 text-green-800'
+                }`}>
+                  {alert.priority === 'urgent' ? 'Urgente' :
+                   alert.priority === 'high' ? 'Alto' :
+                   alert.priority === 'medium' ? 'Medio' :
+                   'Info'}
+                </span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      
+      {alerts.length > 0 && (
+        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+          <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Recomendaciones automáticas:</h4>
+          <ul className="text-xs text-blue-700 space-y-1">
+            <li>• Revisar cursos con caída >20% en ventas</li>
+            <li>• Considerar promociones para cursos sin ventas</li>
+            <li>• Replicar estrategias de cursos con alto crecimiento</li>
+            <li>• Programar reunión con instructores de cursos en riesgo</li>
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+
+  // Nuevo componente para el dashboard de medios de contacto
+  const ContactDashboard = () => {
+    const COLORS = ['#22C55E', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899'];
+    
+    const contactTotals = getContactTotals(selectedMonth);
+    const totalVentas = Object.values(contactTotals).reduce((sum, method) => sum + method.ventas, 0);
+    const totalCursos = Object.values(contactTotals).reduce((sum, method) => sum + method.cursos, 0);
+    
+    const pieData = Object.entries(contactTotals).map(([method, data]) => ({
+      name: method,
+      value: data[metricType],
+      percentage: totalVentas > 0 ? ((data.ventas / totalVentas) * 100).toFixed(1) : 0
+    }));
+
+    const trendData = months.map(month => {
+      const monthData = getContactTotals(month);
+      const result = { month: formatDateShort(month) };
+      
+      Object.keys(contactTotals).forEach(method => {
+        result[method] = monthData[method] ? monthData[method][metricType] : 0;
+      });
+      
+      return result;
+    });
+
     return (
       <div className="space-y-6">
-        {/* Resumen de Cobranza */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow p-6 text-white">
+        {/* KPIs de Medios de Contacto */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow p-6 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-sm">Total Cobranza</p>
-                <p className="text-3xl font-bold">
-                  ${Object.values(totalesPorMes).reduce((a, b) => a + (Number(b) || 0), 0).toLocaleString()}
-                </p>
+                <p className="text-purple-100 text-sm">Total Ventas</p>
+                <p className="text-3xl font-bold">${totalVentas.toLocaleString()}</p>
+                <p className="text-purple-100 text-sm">Por medios de contacto</p>
               </div>
-              <DollarSign className="w-10 h-10 opacity-80" />
+              <DollarSign className="w-8 h-8 text-purple-200" />
             </div>
           </div>
-          <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg shadow p-6 text-white">
-            <p className="text-emerald-100 text-sm">Meses con datos</p>
-            <p className="text-3xl font-bold">{mesesCobranza.length}</p>
-          </div>
+          
           <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg shadow p-6 text-white">
-            <p className="text-indigo-100 text-sm">Escuelas</p>
-            <p className="text-3xl font-bold">{Object.keys(cobranzaData || {}).length}</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-indigo-100 text-sm">Total Cursos</p>
+                <p className="text-3xl font-bold">{totalCursos.toLocaleString()}</p>
+                <p className="text-indigo-100 text-sm">Cursos vendidos</p>
+              </div>
+              <ShoppingCart className="w-8 h-8 text-indigo-200" />
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-pink-500 to-pink-600 rounded-lg shadow p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-pink-100 text-sm">Canales Activos</p>
+                <p className="text-3xl font-bold">{Object.keys(contactTotals).length}</p>
+                <p className="text-pink-100 text-sm">Medios de contacto</p>
+              </div>
+              <Users className="w-8 h-8 text-pink-200" />
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg shadow p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-orange-100 text-sm">Ticket Promedio</p>
+                <p className="text-3xl font-bold">${totalCursos > 0 ? (totalVentas / totalCursos).toFixed(0) : '0'}</p>
+                <p className="text-orange-100 text-sm">Por canal</p>
+              </div>
+              <Target className="w-8 h-8 text-orange-200" />
+            </div>
           </div>
         </div>
 
-        {/* ... aquí van tus otros gráficos/segmentos de la vista Cobranza ... */}
+        {/* Gráficas */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Gráfico de Pastel */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-4">
+              Distribución por Medio de Contacto
+              <span className="text-sm font-normal text-gray-500 ml-2">
+                ({metricType === 'ventas' ? 'Ventas' : 'Cursos'})
+              </span>
+            </h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percentage }) => `${name}: ${percentage}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [
+                    metricType === 'ventas' ? `${value.toLocaleString()}` : value.toLocaleString(),
+                    metricType === 'ventas' ? 'Ventas' : 'Cursos'
+                  ]} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
-        {/* Tabla y Gráfico: Tabla Ingresos (A:B) — NUEVO */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h3 className="text-lg font-semibold mb-4">Ingresos (Tabla Ingresos A:B)</h3>
-          {(!tablaIngresos || tablaIngresos.length === 0) ? (
-            <p className="text-sm text-gray-500">No hay datos en “Tabla Ingresos”.</p>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Tabla */}
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Concepto / Fecha (Col. A)
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Monto (Col. B)
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {tablaIngresos.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50">
-                          <td className="px-6 py-3 text-sm text-gray-900">{row.label}</td>
-                          <td className="px-6 py-3 text-sm font-medium text-gray-900">
-                            ${row.value.toLocaleString()}
-                          </td>
-                        </tr>
-                      ))}
-                      <tr className="bg-gray-100 font-semibold">
-                        <td className="px-6 py-3 text-sm text-gray-900">Total</td>
-                        <td className="px-6 py-3 text-sm text-gray-900">
-                          ${tablaIngresos.reduce((s, r) => s + (r.value || 0), 0).toLocaleString()}
+          {/* Gráfico de Tendencias */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-4">
+              Tendencia por Medio de Contacto
+            </h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis tickFormatter={(value) => 
+                    metricType === "ventas" ? `${(value/1000).toFixed(0)}k` : value.toString()
+                  } />
+                  <Tooltip />
+                  <Legend />
+                  {Object.keys(contactTotals).map((method, index) => (
+                    <Line 
+                      key={method}
+                      type="monotone" 
+                      dataKey={method} 
+                      stroke={COLORS[index % COLORS.length]} 
+                      strokeWidth={2}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabla Detallada */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4">Análisis Detallado por Medio de Contacto</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Medio de Contacto
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ventas ($)
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Cursos
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ticket Promedio
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    % del Total
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Rendimiento
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {Object.entries(contactTotals)
+                  .sort(([,a], [,b]) => b.ventas - a.ventas)
+                  .map(([method, data], index) => {
+                    const ticketPromedio = data.cursos > 0 ? data.ventas / data.cursos : 0;
+                    const porcentaje = totalVentas > 0 ? (data.ventas / totalVentas) * 100 : 0;
+                    
+                    const getContactIcon = (method) => {
+                      const methodLower = method.toLowerCase();
+                      if (methodLower.includes('whatsapp')) return MessageSquare;
+                      if (methodLower.includes('instagram') || methodLower.includes('facebook')) return Users;
+                      if (methodLower.includes('teléfono') || methodLower.includes('telefono')) return Phone;
+                      if (methodLower.includes('email') || methodLower.includes('correo')) return Mail;
+                      return Globe;
+                    };
+                    
+                    const IconComponent = getContactIcon(method);
+                    
+                    return (
+                      <tr key={method} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          <div className="flex items-center gap-2">
+                            <IconComponent className="w-5 h-5 text-gray-500" />
+                            {method}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                          ${data.ventas.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {data.cursos.toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          ${ticketPromedio.toFixed(0)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <div className="flex items-center">
+                            <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                              <div 
+                                className="bg-blue-500 h-2 rounded-full" 
+                                style={{ width: `${porcentaje}%` }}
+                              ></div>
+                            </div>
+                            {porcentaje.toFixed(1)}%
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            porcentaje > 25 ? 'bg-green-100 text-green-800' :
+                            porcentaje > 15 ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {porcentaje > 25 ? 'Excelente' :
+                             porcentaje > 15 ? 'Bueno' :
+                             'Mejorable'}
+                          </span>
                         </td>
                       </tr>
-                    </tbody>
-                  </table>
-                </div>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-                {/* Gráfico (BarChart) */}
-                <div className="h-72">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={tablaIngresos}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="label"
-                        angle={-45}
-                        textAnchor="end"
-                        height={90}
-                        fontSize={12}
-                      />
-                      <YAxis tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
-                      <Tooltip formatter={(v) => [`${Number(v).toLocaleString()}`, 'Monto']} />
-                      <Legend />
-                      <Bar dataKey="value" name="Monto" fill="#3B82F6" />
-                    </BarChart>
-                  </ResponsiveContainer>
+        {/* Insights y Recomendaciones */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4">📊 Insights y Recomendaciones</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h4 className="font-medium text-gray-800">🎯 Canal más efectivo:</h4>
+              {Object.entries(contactTotals).length > 0 && (
+                <div className="p-4 bg-green-50 rounded-lg">
+                  <p className="text-green-800 font-medium">
+                    {Object.entries(contactTotals).sort(([,a], [,b]) => b.ventas - a.ventas)[0][0]}
+                  </p>
+                  <p className="text-green-600 text-sm">
+                    ${Object.entries(contactTotals).sort(([,a], [,b]) => b.ventas - a.ventas)[0][1].ventas.toLocaleString()} en ventas
+                  </p>
                 </div>
-              </div>
-            </>
-          )}
+              )}
+              
+              <h4 className="font-medium text-gray-800">💡 Recomendaciones:</h4>
+              <ul className="text-sm text-gray-600 space-y-1">
+                <li>• Potenciar inversión en el canal más rentable</li>
+                <li>• Diversificar estrategias en canales con bajo rendimiento</li>
+                <li>• Implementar seguimiento cross-canal</li>
+              </ul>
+            </div>
+            
+            <div className="space-y-4">
+              <h4 className="font-medium text-gray-800">📈 Oportunidades de mejora:</h4>
+              {Object.entries(contactTotals)
+                .sort(([,a], [,b]) => a.ventas - b.ventas)
+                .slice(0, 2)
+                .map(([method, data]) => (
+                  <div key={method} className="p-3 bg-orange-50 rounded-lg">
+                    <p className="text-orange-800 font-medium text-sm">{method}</p>
+                    <p className="text-orange-600 text-xs">
+                      Potencial de crecimiento - Solo ${data.ventas.toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+            </div>
+          </div>
         </div>
       </div>
     );
   };
 
-  // ===== Render del Dashboard general (tabs, etc.) =====
-  return (
-    <div className="p-6 space-y-6">
-      {/* Aquí iría tu selector de pestañas, por ejemplo botones para Executive / Cobranza */}
-      <CobranzaDashboard />
-    </div>
-  );
-};
-
-// ===== Helpers extra (ordenar meses, parsear fechas, etc.) =====
-const monthOrder = [
-  "enero","febrero","marzo","abril","mayo","junio",
-  "julio","agosto","septiembre","octubre","noviembre","diciembre"
-];
-
-const parseMonthFromHeader = (header) => {
-  if (!header) return null;
-  const str = header.toString().trim().toLowerCase();
-  // Soporta cabeceras tipo "Enero 2024", "ene-24", "2024-01", etc.
-  const m1 = str.match(/(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+(\d{4})/i);
-  if (m1) {
-    const mesIdx = monthOrder.indexOf(m1[1].toLowerCase());
-    return `${m1[2]}-${String(mesIdx + 1).padStart(2, '0')}`;
-  }
-  const m2 = str.match(/(\d{4})[-/](\d{1,2})/);
-  if (m2) return `${m2[1]}-${String(m2[2]).padStart(2, '0')}`;
-  return header; // fallback: devolver tal cual
-};
-
-const sortMonthsChronologically = (months) => {
-  return months
-    .map(m => {
-      const [y, mo] = String(m).split('-');
-      return { m, y: Number(y)||0, mo: Number(mo)||0 };
-    })
-    .sort((a,b) => a.y === b.y ? a.mo - b.mo : a.y - b.y)
-    .map(o => o.m);
-};
-
-// ===== Transformación de Ventas (resumen) =====
-const transformGoogleSheetsData = (rawData) => {
-  const headers = rawData[0];
-  const rows = rawData.slice(1);
-  const result = {};
-
-  rows.forEach((row) => {
-    const [fecha, escuela, area, curso, ventas, cursosVendidos, instructor, medioContacto] = row;
-    if (!fecha || !escuela || !area || !curso) return;
-
-    // Normalizar fecha a YYYY-MM
-    let dateStr = fecha;
-    if (typeof fecha === 'number') {
-      const excelEpoch = new Date(Date.UTC(1899, 11, 30));
-      const jsDate = new Date(excelEpoch.getTime() + (fecha * 24 * 60 * 60 * 1000));
-      dateStr = `${jsDate.getFullYear()}-${String(jsDate.getMonth() + 1).padStart(2, '0')}-${String(jsDate.getDate()).padStart(2, '0')}`;
-    }
-    const monthKey = dateStr.slice(0, 7);
-
-    if (!result[monthKey]) result[monthKey] = {};
-    if (!result[monthKey][escuela]) result[monthKey][escuela] = {};
-    if (!result[monthKey][escuela][area]) result[monthKey][escuela][area] = {};
-
-    const ventasNum = parseNumberFromString(ventas);
-    const cursosNum = parseNumberFromString(cursosVendidos) || 1;
-
-    result[monthKey][escuela][area][curso] = {
-      ventas: ventasNum,
-      cursos: cursosNum,
-      instructor: (instructor || '').toString().trim()
-    };
-  });
-
-  return result;
-};
-
-export default Dashboard;
+  const ExecutiveDashboard = () => {
+    const getSalesBySchoolAndMonth = () => {
+      const data = {};
+      
+      schools.forEach(school => {
+        data[school] = {};
+        months.forEach(month => {
+          const totals = getSchoolTotals(month);
+          data[school][month] = totals[school] ? totals[school].ventas : 0
