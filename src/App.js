@@ -7,7 +7,8 @@ const GOOGLE_SHEETS_CONFIG = {
   spreadsheetId: '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg',
   ranges: {
     ventas: 'Ventas!A:H', // Ampliamos hasta la columna H para incluir medio de contacto
-    cobranza: 'Cobranza!A:Z'
+    cobranza: 'Cobranza!A:Z',
+    ingresos: 'Tabla Ingresos!A:B'
   }
 };
 
@@ -74,6 +75,7 @@ const Dashboard = () => {
   const [compareMonths, setCompareMonths] = useState(["2024-06", "2024-07"]);
   const [salesData, setSalesData] = useState(fallbackData);
   const [cobranzaData, setCobranzaData] = useState({});
+  const [ingresosData, setIngresosData] = useState({});
   const [contactData, setContactData] = useState(fallbackContactData); // Nuevo estado para medios de contacto
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -219,6 +221,16 @@ const Dashboard = () => {
       const cobranzaData = await cobranzaResponse.json();
       const transformedCobranza = transformCobranzaData(cobranzaData.values);
       setCobranzaData(transformedCobranza);
+
+      // Fetch datos de ingresos
+      const ingresosUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.ingresos}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
+      const ingresosResponse = await fetch(ingresosUrl);
+
+      if (!ingresosResponse.ok) throw new Error(`Error ${ingresosResponse.status}: ${ingresosResponse.statusText}`);
+
+      const ingresosDataResponse = await ingresosResponse.json();
+      const transformedIngresos = transformIngresosData(ingresosDataResponse.values);
+      setIngresosData(transformedIngresos);
       
       setConnectionStatus('connected');
       setLastUpdated(new Date());
@@ -365,6 +377,38 @@ const Dashboard = () => {
     });
     
     console.log('\n✅ Resultado final de transformación:', result);
+    return result;
+  };
+
+  const transformIngresosData = (rawData) => {
+    if (!rawData || rawData.length === 0) return {};
+    
+    const result = {};
+    
+    console.log('💰 Transformando datos de ingresos...');
+    console.log('📋 Datos raw ingresos:', rawData);
+    
+    // Saltar la primera fila si es header
+    const rows = rawData.slice(1);
+    
+    rows.forEach((row, rowIndex) => {
+      const concepto = row[0];
+      const monto = row[1];
+      
+      if (!concepto || concepto.trim() === '') {
+        console.log(`⚠️ Fila ${rowIndex + 1}: concepto vacío, saltando`);
+        return;
+      }
+      
+      const conceptoClean = concepto.trim();
+      const montoNumerico = parseNumberFromString(monto);
+      
+      result[conceptoClean] = montoNumerico;
+      
+      console.log(`💵 ${conceptoClean}: ${montoNumerico.toLocaleString()}`);
+    });
+    
+    console.log('✅ Datos de ingresos transformados:', result);
     return result;
   };
 
@@ -1852,6 +1896,63 @@ const Dashboard = () => {
                   ))}
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-900 bg-blue-100">
                     ${Object.values(totalesPorMes).reduce((sum, val) => sum + val, 0).toLocaleString()}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Tabla de Ingresos */}
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-gray-800">
+              Tabla de Ingresos
+            </h2>
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <DollarSign className="w-4 h-4" />
+              <span>{Object.keys(ingresosData).length} conceptos</span>
+            </div>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Concepto
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Monto
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {Object.entries(ingresosData)
+                  .sort(([,a], [,b]) => b - a)
+                  .map(([concepto, monto], index) => (
+                    <tr key={concepto} className={`hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="w-4 h-4 text-gray-500" />
+                          {concepto}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold">
+                        ${monto.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                {/* Fila de total */}
+                <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-gray-700" />
+                      Total Ingresos
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-green-900">
+                    ${Object.values(ingresosData).reduce((sum, val) => sum + val, 0).toLocaleString()}
                   </td>
                 </tr>
               </tbody>
