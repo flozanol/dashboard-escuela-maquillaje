@@ -81,8 +81,6 @@ const Dashboard = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [isManualRefresh, setIsManualRefresh] = useState(false);
   const [alerts, setAlerts] = useState([]);
-  // NUEVO: Estado para forzar re-render cuando se actualicen los datos
-  const [dataUpdateTrigger, setDataUpdateTrigger] = useState(0);
 
   const parseNumberFromString = (value) => {
     if (value === undefined || value === null || value === '') return 0;
@@ -99,31 +97,6 @@ const Dashboard = () => {
     
     const number = parseFloat(cleaned);
     return isNaN(number) ? 0 : number;
-  };
-
-  // MEJORADA: Función más robusta para validar instructores
-  const isValidInstructor = (instructor) => {
-    if (!instructor) return false;
-    
-    const instructorStr = instructor.toString().trim();
-    
-    // Lista de valores que consideramos inválidos
-    const invalidValues = [
-      '',
-      'null',
-      'undefined',
-      'no asignado',
-      'sin asignar',
-      'n/a',
-      'na',
-      '-',
-      '0',
-      'ninguno',
-      'none'
-    ];
-    
-    return instructorStr.length > 0 && 
-           !invalidValues.includes(instructorStr.toLowerCase());
   };
 
   const sortMonthsChronologically = (months) => {
@@ -161,58 +134,36 @@ const Dashboard = () => {
     });
   };
 
-  // CORREGIDA: Función de transformación mejorada
   const transformGoogleSheetsData = (rawData) => {
     if (!rawData || rawData.length === 0) {
       console.warn('⚠️ No hay datos para transformar');
       return {};
     }
 
-    console.log('📥 Datos raw recibidos:', rawData);
-    const rows = rawData.slice(1); // Omitir headers
+    const rows = rawData.slice(1);
     const transformedData = {};
     
     rows.forEach((row, index) => {
       if (!row || row.length === 0) {
-        console.log(`⏭️ Saltando fila ${index + 2}: vacía`);
         return;
       }
 
-      const [fecha, escuela, area, curso, ventas, cursosVendidos, instructor, medioContacto] = row;
+      const [fecha, escuela, area, curso, ventas, cursosVendidos, instructor] = row;
       
-      // Validaciones básicas
       if (!fecha || !escuela || !area || !curso) {
-        console.log(`⏭️ Saltando fila ${index + 2}: datos básicos faltantes`, row);
         return;
       }
       
-      // Procesar fecha
       let monthKey;
       try {
-        const fechaStr = fecha.toString().trim();
-        if (fechaStr.match(/^\d{4}-\d{2}-\d{2}/)) {
-          monthKey = fechaStr.substring(0, 7); // YYYY-MM
-        } else if (fechaStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}/)) {
-          // Formato MM/DD/YYYY o DD/MM/YYYY
-          const parts = fechaStr.split('/');
-          const year = parts[2];
-          const month = parts[1].padStart(2, '0'); // Asumiendo MM/DD/YYYY
-          monthKey = `${year}-${month}`;
-        } else {
-          console.log(`⚠️ Formato de fecha no reconocido: ${fechaStr}`);
-          return;
-        }
-        
+        monthKey = fecha.toString().substring(0, 7);
         if (!monthKey.match(/^\d{4}-\d{2}$/)) {
-          console.log(`⚠️ monthKey inválido: ${monthKey}`);
           return;
         }
       } catch (error) {
-        console.log(`❌ Error procesando fecha en fila ${index + 2}:`, error);
         return;
       }
       
-      // Inicializar estructura
       if (!transformedData[monthKey]) {
         transformedData[monthKey] = {};
       }
@@ -225,60 +176,47 @@ const Dashboard = () => {
         transformedData[monthKey][escuela][area] = {};
       }
       
-      // Procesar valores numéricos
       const ventasNum = parseNumberFromString(ventas);
       const cursosNum = parseNumberFromString(cursosVendidos) || 1;
       
-      // MEJORADO: Procesamiento más robusto del instructor
+      // MEJORA: Procesamiento más robusto del instructor
       let instructorLimpio = 'No asignado';
       
-      if (isValidInstructor(instructor)) {
-        instructorLimpio = instructor.toString().trim();
-        console.log(`✅ Instructor válido encontrado: "${instructorLimpio}" en fila ${index + 2}`);
-      } else {
-        console.log(`⚠️ Instructor inválido en fila ${index + 2}:`, instructor);
+      if (instructor !== undefined && instructor !== null) {
+        const instructorStr = instructor.toString().trim();
+        
+        // Verificar que no esté vacío y no sea un valor nulo/indefinido
+        if (instructorStr !== '' && 
+            instructorStr.toLowerCase() !== 'null' && 
+            instructorStr.toLowerCase() !== 'undefined' &&
+            instructorStr.toLowerCase() !== 'no asignado' &&
+            instructorStr !== '0' &&
+            instructorStr !== '-') {
+          instructorLimpio = instructorStr;
+        }
       }
       
       const cursoKey = curso.toString().trim();
       
-      // Agregar o actualizar curso
       if (transformedData[monthKey][escuela][area][cursoKey]) {
-        // Curso existe, sumar valores
         transformedData[monthKey][escuela][area][cursoKey].ventas += ventasNum;
         transformedData[monthKey][escuela][area][cursoKey].cursos += cursosNum;
         
-        // MEJORADO: Lógica de actualización de instructor
-        const existingInstructor = transformedData[monthKey][escuela][area][cursoKey].instructor;
-        
-        // Solo actualizar si el nuevo instructor es válido Y (el actual no es válido O es diferente)
-        if (instructorLimpio !== 'No asignado') {
-          if (existingInstructor === 'No asignado' || existingInstructor !== instructorLimpio) {
-            console.log(`🔄 Actualizando instructor de "${existingInstructor}" a "${instructorLimpio}"`);
-            transformedData[monthKey][escuela][area][cursoKey].instructor = instructorLimpio;
-          }
+        // MEJORA: Solo actualizar instructor si el nuevo es válido y el actual no lo es
+        if (transformedData[monthKey][escuela][area][cursoKey].instructor === 'No asignado' && 
+            instructorLimpio !== 'No asignado') {
+          transformedData[monthKey][escuela][area][cursoKey].instructor = instructorLimpio;
         }
       } else {
-        // Curso nuevo
         transformedData[monthKey][escuela][area][cursoKey] = {
           ventas: ventasNum,
           cursos: cursosNum,
           instructor: instructorLimpio
         };
-        console.log(`➕ Nuevo curso agregado: ${cursoKey} con instructor: ${instructorLimpio}`);
       }
     });
     
-    console.log('✅ Transformación completada:', transformedData);
-    console.log('👥 Instructores únicos encontrados:', [...new Set(
-      Object.values(transformedData).flatMap(monthData =>
-        Object.values(monthData).flatMap(schoolData =>
-          Object.values(schoolData).flatMap(areaData =>
-            Object.values(areaData).map(courseData => courseData.instructor)
-          )
-        )
-      )
-    )].filter(i => i !== 'No asignado'));
-    
+    console.log('✅ Datos transformados:', transformedData);
     return transformedData;
   };
 
@@ -368,14 +306,11 @@ const Dashboard = () => {
     return result;
   };
 
-  // CORREGIDA: Función de fetch con mejor manejo de actualizaciones
   const fetchGoogleSheetsData = async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
     setIsManualRefresh(showLoading);
     
     try {
-      console.log('🔄 Iniciando fetch de datos...');
-      
       const ventasUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.ventas}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
       const ventasResponse = await fetch(ventasUrl);
       
@@ -388,16 +323,9 @@ const Dashboard = () => {
       const transformedVentas = transformGoogleSheetsData(ventasData.values);
       const transformedContact = transformContactData(ventasData.values);
       
-      // MEJORADO: Actualizar estados y forzar re-render
-      setSalesData(prevData => {
-        console.log('📦 Datos anteriores:', prevData);
-        console.log('📦 Nuevos datos:', transformedVentas);
-        return transformedVentas;
-      });
-      
+      setSalesData(transformedVentas);
       setContactData(transformedContact);
       
-      // Fetch cobranza
       const cobranzaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.cobranza}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
       const cobranzaResponse = await fetch(cobranzaUrl);
       
@@ -407,7 +335,6 @@ const Dashboard = () => {
       const transformedCobranza = transformCobranzaData(cobranzaDataResponse.values);
       setCobranzaData(transformedCobranza);
 
-      // Fetch ingresos
       const ingresosUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.ingresos}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
       const ingresosResponse = await fetch(ingresosUrl);
 
@@ -417,17 +344,13 @@ const Dashboard = () => {
       const transformedIngresos = transformIngresosData(ingresosDataResponse.values);
       setIngresosData(transformedIngresos);
       
-      // Actualizar estados de conexión
       setConnectionStatus('connected');
       setLastUpdated(new Date());
       setErrorMessage('');
       
-      // NUEVO: Forzar actualización de componentes
-      setDataUpdateTrigger(prev => prev + 1);
-      
       console.log('✅ Datos actualizados correctamente');
     } catch (error) {
-      console.error('❌ Error fetching Google Sheets data:', error);
+      console.error('Error fetching Google Sheets data:', error);
       setConnectionStatus('error');
       setErrorMessage(error.message);
       
@@ -453,7 +376,6 @@ const Dashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // MEJORADOS: Memos con dependencias correctas
   const schools = useMemo(() => {
     const schoolsSet = new Set();
     Object.values(salesData || {}).forEach(monthData => {
@@ -462,7 +384,7 @@ const Dashboard = () => {
       });
     });
     return Array.from(schoolsSet);
-  }, [salesData, dataUpdateTrigger]);
+  }, [salesData]);
 
   const areas = useMemo(() => {
     const areasSet = new Set();
@@ -474,35 +396,34 @@ const Dashboard = () => {
       });
     });
     return Array.from(areasSet);
-  }, [salesData, dataUpdateTrigger]);
+  }, [salesData]);
 
   const months = useMemo(() => {
     return Object.keys(salesData || {}).sort();
-  }, [salesData, dataUpdateTrigger]);
+  }, [salesData]);
 
-  // CORREGIDO: Cálculo de instructores con mejor validación
+  // MEJORA: Función más robusta para obtener todos los instructores
   const allInstructors = useMemo(() => {
-    console.log('🔍 Recalculando allInstructors...');
     const instructorsSet = new Set();
     
-    Object.entries(salesData || {}).forEach(([monthKey, monthData]) => {
-      Object.entries(monthData || {}).forEach(([schoolKey, schoolData]) => {
-        Object.entries(schoolData || {}).forEach(([areaKey, areaData]) => {
-          Object.entries(areaData || {}).forEach(([courseKey, courseData]) => {
-            if (courseData?.instructor && isValidInstructor(courseData.instructor)) {
-              const cleanInstructor = courseData.instructor.toString().trim();
-              instructorsSet.add(cleanInstructor);
-              console.log(`👤 Instructor encontrado: ${cleanInstructor} en ${monthKey}/${schoolKey}/${areaKey}/${courseKey}`);
+    Object.values(salesData || {}).forEach(monthData => {
+      Object.values(monthData || {}).forEach(schoolData => {
+        Object.values(schoolData || {}).forEach(areaData => {
+          Object.values(areaData || {}).forEach(courseData => {
+            if (courseData?.instructor && 
+                courseData.instructor !== 'No asignado' &&
+                courseData.instructor.trim() !== '' &&
+                courseData.instructor.toLowerCase() !== 'null' &&
+                courseData.instructor.toLowerCase() !== 'undefined') {
+              instructorsSet.add(courseData.instructor.trim());
             }
           });
         });
       });
     });
     
-    const result = Array.from(instructorsSet).sort();
-    console.log('👥 Total instructores únicos:', result);
-    return result;
-  }, [salesData, dataUpdateTrigger]);
+    return Array.from(instructorsSet).sort();
+  }, [salesData]);
 
   const formatDateForDisplay = (monthString) => {
     try {
@@ -607,18 +528,14 @@ const Dashboard = () => {
     return totals;
   };
 
-  // CORREGIDA: Función principal para calcular totales de instructores
+  // MEJORA: Función corregida para calcular totales de instructores
   const getInstructorTotals = (month, school = null) => {
-    console.log(`📊 Calculando totales de instructores para ${month}${school ? ` en ${school}` : ''}`);
-    
     const totals = {};
     if (!salesData || !salesData[month]) {
-      console.log('⚠️ No hay datos para el mes seleccionado');
       return totals;
     }
     
-    const schoolsToProcess = school && school !== "Todas" ? [school] : Object.keys(salesData[month]);
-    console.log('🏫 Escuelas a procesar:', schoolsToProcess);
+    const schoolsToProcess = school ? [school] : Object.keys(salesData[month]);
     
     schoolsToProcess.forEach(schoolKey => {
       if (salesData[month][schoolKey]) {
@@ -627,10 +544,16 @@ const Dashboard = () => {
             const courseData = salesData[month][schoolKey][area][course];
             const instructor = courseData?.instructor;
             
-            console.log(`🔍 Procesando: ${schoolKey}/${area}/${course} - Instructor: "${instructor}"`);
-            
-            // MEJORADA: Validación más estricta del instructor
-            if (isValidInstructor(instructor)) {
+            // MEJORA: Validación más estricta del instructor
+            if (instructor && 
+                instructor !== '' && 
+                instructor !== 'No asignado' && 
+                instructor !== 'null' && 
+                instructor !== 'undefined' &&
+                instructor.toString().trim() !== '' &&
+                instructor.toString().trim() !== '0' &&
+                instructor.toString().trim() !== '-') {
+              
               const instructorKey = instructor.toString().trim();
               
               if (!totals[instructorKey]) {
@@ -640,17 +563,12 @@ const Dashboard = () => {
                   areas: new Set(), 
                   escuelas: new Set() 
                 };
-                console.log(`➕ Nuevo instructor agregado: ${instructorKey}`);
               }
               
               totals[instructorKey].ventas += courseData.ventas || 0;
               totals[instructorKey].cursos += courseData.cursos || 0;
               totals[instructorKey].areas.add(area);
               totals[instructorKey].escuelas.add(schoolKey);
-              
-              console.log(`✅ Actualizado ${instructorKey}: Ventas=${totals[instructorKey].ventas}, Cursos=${totals[instructorKey].cursos}`);
-            } else {
-              console.log(`❌ Instructor inválido: "${instructor}"`);
             }
           });
         });
@@ -663,30 +581,22 @@ const Dashboard = () => {
       totals[instructor].escuelas = Array.from(totals[instructor].escuelas);
     });
     
-    console.log('📈 Totales finales de instructores:', totals);
     return totals;
   };
 
   // Función de debug mejorada
   const debugInstructors = () => {
-    console.log('🐛 === DEBUG DE INSTRUCTORES DETALLADO ===');
+    console.log('🐛 === DEBUG DE INSTRUCTORES ===');
     console.log('📅 Mes seleccionado:', selectedMonth);
     console.log('🏫 Escuela seleccionada:', selectedSchool);
-    console.log('🔄 Data update trigger:', dataUpdateTrigger);
     
-    // Mostrar estructura completa de datos
-    console.log('📊 Estructura completa de salesData:', JSON.stringify(salesData, null, 2));
-    
-    // Mostrar datos del mes actual
+    // Mostrar datos raw
     if (salesData[selectedMonth]) {
-      console.log('📅 Datos del mes actual:', salesData[selectedMonth]);
-    } else {
-      console.log('❌ No hay datos para el mes seleccionado');
+      console.log('📊 Datos del mes:', salesData[selectedMonth]);
     }
     
-    // Recopilar todos los instructores
     const todosInstructores = new Set();
-    const instructoresDetallados = [];
+    let instructoresRaw = [];
     
     Object.entries(salesData || {}).forEach(([mes, monthData]) => {
       Object.entries(monthData || {}).forEach(([escuela, schoolData]) => {
@@ -694,36 +604,29 @@ const Dashboard = () => {
           Object.entries(areaData || {}).forEach(([curso, courseData]) => {
             if (courseData?.instructor) {
               const instructorRaw = courseData.instructor;
-              const esValido = isValidInstructor(instructorRaw);
-              
-              instructoresDetallados.push({
+              instructoresRaw.push({
                 mes,
                 escuela,
                 area,
                 curso,
                 instructor: instructorRaw,
-                esValido,
                 ventas: courseData.ventas,
                 cursos: courseData.cursos
               });
-              
-              if (esValido) {
-                todosInstructores.add(instructorRaw.toString().trim());
-              }
+              todosInstructores.add(instructorRaw);
             }
           });
         });
       });
     });
     
-    console.log('👥 TODOS LOS INSTRUCTORES VÁLIDOS:', Array.from(todosInstructores).sort());
-    console.log('📝 INSTRUCTORES DETALLADOS:', instructoresDetallados);
+    console.log('👥 TODOS LOS INSTRUCTORES ENCONTRADOS:', Array.from(todosInstructores).sort());
+    console.log('📝 INSTRUCTORES RAW:', instructoresRaw);
     
     const totalesInstructores = getInstructorTotals(selectedMonth, selectedSchool === "Todas" ? null : selectedSchool);
     console.log('📈 TOTALES CALCULADOS:', totalesInstructores);
     
-    console.log('🔍 allInstructors (memo):', allInstructors);
-    console.log('🔍 Cantidad de instructores en allInstructors:', allInstructors.length);
+    console.log('🔍 Instructores en allInstructors:', allInstructors);
   };
 
   const ExecutiveDashboard = () => {
@@ -756,12 +659,9 @@ const Dashboard = () => {
         cursosGrowth: 0,
         ticketPromedio
       };
-    }, [selectedMonth, salesData, dataUpdateTrigger]);
+    }, [selectedMonth, salesData]);
 
-    // CORREGIDO: Usar useMemo para forzar recálculo cuando cambien los datos
-    const instructorTotals = useMemo(() => {
-      return getInstructorTotals(selectedMonth);
-    }, [selectedMonth, salesData, dataUpdateTrigger]);
+    const instructorTotals = getInstructorTotals(selectedMonth);
 
     return (
       <div className="space-y-6">
@@ -820,39 +720,6 @@ const Dashboard = () => {
                 <option value="contact">Medios de Contacto</option>
               </select>
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Mes
-              </label>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {months.map(month => (
-                  <option key={month} value={month}>
-                    {formatDateForDisplay(month)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Escuela
-              </label>
-              <select
-                value={selectedSchool}
-                onChange={(e) => setSelectedSchool(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="Todas">Todas las escuelas</option>
-                {schools.map(school => (
-                  <option key={school} value={school}>{school}</option>
-                ))}
-              </select>
-            </div>
           </div>
         </div>
 
@@ -905,29 +772,13 @@ const Dashboard = () => {
             <Star className="w-5 h-5 text-yellow-500" />
             <h3 className="text-lg font-semibold">Top Instructores del Mes</h3>
             <span className="text-sm text-gray-500">({formatDateForDisplay(selectedMonth)})</span>
-            {/* Badge con cantidad de instructores */}
-            <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-              {Object.keys(instructorTotals).length} activos
-            </span>
           </div>
           
           {Object.keys(instructorTotals).length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p className="text-lg font-medium">No hay instructores registrados para este período</p>
-              <p className="text-sm mt-1">Verifica que los datos en Google Sheets tengan la columna de instructor completada correctamente</p>
-              <div className="mt-4 space-y-2">
-                <button
-                  onClick={debugInstructors}
-                  className="px-4 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 text-sm"
-                >
-                  🐛 Ver detalles de debug
-                </button>
-                <div className="text-xs text-gray-400">
-                  <p>Total de instructores en el sistema: {allInstructors.length}</p>
-                  <p>Datos disponibles para: {Object.keys(salesData).join(', ')}</p>
-                </div>
-              </div>
+              <p>No hay instructores registrados para este período</p>
+              <p className="text-sm">Verifica que los datos en Google Sheets tengan la columna de instructor completada</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -935,7 +786,7 @@ const Dashboard = () => {
                 .sort(([,a], [,b]) => (b.ventas || 0) - (a.ventas || 0))
                 .slice(0, 10)
                 .map(([instructor, data], index) => (
-                  <div key={`${instructor}-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div key={instructor} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                     <div className="flex items-center gap-3">
                       <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${
                         index === 0 ? 'bg-yellow-500' : 
@@ -966,55 +817,35 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Información de Debug Expandida */}
+        {/* Información de Debug */}
         <div className="bg-gray-50 rounded-lg p-4 text-sm">
-          <h4 className="font-semibold mb-2 flex items-center gap-2">
-            <Activity className="w-4 h-4" />
-            Información del Sistema
-          </h4>
+          <h4 className="font-semibold mb-2">Información del Sistema</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-600">
             <div>
-              <p><strong>Total de instructores en sistema:</strong> {allInstructors.length}</p>
+              <p><strong>Total de instructores encontrados:</strong> {allInstructors.length}</p>
               <p><strong>Instructores activos este mes:</strong> {Object.keys(instructorTotals).length}</p>
-              <p><strong>Trigger de actualización:</strong> {dataUpdateTrigger}</p>
             </div>
             <div>
               <p><strong>Escuelas disponibles:</strong> {schools.length}</p>
               <p><strong>Áreas disponibles:</strong> {areas.length}</p>
-              <p><strong>Estado de conexión:</strong> {connectionStatus}</p>
             </div>
           </div>
           
           {allInstructors.length > 0 && (
             <div className="mt-3">
-              <p className="font-medium mb-1">Todos los instructores registrados:</p>
-              <div className="flex flex-wrap gap-1">
-                {allInstructors.map((instructor, index) => (
-                  <span
-                    key={instructor}
-                    className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800"
-                  >
-                    {instructor}
-                  </span>
-                ))}
-              </div>
+              <p className="font-medium mb-1">Todos los instructores:</p>
+              <p className="text-xs text-gray-500">
+                {allInstructors.join(', ')}
+              </p>
             </div>
           )}
-          
-          <div className="mt-3 pt-3 border-t border-gray-200">
-            <p className="text-xs text-gray-500">
-              <strong>Última actualización:</strong> {lastUpdated ? lastUpdated.toLocaleString() : 'No disponible'}
-            </p>
-          </div>
         </div>
       </div>
     );
   };
 
   const SchoolDashboard = () => {
-    const schoolTotals = useMemo(() => {
-      return getSchoolTotals(selectedMonth);
-    }, [selectedMonth, salesData, dataUpdateTrigger]);
+    const schoolTotals = getSchoolTotals(selectedMonth);
     
     const chartData = Object.entries(schoolTotals).map(([school, data]) => ({
       name: school,
@@ -1029,6 +860,249 @@ const Dashboard = () => {
           <h3 className="text-lg font-semibold mb-4">Rendimiento por Escuela - {formatDateForDisplay(selectedMonth)}</h3>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <h4 className="text-md font-medium mb-3">Ventas por Escuela</h4>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip formatter={(value) => [`${value.toLocaleString()}`, 'Ventas']} />
+                  <Bar dataKey="ventas" fill="#10b981" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div>
+              <h4 className="text-md font-medium mb-3">Cursos Vendidos por Escuela</h4>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip formatter={(value) => [value, 'Cursos']} />
+                  <Bar dataKey="cursos" fill="#3b82f6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Object.entries(schoolTotals).map(([school, data]) => (
+            <div key={school} className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Building className="w-5 h-5 text-blue-500" />
+                <h4 className="font-semibold">{school}</h4>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Ventas:</span>
+                  <span className="font-semibold text-green-600">
+                    ${data.ventas.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Cursos:</span>
+                  <span className="font-semibold text-blue-600">
+                    {data.cursos}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Ticket promedio:</span>
+                  <span className="font-semibold text-purple-600">
+                    ${data.cursos ? Math.round(data.ventas / data.cursos) : 0}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const InstructorDashboard = () => {
+    const instructorTotals = getInstructorTotals(selectedMonth, selectedSchool === "Todas" ? null : selectedSchool);
+    
+    const chartData = Object.entries(instructorTotals)
+      .sort(([,a], [,b]) => (b.ventas || 0) - (a.ventas || 0))
+      .map(([instructor, data]) => ({
+        name: instructor.length > 15 ? instructor.substring(0, 15) + '...' : instructor,
+        fullName: instructor,
+        ventas: data.ventas,
+        cursos: data.cursos,
+        ticketPromedio: data.cursos ? Math.round(data.ventas / data.cursos) : 0,
+        areas: data.areas?.length || 0
+      }));
+
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4">
+            Rendimiento de Instructores - {formatDateForDisplay(selectedMonth)}
+            {selectedSchool !== "Todas" && (
+              <span className="text-base font-normal text-gray-500"> • {selectedSchool}</span>
+            )}
+          </h3>
+          
+          {chartData.length === 0 ? (
+            <div className="text-center py-12">
+              <User className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+              <h4 className="text-lg font-medium text-gray-600 mb-2">No hay instructores registrados</h4>
+              <p className="text-gray-500">
+                No se encontraron instructores para{' '}
+                {selectedSchool === "Todas" ? "este período" : `${selectedSchool} en este período`}
+              </p>
+              <button
+                onClick={debugInstructors}
+                className="mt-4 px-4 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200"
+              >
+                🐛 Ver detalles de debug
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <h4 className="text-md font-medium mb-3">Ventas por Instructor</h4>
+                  <ResponsiveContainer width="100%" height={400}>
+                    <BarChart data={chartData.slice(0, 10)} layout="horizontal">
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="name" type="category" width={100} />
+                      <Tooltip 
+                        formatter={(value, name) => [`${value.toLocaleString()}`, 'Ventas']}
+                        labelFormatter={(label) => {
+                          const item = chartData.find(d => d.name === label);
+                          return item?.fullName || label;
+                        }}
+                      />
+                      <Bar dataKey="ventas" fill="#10b981" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div>
+                  <h4 className="text-md font-medium mb-3">Cursos por Instructor</h4>
+                  <ResponsiveContainer width="100%" height={400}>
+                    <BarChart data={chartData.slice(0, 10)} layout="horizontal">
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="name" type="category" width={100} />
+                      <Tooltip 
+                        formatter={(value, name) => [value, 'Cursos']}
+                        labelFormatter={(label) => {
+                          const item = chartData.find(d => d.name === label);
+                          return item?.fullName || label;
+                        }}
+                      />
+                      <Bar dataKey="cursos" fill="#3b82f6" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Object.entries(instructorTotals)
+                  .sort(([,a], [,b]) => (b.ventas || 0) - (a.ventas || 0))
+                  .map(([instructor, data], index) => (
+                    <div key={instructor} className="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                          index < 3 ? 'bg-yellow-500' : 'bg-gray-400'
+                        }`}>
+                          {index + 1}
+                        </span>
+                        <h4 className="font-semibold text-sm">{instructor}</h4>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Ventas:</span>
+                          <span className="font-semibold text-green-600">
+                            ${(data.ventas || 0).toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Cursos:</span>
+                          <span className="font-semibold text-blue-600">
+                            {data.cursos || 0}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Ticket promedio:</span>
+                          <span className="font-semibold text-purple-600">
+                            ${data.cursos ? Math.round(data.ventas / data.cursos) : 0}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Áreas:</span>
+                          <span className="font-medium text-gray-700">
+                            {(data.areas || []).length}
+                          </span>
+                        </div>
+                        {data.areas && data.areas.length > 0 && (
+                          <div className="mt-2">
+                            <p className="text-xs text-gray-500">
+                              {data.areas.join(', ')}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const ContactDashboard = () => {
+    const currentContactData = contactData[selectedMonth] || {};
+    
+    const chartData = Object.entries(currentContactData).map(([medio, data]) => ({
+      name: medio,
+      ventas: data.ventas || 0,
+      cursos: data.cursos || 0
+    }));
+
+    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4">
+            Medios de Contacto - {formatDateForDisplay(selectedMonth)}
+          </h3>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <h4 className="text-md font-medium mb-3">Distribución de Ventas</h4>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="ventas"
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [`${value.toLocaleString()}`, 'Ventas']} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
             <div>
               <h4 className="text-md font-medium mb-3">Ventas por Medio</h4>
               <ResponsiveContainer width="100%" height={300}>
@@ -1121,7 +1195,7 @@ const Dashboard = () => {
       });
       
       return totals;
-    }, [selectedMonth, selectedSchool, salesData, dataUpdateTrigger]);
+    }, [selectedMonth, selectedSchool, salesData]);
 
     const chartData = Object.entries(areaTotals).map(([area, data]) => ({
       name: area,
@@ -1227,7 +1301,7 @@ const Dashboard = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Dashboard de Ventas</h1>
-          <p className="text-gray-600">Panel de control integral para el seguimiento de ventas e instructores</p>
+          <p className="text-gray-600">Panel de control integral para el seguimiento de ventas</p>
         </div>
         
         {renderDashboard()}
@@ -1236,293 +1310,37 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard; por Escuela</h4>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => [`${value.toLocaleString()}`, 'Ventas']} />
-                  <Bar dataKey="ventas" fill="#10b981" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div>
-              <h4 className="text-md font-medium mb-3">Cursos Vendidos por Escuela</h4>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => [value, 'Cursos']} />
-                  <Bar dataKey="cursos" fill="#3b82f6" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Object.entries(schoolTotals).map(([school, data]) => (
-            <div key={school} className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center gap-2 mb-3">
-                <Building className="w-5 h-5 text-blue-500" />
-                <h4 className="font-semibold">{school}</h4>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Ventas:</span>
-                  <span className="font-semibold text-green-600">
-                    ${data.ventas.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Cursos:</span>
-                  <span className="font-semibold text-blue-600">
-                    {data.cursos}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-600">Ticket promedio:</span>
-                  <span className="font-semibold text-purple-600">
-                    ${data.cursos ? Math.round(data.ventas / data.cursos) : 0}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  const InstructorDashboard = () => {
-    // CORREGIDO: Usar useMemo para forzar recálculo
-    const instructorTotals = useMemo(() => {
-      return getInstructorTotals(selectedMonth, selectedSchool === "Todas" ? null : selectedSchool);
-    }, [selectedMonth, selectedSchool, salesData, dataUpdateTrigger]);
-    
-    const chartData = Object.entries(instructorTotals)
-      .sort(([,a], [,b]) => (b.ventas || 0) - (a.ventas || 0))
-      .map(([instructor, data]) => ({
-        name: instructor.length > 15 ? instructor.substring(0, 15) + '...' : instructor,
-        fullName: instructor,
-        ventas: data.ventas,
-        cursos: data.cursos,
-        ticketPromedio: data.cursos ? Math.round(data.ventas / data.cursos) : 0,
-        areas: data.areas?.length || 0
-      }));
-
-    return (
-      <div className="space-y-6">
-        {/* Panel de filtros específico para instructores */}
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">
-              Dashboard de Instructores - {formatDateForDisplay(selectedMonth)}
-              {selectedSchool !== "Todas" && (
-                <span className="text-base font-normal text-gray-500"> • {selectedSchool}</span>
-              )}
-            </h3>
-            <div className="flex items-center gap-2">
-              <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                {Object.keys(instructorTotals).length} instructores activos
-              </span>
-              <button
-                onClick={() => fetchGoogleSheetsData(true)}
-                disabled={isLoading}
-                className={`flex items-center gap-1 px-3 py-1 rounded-lg text-sm ${
-                  isLoading 
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                }`}
+export default Dashboard;medium text-gray-700 mb-2">
+                Mes
+              </label>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <RefreshCw className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
-                {isLoading ? 'Cargando...' : 'Actualizar'}
-              </button>
+                {months.map(month => (
+                  <option key={month} value={month}>
+                    {formatDateForDisplay(month)}
+                  </option>
+                ))}
+              </select>
             </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          {chartData.length === 0 ? (
-            <div className="text-center py-12">
-              <User className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-              <h4 className="text-lg font-medium text-gray-600 mb-2">No hay instructores registrados</h4>
-              <p className="text-gray-500 mb-4">
-                No se encontraron instructores para{' '}
-                {selectedSchool === "Todas" ? "este período" : `${selectedSchool} en este período`}
-              </p>
-              
-              {/* Información de diagnóstico */}
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 max-w-md mx-auto mb-4">
-                <div className="text-sm text-yellow-700">
-                  <p className="font-medium mb-2">Diagnóstico:</p>
-                  <p>• Total instructores en sistema: {allInstructors.length}</p>
-                  <p>• Mes seleccionado: {selectedMonth}</p>
-                  <p>• Escuela seleccionada: {selectedSchool}</p>
-                  <p>• Datos disponibles: {Object.keys(salesData).length > 0 ? 'Sí' : 'No'}</p>
-                </div>
-              </div>
-              
-              <div className="space-x-3">
-                <button
-                  onClick={debugInstructors}
-                  className="px-4 py-2 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200"
-                >
-                  🐛 Ver detalles técnicos
-                </button>
-                <button
-                  onClick={() => fetchGoogleSheetsData(true)}
-                  className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
-                >
-                  🔄 Recargar datos
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <h4 className="text-md font-medium mb-3">Ventas por Instructor (Top 10)</h4>
-                  <ResponsiveContainer width="100%" height={400}>
-                    <BarChart data={chartData.slice(0, 10)} layout="horizontal">
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" />
-                      <YAxis dataKey="name" type="category" width={100} />
-                      <Tooltip 
-                        formatter={(value, name) => [`${value.toLocaleString()}`, 'Ventas']}
-                        labelFormatter={(label) => {
-                          const item = chartData.find(d => d.name === label);
-                          return item?.fullName || label;
-                        }}
-                      />
-                      <Bar dataKey="ventas" fill="#10b981" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-
-                <div>
-                  <h4 className="text-md font-medium mb-3">Cursos por Instructor (Top 10)</h4>
-                  <ResponsiveContainer width="100%" height={400}>
-                    <BarChart data={chartData.slice(0, 10)} layout="horizontal">
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" />
-                      <YAxis dataKey="name" type="category" width={100} />
-                      <Tooltip 
-                        formatter={(value, name) => [value, 'Cursos']}
-                        labelFormatter={(label) => {
-                          const item = chartData.find(d => d.name === label);
-                          return item?.fullName || label;
-                        }}
-                      />
-                      <Bar dataKey="cursos" fill="#3b82f6" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Tarjetas de instructores */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.entries(instructorTotals)
-                  .sort(([,a], [,b]) => (b.ventas || 0) - (a.ventas || 0))
-                  .map(([instructor, data], index) => (
-                    <div key={`instructor-${instructor}-${index}`} className="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                          index < 3 ? 'bg-yellow-500' : 'bg-gray-400'
-                        }`}>
-                          {index + 1}
-                        </span>
-                        <h4 className="font-semibold text-sm truncate" title={instructor}>{instructor}</h4>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Ventas:</span>
-                          <span className="font-semibold text-green-600">
-                            ${(data.ventas || 0).toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Cursos:</span>
-                          <span className="font-semibold text-blue-600">
-                            {data.cursos || 0}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Ticket promedio:</span>
-                          <span className="font-semibold text-purple-600">
-                            ${data.cursos ? Math.round(data.ventas / data.cursos) : 0}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Áreas:</span>
-                          <span className="font-medium text-gray-700">
-                            {(data.areas || []).length}
-                          </span>
-                        </div>
-                        {data.areas && data.areas.length > 0 && (
-                          <div className="mt-2">
-                            <p className="text-xs text-gray-500 truncate" title={data.areas.join(', ')}>
-                              {data.areas.join(', ')}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const ContactDashboard = () => {
-    const currentContactData = contactData[selectedMonth] || {};
-    
-    const chartData = Object.entries(currentContactData).map(([medio, data]) => ({
-      name: medio,
-      ventas: data.ventas || 0,
-      cursos: data.cursos || 0
-    }));
-
-    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
-
-    return (
-      <div className="space-y-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">
-            Medios de Contacto - {formatDateForDisplay(selectedMonth)}
-          </h3>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
             <div>
-              <h4 className="text-md font-medium mb-3">Distribución de Ventas</h4>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={chartData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="ventas"
-                  >
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => [`${value.toLocaleString()}`, 'Ventas']} />
-                </PieChart>
-              </ResponsiveContainer>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Escuela
+              </label>
+              <select
+                value={selectedSchool}
+                onChange={(e) => setSelectedSchool(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="Todas">Todas las escuelas</option>
+                {schools.map(school => (
+                  <option key={school} value={school}>{school}</option>
+                ))}
+              </select>
             </div>
 
             <div>
-              <h4 className="text-md font-medium mb-3">Ventas
+              <label className="block text-sm font-
