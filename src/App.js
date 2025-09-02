@@ -35,7 +35,7 @@ const fallbackData = {
         "Maquillaje Básico": { ventas: 28000, cursos: 24, instructor: "Ana Martínez" },
         "Maquillaje Profesional": { ventas: 42000, cursos: 18, instructor: "Sofia López" }
       },
-      "Certificaciones": {
+     "Certificaciones": {
         "Certificación Básica": { ventas: 35000, cursos: 35, instructor: "Roberto Silva" }
       }
     },
@@ -81,18 +81,15 @@ const Dashboard = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [isManualRefresh, setIsManualRefresh] = useState(false);
   const [alerts, setAlerts] = useState([]);
-
   const parseNumberFromString = (value) => {
     if (value === undefined || value === null || value === '') return 0;
     if (typeof value === 'number') return isNaN(value) ? 0 : value;
     
     const str = value.toString().trim();
     if (str === '' || str.toLowerCase() === 'null' || str.toLowerCase() === 'undefined') return 0;
-    
     const cleaned = str
       .replace(/[$,\s]/g, '')
       .replace(/[^\d.-]/g, '');
-    
     if (cleaned === '' || cleaned === '.' || cleaned === '-') return 0;
     
     const number = parseFloat(cleaned);
@@ -109,7 +106,7 @@ const Dashboard = () => {
         if (str.match(/^\d{4}-\d{2}$/)) {
           return str;
         }
-        
+  
         if (str.match(/^\d{1,2}\/\d{4}$/)) {
           const [month, year] = str.split('/');
           return `${year}-${month.padStart(2, '0')}`;
@@ -118,7 +115,8 @@ const Dashboard = () => {
         if (str.match(/^\d{1,2}-\d{4}$/)) {
           const [month, year] = str.split('-');
           return `${year}-${month.padStart(2, '0')}`;
-        }
+      
+      }
         
         return str;
       };
@@ -142,7 +140,6 @@ const Dashboard = () => {
 
     const rows = rawData.slice(1);
     const transformedData = {};
-    
     rows.forEach((row, index) => {
       if (!row || row.length === 0) {
         return;
@@ -179,32 +176,19 @@ const Dashboard = () => {
       const ventasNum = parseNumberFromString(ventas);
       const cursosNum = parseNumberFromString(cursosVendidos) || 1;
       
-      // MEJORA: Procesamiento más robusto del instructor
       let instructorLimpio = 'No asignado';
-      
-      if (instructor !== undefined && instructor !== null) {
+      if (instructor) {
         const instructorStr = instructor.toString().trim();
-        
-        // Verificar que no esté vacío y no sea un valor nulo/indefinido
-        if (instructorStr !== '' && 
-            instructorStr.toLowerCase() !== 'null' && 
-            instructorStr.toLowerCase() !== 'undefined' &&
-            instructorStr.toLowerCase() !== 'no asignado' &&
-            instructorStr !== '0' &&
-            instructorStr !== '-') {
+        if (instructorStr.length > 0) {
           instructorLimpio = instructorStr;
         }
       }
       
       const cursoKey = curso.toString().trim();
-      
       if (transformedData[monthKey][escuela][area][cursoKey]) {
         transformedData[monthKey][escuela][area][cursoKey].ventas += ventasNum;
         transformedData[monthKey][escuela][area][cursoKey].cursos += cursosNum;
-        
-        // MEJORA: Solo actualizar instructor si el nuevo es válido y el actual no lo es
-        if (transformedData[monthKey][escuela][area][cursoKey].instructor === 'No asignado' && 
-            instructorLimpio !== 'No asignado') {
+        if (transformedData[monthKey][escuela][area][cursoKey].instructor === 'No asignado' && instructorLimpio !== 'No asignado') {
           transformedData[monthKey][escuela][area][cursoKey].instructor = instructorLimpio;
         }
       } else {
@@ -219,10 +203,8 @@ const Dashboard = () => {
     console.log('✅ Datos transformados:', transformedData);
     return transformedData;
   };
-
   const transformContactData = (rawData) => {
     if (!rawData || rawData.length === 0) return {};
-    
     const rows = rawData.slice(1);
     const transformedData = {};
     
@@ -250,19 +232,15 @@ const Dashboard = () => {
       transformedData[monthKey][medio].ventas += ventasNum;
       transformedData[monthKey][medio].cursos += cursosNum;
     });
-    
     return transformedData;
   };
 
   const transformCobranzaData = (rawData) => {
     if (!rawData || rawData.length === 0) return {};
-    
     const headers = rawData[0];
     const rows = rawData.slice(1);
     const result = {};
-    
     const meses = headers.slice(1).filter(header => header && header.trim() !== '');
-    
     rows.forEach((row) => {
       const escuela = row[0];
       if (!escuela || escuela.trim() === '') {
@@ -279,13 +257,11 @@ const Dashboard = () => {
         result[escuelaClean][mesClean] = monto;
       });
     });
-    
     return result;
   };
 
   const transformIngresosData = (rawData) => {
     if (!rawData || rawData.length === 0) return {};
-    
     const result = {};
     const rows = rawData.slice(1);
     
@@ -301,6 +277,7 @@ const Dashboard = () => {
       const montoNumerico = parseNumberFromString(monto);
       
       result[conceptoClean] = montoNumerico;
+  
     });
     
     return result;
@@ -313,13 +290,11 @@ const Dashboard = () => {
     try {
       const ventasUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.ventas}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
       const ventasResponse = await fetch(ventasUrl);
-      
       if (!ventasResponse.ok) throw new Error(`Error ${ventasResponse.status}: ${ventasResponse.statusText}`);
       
       const ventasData = await ventasResponse.json();
       
       console.log('📊 Datos raw de Google Sheets:', ventasData.values);
-      
       const transformedVentas = transformGoogleSheetsData(ventasData.values);
       const transformedContact = transformContactData(ventasData.values);
       
@@ -328,18 +303,15 @@ const Dashboard = () => {
       
       const cobranzaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.cobranza}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
       const cobranzaResponse = await fetch(cobranzaUrl);
-      
       if (!cobranzaResponse.ok) throw new Error(`Error ${cobranzaResponse.status}: ${cobranzaResponse.statusText}`);
       
       const cobranzaDataResponse = await cobranzaResponse.json();
       const transformedCobranza = transformCobranzaData(cobranzaDataResponse.values);
       setCobranzaData(transformedCobranza);
-
       const ingresosUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.ingresos}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
       const ingresosResponse = await fetch(ingresosUrl);
 
       if (!ingresosResponse.ok) throw new Error(`Error ${ingresosResponse.status}: ${ingresosResponse.statusText}`);
-
       const ingresosDataResponse = await ingresosResponse.json();
       const transformedIngresos = transformIngresosData(ingresosDataResponse.values);
       setIngresosData(transformedIngresos);
@@ -353,7 +325,6 @@ const Dashboard = () => {
       console.error('Error fetching Google Sheets data:', error);
       setConnectionStatus('error');
       setErrorMessage(error.message);
-      
       if (Object.keys(salesData).length === 0) {
         setSalesData(fallbackData);
         setContactData(fallbackContactData);
@@ -363,11 +334,9 @@ const Dashboard = () => {
       setIsManualRefresh(false);
     }
   };
-
   useEffect(() => {
     fetchGoogleSheetsData();
   }, []);
-
   useEffect(() => {
     const interval = setInterval(() => {
       fetchGoogleSheetsData(false);
@@ -375,7 +344,6 @@ const Dashboard = () => {
 
     return () => clearInterval(interval);
   }, []);
-
   const schools = useMemo(() => {
     const schoolsSet = new Set();
     Object.values(salesData || {}).forEach(monthData => {
@@ -385,7 +353,6 @@ const Dashboard = () => {
     });
     return Array.from(schoolsSet);
   }, [salesData]);
-
   const areas = useMemo(() => {
     const areasSet = new Set();
     Object.values(salesData || {}).forEach(monthData => {
@@ -397,12 +364,9 @@ const Dashboard = () => {
     });
     return Array.from(areasSet);
   }, [salesData]);
-
   const months = useMemo(() => {
     return Object.keys(salesData || {}).sort();
   }, [salesData]);
-
-  // MEJORA: Función más robusta para obtener todos los instructores
   const allInstructors = useMemo(() => {
     const instructorsSet = new Set();
     
@@ -411,10 +375,7 @@ const Dashboard = () => {
         Object.values(schoolData || {}).forEach(areaData => {
           Object.values(areaData || {}).forEach(courseData => {
             if (courseData?.instructor && 
-                courseData.instructor !== 'No asignado' &&
-                courseData.instructor.trim() !== '' &&
-                courseData.instructor.toLowerCase() !== 'null' &&
-                courseData.instructor.toLowerCase() !== 'undefined') {
+             courseData.instructor.toString().trim().length > 0) {
               instructorsSet.add(courseData.instructor.trim());
             }
           });
@@ -424,7 +385,6 @@ const Dashboard = () => {
     
     return Array.from(instructorsSet).sort();
   }, [salesData]);
-
   const formatDateForDisplay = (monthString) => {
     try {
       const [year, month] = monthString.split('-');
@@ -442,7 +402,6 @@ const Dashboard = () => {
       return monthString;
     }
   };
-
   const formatDateShort = (monthString) => {
     try {
       const [year, month] = monthString.split('-');
@@ -460,7 +419,6 @@ const Dashboard = () => {
       return monthString;
     }
   };
-
   const calculateTrend = (values) => {
     if (!values || values.length < 2) return "stable";
     const lastTwo = values.slice(-2);
@@ -480,7 +438,6 @@ const Dashboard = () => {
         return <Minus className="w-4 h-4 text-gray-500" />;
     }
   };
-
   const ConnectionStatus = () => (
     <div className="flex items-center gap-2 text-sm">
       {connectionStatus === 'connected' && (
@@ -508,11 +465,9 @@ const Dashboard = () => {
       )}
     </div>
   );
-
   const getSchoolTotals = (month) => {
     const totals = {};
     if (!salesData || !salesData[month]) return totals;
-    
     Object.keys(salesData[month]).forEach(school => {
       totals[school] = { ventas: 0, cursos: 0 };
       Object.keys(salesData[month][school] || {}).forEach(area => {
@@ -528,7 +483,6 @@ const Dashboard = () => {
     return totals;
   };
 
-  // MEJORA: Función corregida para calcular totales de instructores
   const getInstructorTotals = (month, school = null) => {
     const totals = {};
     if (!salesData || !salesData[month]) {
@@ -536,7 +490,6 @@ const Dashboard = () => {
     }
     
     const schoolsToProcess = school ? [school] : Object.keys(salesData[month]);
-    
     schoolsToProcess.forEach(schoolKey => {
       if (salesData[month][schoolKey]) {
         Object.keys(salesData[month][schoolKey]).forEach(area => {
@@ -544,60 +497,47 @@ const Dashboard = () => {
             const courseData = salesData[month][schoolKey][area][course];
             const instructor = courseData?.instructor;
             
-            // MEJORA: Validación más estricta del instructor
-            if (instructor && 
-                instructor !== '' && 
-                instructor !== 'No asignado' && 
-                instructor !== 'null' && 
-                instructor !== 'undefined' &&
-                instructor.toString().trim() !== '' &&
-                instructor.toString().trim() !== '0' &&
-                instructor.toString().trim() !== '-') {
-              
+            if (instructor) {
               const instructorKey = instructor.toString().trim();
-              
-              if (!totals[instructorKey]) {
-                totals[instructorKey] = { 
-                  ventas: 0, 
-                  cursos: 0, 
-                  areas: new Set(), 
-                  escuelas: new Set() 
-                };
+              if (instructorKey.length > 0) {
+                if (!totals[instructorKey]) {
+                  totals[instructorKey] = { 
+                    ventas: 0, 
+                    cursos: 0, 
+                    areas: new Set(), 
+                    escuelas: new Set() 
+                  };
+                }
+                
+                totals[instructorKey].ventas += courseData.ventas || 0;
+                totals[instructorKey].cursos += courseData.cursos || 0;
+                totals[instructorKey].areas.add(area);
+                totals[instructorKey].escuelas.add(schoolKey);
               }
-              
-              totals[instructorKey].ventas += courseData.ventas || 0;
-              totals[instructorKey].cursos += courseData.cursos || 0;
-              totals[instructorKey].areas.add(area);
-              totals[instructorKey].escuelas.add(schoolKey);
             }
           });
         });
       }
     });
     
-    // Convertir Sets a Arrays para el display
     Object.keys(totals).forEach(instructor => {
       totals[instructor].areas = Array.from(totals[instructor].areas);
       totals[instructor].escuelas = Array.from(totals[instructor].escuelas);
     });
-    
     return totals;
   };
 
-  // Función de debug mejorada
   const debugInstructors = () => {
     console.log('🐛 === DEBUG DE INSTRUCTORES ===');
     console.log('📅 Mes seleccionado:', selectedMonth);
     console.log('🏫 Escuela seleccionada:', selectedSchool);
     
-    // Mostrar datos raw
     if (salesData[selectedMonth]) {
       console.log('📊 Datos del mes:', salesData[selectedMonth]);
     }
     
     const todosInstructores = new Set();
     let instructoresRaw = [];
-    
     Object.entries(salesData || {}).forEach(([mes, monthData]) => {
       Object.entries(monthData || {}).forEach(([escuela, schoolData]) => {
         Object.entries(schoolData || {}).forEach(([area, areaData]) => {
@@ -619,10 +559,8 @@ const Dashboard = () => {
         });
       });
     });
-    
     console.log('👥 TODOS LOS INSTRUCTORES ENCONTRADOS:', Array.from(todosInstructores).sort());
     console.log('📝 INSTRUCTORES RAW:', instructoresRaw);
-    
     const totalesInstructores = getInstructorTotals(selectedMonth, selectedSchool === "Todas" ? null : selectedSchool);
     console.log('📈 TOTALES CALCULADOS:', totalesInstructores);
     
@@ -660,7 +598,6 @@ const Dashboard = () => {
         ticketPromedio
       };
     }, [selectedMonth, salesData]);
-
     const instructorTotals = getInstructorTotals(selectedMonth);
 
     return (
@@ -744,7 +681,7 @@ const Dashboard = () => {
               <ShoppingCart className="w-8 h-8 text-blue-200" />
             </div>
           </div>
-          
+         
           <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow p-6 text-white">
             <div className="flex items-center justify-between">
               <div>
@@ -766,6 +703,7 @@ const Dashboard = () => {
           </div>
         </div>
 
+       
         {/* Top Instructores */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center gap-2 mb-4">
@@ -774,9 +712,10 @@ const Dashboard = () => {
             <span className="text-sm text-gray-500">({formatDateForDisplay(selectedMonth)})</span>
           </div>
           
-          {Object.keys(instructorTotals).length === 0 ? (
+          {Object.keys(instructorTotals).length === 0 ?
+          (
             <div className="text-center py-8 text-gray-500">
-              <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <User className="w-12 h-12 mx-auto mb-3 text-gray-300" />
               <p>No hay instructores registrados para este período</p>
               <p className="text-sm">Verifica que los datos en Google Sheets tengan la columna de instructor completada</p>
             </div>
@@ -846,14 +785,12 @@ const Dashboard = () => {
 
   const SchoolDashboard = () => {
     const schoolTotals = getSchoolTotals(selectedMonth);
-    
     const chartData = Object.entries(schoolTotals).map(([school, data]) => ({
       name: school,
       ventas: data.ventas,
       cursos: data.cursos,
       ticketPromedio: data.cursos ? Math.round(data.ventas / data.cursos) : 0
     }));
-
     return (
       <div className="space-y-6">
         <div className="bg-white rounded-lg shadow p-6">
@@ -925,7 +862,6 @@ const Dashboard = () => {
 
   const InstructorDashboard = () => {
     const instructorTotals = getInstructorTotals(selectedMonth, selectedSchool === "Todas" ? null : selectedSchool);
-    
     const chartData = Object.entries(instructorTotals)
       .sort(([,a], [,b]) => (b.ventas || 0) - (a.ventas || 0))
       .map(([instructor, data]) => ({
@@ -1063,13 +999,11 @@ const Dashboard = () => {
 
   const ContactDashboard = () => {
     const currentContactData = contactData[selectedMonth] || {};
-    
     const chartData = Object.entries(currentContactData).map(([medio, data]) => ({
       name: medio,
       ventas: data.ventas || 0,
       cursos: data.cursos || 0
     }));
-
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
     return (
@@ -1167,7 +1101,6 @@ const Dashboard = () => {
       </div>
     );
   };
-
   const AreaDashboard = () => {
     const areaTotals = useMemo(() => {
       const totals = {};
@@ -1196,14 +1129,12 @@ const Dashboard = () => {
       
       return totals;
     }, [selectedMonth, selectedSchool, salesData]);
-
     const chartData = Object.entries(areaTotals).map(([area, data]) => ({
       name: area,
       ventas: data.ventas,
       cursos: data.cursos,
       ticketPromedio: data.cursos ? Math.round(data.ventas / data.cursos) : 0
     }));
-
     return (
       <div className="space-y-6">
         <div className="bg-white rounded-lg shadow p-6">
@@ -1280,7 +1211,6 @@ const Dashboard = () => {
     );
   };
 
-  // Renderizado principal
   const renderDashboard = () => {
     switch (viewType) {
       case 'school':
@@ -1295,7 +1225,6 @@ const Dashboard = () => {
         return <ExecutiveDashboard />;
     }
   };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
@@ -1310,37 +1239,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;medium text-gray-700 mb-2">
-                Mes
-              </label>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {months.map(month => (
-                  <option key={month} value={month}>
-                    {formatDateForDisplay(month)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Escuela
-              </label>
-              <select
-                value={selectedSchool}
-                onChange={(e) => setSelectedSchool(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="Todas">Todas las escuelas</option>
-                {schools.map(school => (
-                  <option key={school} value={school}>{school}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-
+export default Dashboard;
