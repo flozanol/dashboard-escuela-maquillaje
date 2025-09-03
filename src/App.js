@@ -1,4 +1,291 @@
-import React, { useState, useMemo, useEffect } from 'react';
+{isLoading && isManualRefresh && (
+          <div className="bg-white rounded-lg shadow-lg p-8 mb-8 text-center">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-500" />
+            <p className="text-gray-600">Cargando datos desde Google Sheets...</p>
+          </div>
+        )}
+
+        {viewType === "executive" && <ExecutiveDashboard />}
+        {viewType === "cobranza" && <CobranzaDashboard />}
+        {viewType === "contacto" && <ContactDashboard />}
+
+        {(viewType === "escuela" || viewType === "area" || viewType === "instructor" || viewType === "curso") && !isLoading && (
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-800">
+                {viewType === "escuela" && "Análisis por Escuela"}
+                {viewType === "area" && `Análisis por Área${selectedSchool ? ` - ${selectedSchool}` : ""}`}
+                {viewType === "instructor" && `Análisis por Vendedor${selectedSchool ? ` - ${selectedSchool}` : ""}`}
+                {viewType === "curso" && `Análisis por Curso${selectedSchool ? ` - ${selectedSchool}` : ""}${selectedArea ? ` - ${selectedArea}` : ""}`}
+              </h2>
+              <div className="flex items-center gap-2">
+                {metricType === "ventas" ? <DollarSign className="w-5 h-5" /> : <ShoppingCart className="w-5 h-5" />}
+                <span className="text-sm font-medium">
+                  {metricType === "ventas" ? "Pesos Mexicanos" : "Unidades Vendidas"}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        {viewType === "escuela" ? "Escuela" : 
+                         viewType === "area" ? "Área" : 
+                         viewType === "instructor" ? "Vendedor" : "Curso"}
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        {metricType === "ventas" ? "Ventas" : "Cursos"}
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Promedio
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Tendencia
+                      </th>
+                      {(viewType === "instructor" || viewType === "curso") && (
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          {viewType === "instructor" ? "Áreas" : "Vendedor"}
+                        </th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {getViewData.map((row, index) => {
+                      const IconComponent = row.icono;
+                      return (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <div className="flex items-center gap-2">
+                              {IconComponent && <IconComponent className="w-4 h-4 text-gray-500" />}
+                              {row.nombre}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {metricType === "ventas" ? `${row.valor.toLocaleString()}` : row.valor.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {metricType === "ventas" ? `${row.promedio.toLocaleString()}` : row.promedio.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <TrendIcon trend={row.tendencia} />
+                          </td>
+                          {(viewType === "instructor" || viewType === "curso") && (
+                            <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
+                              {viewType === "instructor" ? row.areas : row.instructor}
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={getViewData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="nombre" 
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
+                      fontSize={12}
+                    />
+                    <YAxis tickFormatter={(value) => 
+                      metricType === "ventas" ? `${(value/1000).toFixed(0)}k` : value.toString()
+                    } />
+                    <Tooltip formatter={(value) => [
+                      metricType === "ventas" ? `${value.toLocaleString()}` : value.toLocaleString(),
+                      metricType === "ventas" ? "Ventas" : "Cursos"
+                    ]} />
+                    <Bar dataKey="valor" fill="#22C55E" />
+                    <Bar dataKey="promedio" fill="#6B7280" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {viewType === "comparacion" && !isLoading && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-6">
+              Comparación de Meses por Escuela
+            </h2>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={getViewData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="escuela" />
+                  <YAxis tickFormatter={(value) => 
+                    metricType === "ventas" ? `${(value/1000).toFixed(0)}k` : value.toString()
+                  } />
+                  <Tooltip />
+                  <Legend />
+                  {compareMonths.map((month, index) => (
+                    <Bar 
+                      key={month} 
+                      dataKey={month} 
+                      fill={index === 0 ? "#22C55E" : "#6B7280"} 
+                      name={formatDateForDisplay(month)}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;  const ExecutiveDashboard = () => {
+    const getSalesBySchoolAndMonth = () => {
+      const data = {};
+      schools.forEach(school => {
+        data[school] = {};
+        months.forEach(month => {
+          const totals = getSchoolTotals(month);
+          data[school][month] = totals[school] ? totals[school].ventas : 0;
+        });
+      });
+      return data;
+    };
+
+    const getCoursesBySchoolAndMonth = () => {
+      const data = {};
+      schools.forEach(school => {
+        data[school] = {};
+        months.forEach(month => {
+          const totals = getSchoolTotals(month);
+          data[school][month] = totals[school] ? totals[school].cursos : 0;
+        });
+      });
+      return data;
+    };
+
+    const calculateMonthlySalesTotals = () => {
+      const totals = {};
+      months.forEach(month => {
+        totals[month] = 0;
+        const monthData = salesData[month] || {};
+        Object.values(monthData).forEach(school => {
+          Object.values(school).forEach(area => {
+            Object.values(area).forEach(course => {
+              totals[month] += course.ventas;
+            });
+          });
+        });
+      });
+      return totals;
+    };
+
+    const calculateMonthlyCoursesTotals = () => {
+      const totals = {};
+      months.forEach(month => {
+        totals[month] = 0;
+        const monthData = salesData[month] || {};
+        Object.values(monthData).forEach(school => {
+          Object.values(school).forEach(area => {
+            Object.values(area).forEach(course => {
+              totals[month] += course.cursos;
+            });
+          });
+        });
+      });
+      return totals;
+    };
+
+    const salesBySchool = getSalesBySchoolAndMonth();
+    const coursesBySchool = getCoursesBySchoolAndMonth();
+    const monthlySalesTotals = calculateMonthlySalesTotals();
+    const monthlyCoursesTotals = calculateMonthlyCoursesTotals();
+
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center justify-between">
+            <ConnectionStatus />
+            <div className="flex items-center gap-2">
+              <div className="text-xs text-gray-500">
+                {Object.values(salesData).reduce((total, month) => {
+                  let monthTotal = 0;
+                  Object.values(month).forEach(school => {
+                    Object.values(school).forEach(area => {
+                      monthTotal += Object.keys(area).length;
+                    });
+                  });
+                  return total + monthTotal;
+                }, 0)} registros cargados
+              </div>
+              
+              <button
+                onClick={() => fetchGoogleSheetsData(true)}
+                disabled={isLoading}
+                className={`flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium ${
+                  isLoading 
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                    : 'bg-green-100 text-green-700 hover:bg-green-200'
+                }`}
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                {isLoading ? 'Cargando...' : 'Actualizar'}
+              </button>
+            </div>
+          </div>
+          
+          {connectionStatus === 'connected' && (
+            <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-green-800">
+                <strong>✅ Conectado exitosamente.</strong> Datos actualizados desde Google Sheets.
+              </p>
+            </div>
+          )}
+          
+          {connectionStatus === 'error' && (
+            <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                <strong>📊 Usando datos de respaldo.</strong> Verifica tu API Key y Spreadsheet ID.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-100 text-sm">Ventas Totales</p>
+                <p className="text-3xl font-bold">${executiveKPIs.totalVentas.toLocaleString()}</p>
+                <p className="text-green-100 text-sm">
+                  {executiveKPIs.ventasGrowth > 0 ? '+' : ''}{executiveKPIs.ventasGrowth.toFixed(1)}% vs mes anterior
+                </p>
+              </div>
+              <DollarSign className="w-8 h-8 text-green-200" />
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-gray-600 to-gray-700 rounded-lg shadow p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-100 text-sm">Cursos Vendidos</p>
+                <p className="text-3xl font-bold">{executiveKPIs.totalCursos.toLocaleString()}</p>
+                <p className="text-gray-100 text-sm">
+                  {executiveKPIs.cursosGrowth > 0 ? '+' : ''}{executiveKPIs.cursosGrowth.toFixed(1)}% vs mes anterior
+                </p>
+              </div>
+              <ShoppingCart className="w-8 h-8 text-gray-200" />
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-green-400 to-green-500 rounded-lg shadow p-6 text-white">
+            <div className="flex items-center justify-between">
+              <divimport React, { useState, useMemo, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Star, Target, AlertTriangle, Activity, Phone, Mail, Globe, MessageSquare, Users } from 'lucide-react';
 
