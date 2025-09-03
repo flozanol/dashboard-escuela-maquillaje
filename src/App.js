@@ -148,17 +148,19 @@
               />
               {/* Fallback logo en caso de que la imagen no cargue */}
               <div className="hidden">
-                <div className="flex">
-                  <div className="w-3 h-16 bg-gradient-to-b from-green-400 to-green-600 rounded-l-lg"></div>
-                  <div className="flex flex-col justify-center px-2">
-                    <div className="text-4xl font-bold text-gray-700">IDIP</div>
+                <div className="flex items-center">
+                  <div className="flex">
+                    <div className="w-3 h-16 bg-gradient-to-b from-green-400 to-green-600 rounded-l-lg"></div>
+                    <div className="flex flex-col justify-center px-2">
+                      <div className="text-4xl font-bold text-gray-700">IDIP</div>
+                    </div>
                   </div>
-                </div>
-                <div className="ml-4 text-left">
-                  <div className="text-lg font-medium text-gray-700">Maquillaje</div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <div className="text-lg font-medium text-gray-700">Imagen</div>
+                  <div className="ml-4 text-left">
+                    <div className="text-lg font-medium text-gray-700">Maquillaje</div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <div className="text-lg font-medium text-gray-700">Imagen</div>
+                    </div>
                   </div>
                 </div>
               </div>
