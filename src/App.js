@@ -66,36 +66,110 @@ const fallbackContactData = {
 
 const Dashboard = () => {
   // Función de debug para verificar datos de instructores
-  const debugInstructors = () => {
-    console.log('DEBUG: Verificando datos de instructores...');
-    
-    Object.entries(salesData).forEach(([month, monthData]) => {
-      console.log(`Mes: ${month}`);
-      Object.entries(monthData).forEach(([school, schoolData]) => {
-        Object.entries(schoolData).forEach(([area, areaData]) => {
-          Object.entries(areaData).forEach(([course, courseData]) => {
-            console.log(`  ${course} (${school} - ${area})`);
-            console.log(`     Instructor: "${courseData.instructor}"`);
-            console.log(`     Ventas: ${courseData.ventas}`);
-            console.log(`     Cursos: ${courseData.cursos}`);
-          });
+  // BUSCA ESTA FUNCIÓN Y REEMPLÁZALA COMPLETAMENTE
+// Función de debug mejorada para verificar datos de instructores
+const debugInstructors = () => {
+  console.log('\n🔍 ===== DEBUG INSTRUCTORES - INICIO =====');
+  console.log('📊 Estructura completa de datos:', salesData);
+  
+  // 1. Revisar datos brutos por mes
+  Object.entries(salesData).forEach(([month, monthData]) => {
+    console.log(`\n📅 === MES: ${month} ===`);
+    Object.entries(monthData).forEach(([school, schoolData]) => {
+      console.log(`  🏫 Escuela: ${school}`);
+      Object.entries(schoolData).forEach(([area, areaData]) => {
+        console.log(`    📚 Área: ${area}`);
+        Object.entries(areaData).forEach(([course, courseData]) => {
+          console.log(`      📖 Curso: "${course}"`);
+          console.log(`         👤 Instructor: "${courseData.instructor}" (tipo: ${typeof courseData.instructor})`);
+          console.log(`         💰 Ventas: ${courseData.ventas}`);
+          console.log(`         📊 Cursos: ${courseData.cursos}`);
         });
       });
     });
+  });
+  
+  // 2. Analizar instructores únicos
+  console.log('\n👥 === ANÁLISIS DE INSTRUCTORES ÚNICOS ===');
+  const todosLosInstructores = new Set();
+  const instructoresPorMes = {};
+  
+  Object.entries(salesData).forEach(([month, monthData]) => {
+    instructoresPorMes[month] = new Set();
+    Object.values(monthData).forEach(schoolData => {
+      Object.values(schoolData).forEach(areaData => {
+        Object.values(areaData).forEach(courseData => {
+          if (courseData.instructor) {
+            const instructor = courseData.instructor.toString().trim();
+            todosLosInstructores.add(instructor);
+            instructoresPorMes[month].add(instructor);
+          }
+        });
+      });
+    });
+  });
+  
+  console.log(`📊 Total de instructores únicos: ${todosLosInstructores.size}`);
+  console.log('👥 Lista completa de instructores:');
+  Array.from(todosLosInstructores).forEach((instructor, index) => {
+    console.log(`   ${index + 1}. "${instructor}" (longitud: ${instructor.length})`);
+  });
+  
+  // 3. Verificar totales por instructor para el mes seleccionado
+  if (selectedMonth) {
+    console.log(`\n🧮 === TOTALES PARA ${selectedMonth} ===`);
+    const totales = getInstructorTotals(selectedMonth);
+    console.log(`Instructores encontrados: ${Object.keys(totales).length}`);
     
-    // Verificar totales por instructor para el mes actual
-    if (selectedMonth) {
-      const totales = getInstructorTotals(selectedMonth);
-      console.log(`Totales por instructor para ${selectedMonth}:`);
+    if (Object.keys(totales).length === 0) {
+      console.log('❌ NO SE ENCONTRARON INSTRUCTORES');
+      console.log('🔍 Verificando datos del mes seleccionado...');
+      console.log('Datos completos para el mes:', salesData[selectedMonth]);
+    } else {
       Object.entries(totales).forEach(([instructor, data]) => {
-        console.log(`  ${instructor}:`);
-        console.log(`     Ventas: $${data.ventas.toLocaleString()}`);
-        console.log(`     Cursos: ${data.cursos}`);
-        console.log(`     Escuelas: ${data.escuelas.join(', ')}`);
-        console.log(`     Areas: ${data.areas.join(', ')}`);
+        console.log(`👤 "${instructor}":`);
+        console.log(`     💰 Ventas: $${data.ventas.toLocaleString()}`);
+        console.log(`     📊 Cursos: ${data.cursos}`);
+        console.log(`     🏫 Escuelas: ${data.escuelas.join(', ')}`);
+        console.log(`     📚 Áreas: ${data.areas.join(', ')}`);
+        console.log(`     📖 Cursos detalle:`, data.cursos_detalle.map(c => `${c.curso} (${c.escuela})`).join(', '));
       });
     }
-  };
+  }
+  
+  // 4. Verificar problemas comunes
+  console.log('\n⚠️ === VERIFICACIÓN DE PROBLEMAS ===');
+  const problemasEncontrados = [];
+  
+  Object.entries(salesData).forEach(([month, monthData]) => {
+    Object.entries(monthData).forEach(([school, schoolData]) => {
+      Object.entries(schoolData).forEach(([area, areaData]) => {
+        Object.entries(areaData).forEach(([course, courseData]) => {
+          if (!courseData.instructor || courseData.instructor === '') {
+            problemasEncontrados.push(`${month} - ${school} - ${area} - ${course}: instructor vacío`);
+          }
+          if (courseData.instructor === 'Sin asignar') {
+            problemasEncontrados.push(`${month} - ${school} - ${area} - ${course}: instructor sin asignar`);
+          }
+        });
+      });
+    });
+  });
+  
+  if (problemasEncontrados.length > 0) {
+    console.log(`🚨 Se encontraron ${problemasEncontrados.length} problemas:`);
+    problemasEncontrados.slice(0, 10).forEach(problema => {
+      console.log(`   - ${problema}`);
+    });
+    if (problemasEncontrados.length > 10) {
+      console.log(`   ... y ${problemasEncontrados.length - 10} más`);
+    }
+  } else {
+    console.log('✅ No se encontraron problemas obvios');
+  }
+  
+  console.log('\n🔍 ===== DEBUG INSTRUCTORES - FIN =====\n');
+};
   const [selectedMonth, setSelectedMonth] = useState("2024-07");
   const [selectedSchool, setSelectedSchool] = useState("Polanco");
   const [selectedArea, setSelectedArea] = useState("Maquillaje");
@@ -268,6 +342,12 @@ const Dashboard = () => {
       setIsManualRefresh(false);
     }
   };
+
+  console.log('✅ Datos transformados:', transformedData);
+  return transformedData;
+};
+  
+// BUSCA ESTA FUNCIÓN Y REEMPLÁZALA COMPLETAMENTE
 const transformGoogleSheetsData = (rawData) => {
   const headers = rawData[0];
   const rows = rawData.slice(1);
@@ -276,21 +356,52 @@ const transformGoogleSheetsData = (rawData) => {
   console.log('📊 Transformando datos de Google Sheets...');
   console.log('Headers:', headers);
   console.log('Total de filas:', rows.length);
+  console.log('Estructura de headers:', headers.map((h, i) => `${i}: ${h}`));
   
   rows.forEach((row, index) => {
-    const [fecha, escuela, area, curso, ventas, cursosVendidos, instructor] = row;
+    // Asegurémonos de que tenemos los índices correctos
+    const fecha = row[0];
+    const escuela = row[1];
+    const area = row[2];
+    const curso = row[3];
+    const ventas = row[4];
+    const cursosVendidos = row[5];
+    const instructor = row[6]; // Columna G (índice 6)
+    
+    console.log(`📝 Fila ${index + 2}:`, {
+      fecha,
+      escuela,
+      area,
+      curso,
+      ventas,
+      cursosVendidos,
+      instructor: `"${instructor}"` // Mostrar con comillas para ver espacios
+    });
     
     if (!fecha || !escuela || !area || !curso) {
       console.warn(`Fila ${index + 2} incompleta:`, row);
       return;
     }
     
-    // Limpiar y normalizar el nombre del instructor
-    const instructorNormalizado = instructor ? 
-      instructor.toString().trim().replace(/\s+/g, ' ') : 
-      'Sin asignar';
+    // Procesamiento más robusto del instructor
+    let instructorNormalizado;
+    if (!instructor || instructor === '' || instructor === null || instructor === undefined) {
+      instructorNormalizado = 'Sin asignar';
+    } else {
+      // Convertir a string, limpiar espacios y normalizar
+      instructorNormalizado = instructor.toString()
+        .trim() // Quitar espacios al inicio y final
+        .replace(/\s+/g, ' ') // Reemplazar múltiples espacios por uno solo
+        .replace(/[""'']/g, '"') // Normalizar comillas
+        .replace(/\u00A0/g, ' '); // Reemplazar espacios no rompibles
+      
+      // Si después de limpiar queda vacío, asignar valor por defecto
+      if (instructorNormalizado === '') {
+        instructorNormalizado = 'Sin asignar';
+      }
+    }
     
-    console.log(`📝 Procesando: ${curso} - Instructor: "${instructorNormalizado}"`);
+    console.log(`👤 Instructor procesado: "${instructor}" -> "${instructorNormalizado}"`);
     
     const monthKey = fecha.substring(0, 7);
     
@@ -309,28 +420,54 @@ const transformGoogleSheetsData = (rawData) => {
     const ventasNum = parseNumberFromString(ventas);
     const cursosNum = parseNumberFromString(cursosVendidos) || 1;
     
-    if (transformedData[monthKey][escuela][area][curso]) {
-      transformedData[monthKey][escuela][area][curso].ventas += ventasNum;
-      transformedData[monthKey][escuela][area][curso].cursos += cursosNum;
-      // Mantener el instructor existente si el nuevo está vacío
-      if (!transformedData[monthKey][escuela][area][curso].instructor || 
-          transformedData[monthKey][escuela][area][curso].instructor === 'Sin asignar') {
-        transformedData[monthKey][escuela][area][curso].instructor = instructorNormalizado;
+    // Crear una clave única para el curso que incluya escuela y área para evitar duplicados
+    const cursoKey = curso;
+    
+    if (transformedData[monthKey][escuela][area][cursoKey]) {
+      // Si ya existe, sumar valores y mantener el instructor más específico
+      transformedData[monthKey][escuela][area][cursoKey].ventas += ventasNum;
+      transformedData[monthKey][escuela][area][cursoKey].cursos += cursosNum;
+      
+      // Lógica para mantener el mejor instructor
+      const instructorExistente = transformedData[monthKey][escuela][area][cursoKey].instructor;
+      if (instructorExistente === 'Sin asignar' && instructorNormalizado !== 'Sin asignar') {
+        transformedData[monthKey][escuela][area][cursoKey].instructor = instructorNormalizado;
+        console.log(`🔄 Instructor actualizado de "${instructorExistente}" a "${instructorNormalizado}"`);
+      } else if (instructorExistente !== instructorNormalizado && instructorNormalizado !== 'Sin asignar') {
+        console.log(`⚠️ Conflicto de instructores para ${curso}: "${instructorExistente}" vs "${instructorNormalizado}"`);
+        // Mantener el que no sea "Sin asignar" o el más largo (más específico)
+        if (instructorNormalizado.length > instructorExistente.length) {
+          transformedData[monthKey][escuela][area][cursoKey].instructor = instructorNormalizado;
+        }
       }
     } else {
-      transformedData[monthKey][escuela][area][curso] = {
+      transformedData[monthKey][escuela][area][cursoKey] = {
         ventas: ventasNum,
         cursos: cursosNum,
         instructor: instructorNormalizado
       };
+      console.log(`✅ Nuevo curso creado: ${curso} con instructor "${instructorNormalizado}"`);
     }
   });
   
+  // Log final de todos los instructores encontrados
+  const todosLosInstructores = new Set();
+  Object.values(transformedData).forEach(monthData => {
+    Object.values(monthData).forEach(schoolData => {
+      Object.values(schoolData).forEach(areaData => {
+        Object.values(areaData).forEach(courseData => {
+          if (courseData.instructor) {
+            todosLosInstructores.add(courseData.instructor);
+          }
+        });
+      });
+    });
+  });
+  
+  console.log('👥 Todos los instructores encontrados:', Array.from(todosLosInstructores));
   console.log('✅ Datos transformados:', transformedData);
   return transformedData;
 };
-  
-
   // Nueva función para transformar datos de medios de contacto
   const transformContactData = (rawData) => {
     const headers = rawData[0];
@@ -704,27 +841,44 @@ const transformGoogleSheetsData = (rawData) => {
     return totals;
   };
 
-  const getInstructorTotals = (month, school = null) => {
+  // BUSCA ESTA FUNCIÓN Y REEMPLÁZALA COMPLETAMENTE
+const getInstructorTotals = (month, school = null) => {
   const totals = {};
-  if (!salesData[month]) return totals;
+  if (!salesData[month]) {
+    console.log(`❌ No hay datos para el mes ${month}`);
+    return totals;
+  }
   
-  console.log(`Calculando totales para instructores en ${month}${school ? ` - ${school}` : ''}`);
+  console.log(`\n🧮 Calculando totales para instructores en ${month}${school ? ` - ${school}` : ''}`);
+  console.log(`📊 Datos disponibles para ${month}:`, Object.keys(salesData[month]));
   
   const schoolsToProcess = school ? [school] : Object.keys(salesData[month]);
+  console.log(`🏫 Escuelas a procesar:`, schoolsToProcess);
   
   schoolsToProcess.forEach(schoolKey => {
     if (salesData[month][schoolKey]) {
+      console.log(`\n🏫 Procesando escuela: ${schoolKey}`);
       Object.keys(salesData[month][schoolKey]).forEach(area => {
+        console.log(`  📚 Área: ${area}`);
         Object.keys(salesData[month][schoolKey][area]).forEach(course => {
           const courseData = salesData[month][schoolKey][area][course];
           const instructor = courseData.instructor;
           
-          console.log(`Curso: ${course}, Instructor: "${instructor}"`);
+          console.log(`    📖 Curso: ${course}`);
+          console.log(`        👤 Instructor original: "${instructor}"`);
+          console.log(`        💰 Ventas: ${courseData.ventas}`);
+          console.log(`        📊 Cursos: ${courseData.cursos}`);
           
-          // Incluir TODOS los instructores (removemos el filtrado restrictivo)
-          if (instructor) {
-            // Normalizar el nombre del instructor
-            const instructorKey = instructor.toString().trim().replace(/\s+/g, ' ');
+          // Procesar TODOS los instructores, incluso los que están vacíos o son "Sin asignar"
+          if (instructor !== undefined && instructor !== null) {
+            // Normalizar el nombre del instructor de forma consistente
+            const instructorKey = instructor.toString()
+              .trim()
+              .replace(/\s+/g, ' ')
+              .replace(/[""'']/g, '"')
+              .replace(/\u00A0/g, ' ');
+            
+            console.log(`        👤 Instructor normalizado: "${instructorKey}"`);
             
             if (!totals[instructorKey]) {
               totals[instructorKey] = { 
@@ -748,27 +902,31 @@ const transformGoogleSheetsData = (rawData) => {
               cursos: courseData.cursos
             });
             
-            console.log(`Instructor "${instructorKey}" agregado/actualizado`);
+            console.log(`        ✅ Instructor "${instructorKey}" actualizado - Total ventas: ${totals[instructorKey].ventas}`);
           } else {
-            console.warn(`Curso sin instructor: ${course} en ${schoolKey} - ${area}`);
+            console.warn(`        ⚠️ Curso sin instructor válido: ${course} en ${schoolKey} - ${area}`);
           }
         });
       });
+    } else {
+      console.log(`❌ No hay datos para la escuela ${schoolKey} en ${month}`);
     }
   });
   
-  // Convertir Sets a Arrays
+  // Convertir Sets a Arrays y hacer log final
   Object.keys(totals).forEach(instructor => {
     totals[instructor].areas = Array.from(totals[instructor].areas);
     totals[instructor].escuelas = Array.from(totals[instructor].escuelas);
   });
   
-  console.log(`Total de instructores encontrados: ${Object.keys(totals).length}`);
-  console.log('Instructores:', Object.keys(totals));
+  console.log(`\n📊 RESUMEN FINAL para ${month}:`);
+  console.log(`   Total de instructores encontrados: ${Object.keys(totals).length}`);
+  Object.entries(totals).forEach(([instructor, data]) => {
+    console.log(`   👤 "${instructor}": $${data.ventas.toLocaleString()} | ${data.cursos} cursos | ${data.escuelas.join(', ')}`);
+  });
   
   return totals;
 };
-        
   const getCourses = (month, school = null, area = null) => {
     const courses = {};
     if (!salesData[month]) return courses;
