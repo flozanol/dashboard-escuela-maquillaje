@@ -65,6 +65,37 @@ const fallbackContactData = {
 };
 
 const Dashboard = () => {
+  // Función de debug para verificar datos de instructores
+  const debugInstructors = () => {
+    console.log('DEBUG: Verificando datos de instructores...');
+    
+    Object.entries(salesData).forEach(([month, monthData]) => {
+      console.log(`Mes: ${month}`);
+      Object.entries(monthData).forEach(([school, schoolData]) => {
+        Object.entries(schoolData).forEach(([area, areaData]) => {
+          Object.entries(areaData).forEach(([course, courseData]) => {
+            console.log(`  ${course} (${school} - ${area})`);
+            console.log(`     Instructor: "${courseData.instructor}"`);
+            console.log(`     Ventas: ${courseData.ventas}`);
+            console.log(`     Cursos: ${courseData.cursos}`);
+          });
+        });
+      });
+    });
+    
+    // Verificar totales por instructor para el mes actual
+    if (selectedMonth) {
+      const totales = getInstructorTotals(selectedMonth);
+      console.log(`Totales por instructor para ${selectedMonth}:`);
+      Object.entries(totales).forEach(([instructor, data]) => {
+        console.log(`  ${instructor}:`);
+        console.log(`     Ventas: $${data.ventas.toLocaleString()}`);
+        console.log(`     Cursos: ${data.cursos}`);
+        console.log(`     Escuelas: ${data.escuelas.join(', ')}`);
+        console.log(`     Areas: ${data.areas.join(', ')}`);
+      });
+    }
+  };
   const [selectedMonth, setSelectedMonth] = useState("2024-07");
   const [selectedSchool, setSelectedSchool] = useState("Polanco");
   const [selectedArea, setSelectedArea] = useState("Maquillaje");
@@ -239,17 +270,66 @@ const Dashboard = () => {
   };
 
   const transformGoogleSheetsData = (rawData) => {
-    const headers = rawData[0];
-    const rows = rawData.slice(1);
-    const transformedData = {};
+  const headers = rawData[0];
+  const rows = rawData.slice(1);
+  const transformedData = {};
+  
+  console.log('📊 Transformando datos de Google Sheets...');
+  console.log('Headers:', headers);
+  console.log('Total de filas:', rows.length);
+  
+  rows.forEach((row, index) => {
+    const [fecha, escuela, area, curso, ventas, cursosVendidos, instructor] = row;
     
-    rows.forEach((row, index) => {
-      const [fecha, escuela, area, curso, ventas, cursosVendidos, instructor] = row;
-      
-      if (!fecha || !escuela || !area || !curso) {
-        console.warn(`Fila ${index + 2} incompleta:`, row);
-        return;
+    if (!fecha || !escuela || !area || !curso) {
+      console.warn(`Fila ${index + 2} incompleta:`, row);
+      return;
+    }
+    
+    // Limpiar y normalizar el nombre del instructor
+    const instructorNormalizado = instructor ? 
+      instructor.toString().trim().replace(/\s+/g, ' ') : 
+      'Sin asignar';
+    
+    console.log(`📝 Procesando: ${curso} - Instructor: "${instructorNormalizado}"`);
+    
+    const monthKey = fecha.substring(0, 7);
+    
+    if (!transformedData[monthKey]) {
+      transformedData[monthKey] = {};
+    }
+    
+    if (!transformedData[monthKey][escuela]) {
+      transformedData[monthKey][escuela] = {};
+    }
+    
+    if (!transformedData[monthKey][escuela][area]) {
+      transformedData[monthKey][escuela][area] = {};
+    }
+    
+    const ventasNum = parseNumberFromString(ventas);
+    const cursosNum = parseNumberFromString(cursosVendidos) || 1;
+    
+    if (transformedData[monthKey][escuela][area][curso]) {
+      transformedData[monthKey][escuela][area][curso].ventas += ventasNum;
+      transformedData[monthKey][escuela][area][curso].cursos += cursosNum;
+      // Mantener el instructor existente si el nuevo está vacío
+      if (!transformedData[monthKey][escuela][area][curso].instructor || 
+          transformedData[monthKey][escuela][area][curso].instructor === 'Sin asignar') {
+        transformedData[monthKey][escuela][area][curso].instructor = instructorNormalizado;
       }
+    } else {
+      transformedData[monthKey][escuela][area][curso] = {
+        ventas: ventasNum,
+        cursos: cursosNum,
+        instructor: instructorNormalizado
+      };
+    }
+  });
+  
+  console.log('✅ Datos transformados:', transformedData);
+  return transformedData;
+};
       
       const monthKey = fecha.substring(0, 7);
       
@@ -487,14 +567,34 @@ const Dashboard = () => {
   }, [salesData]);
 
   const instructors = useMemo(() => {
-    const instructorsSet = new Set();
-    Object.values(salesData).forEach(monthData => {
-      Object.values(monthData).forEach(schoolData => {
-        Object.values(schoolData).forEach(areaData => {
-          Object.values(areaData).forEach(courseData => {
-            if (courseData.instructor && courseData.instructor !== 'No asignado') {
-              instructorsSet.add(courseData.instructor);
-            }
+  const instructorsSet = new Set();
+  
+  console.log('Recolectando instructores de todos los datos...');
+  
+  Object.values(salesData).forEach((monthData, monthIndex) => {
+    console.log(`Procesando mes ${monthIndex + 1}`);
+    Object.values(monthData).forEach((schoolData, schoolIndex) => {
+      Object.values(schoolData).forEach((areaData, areaIndex) => {
+        Object.values(areaData).forEach((courseData, courseIndex) => {
+          if (courseData.instructor) {
+            const instructorNormalizado = courseData.instructor.toString().trim().replace(/\s+/g, ' ');
+            instructorsSet.add(instructorNormalizado);
+            console.log(`Instructor encontrado: "${instructorNormalizado}"`);
+          }
+        });
+      });
+    });
+  });
+  
+  const instructorsList = Array.from(instructorsSet).filter(instructor => 
+    instructor && instructor !== 'Sin asignar' && instructor !== 'No asignado'
+  );
+  
+  console.log(`Total instructores únicos: ${instructorsList.length}`);
+  console.log('Lista completa:', instructorsList);
+  
+  return instructorsList;
+}, [salesData]);
           });
         });
       });
@@ -642,27 +742,69 @@ const Dashboard = () => {
   };
 
   const getInstructorTotals = (month, school = null) => {
-    const totals = {};
-    if (!salesData[month]) return totals;
-    
-    const schoolsToProcess = school ? [school] : Object.keys(salesData[month]);
-    
-    schoolsToProcess.forEach(schoolKey => {
-      if (salesData[month][schoolKey]) {
-        Object.keys(salesData[month][schoolKey]).forEach(area => {
-          Object.keys(salesData[month][schoolKey][area]).forEach(course => {
-            const courseData = salesData[month][schoolKey][area][course];
-            const instructor = courseData.instructor;
+  const totals = {};
+  if (!salesData[month]) return totals;
+  
+  console.log(`Calculando totales para instructores en ${month}${school ? ` - ${school}` : ''}`);
+  
+  const schoolsToProcess = school ? [school] : Object.keys(salesData[month]);
+  
+  schoolsToProcess.forEach(schoolKey => {
+    if (salesData[month][schoolKey]) {
+      Object.keys(salesData[month][schoolKey]).forEach(area => {
+        Object.keys(salesData[month][schoolKey][area]).forEach(course => {
+          const courseData = salesData[month][schoolKey][area][course];
+          const instructor = courseData.instructor;
+          
+          console.log(`Curso: ${course}, Instructor: "${instructor}"`);
+          
+          // Incluir TODOS los instructores (removemos el filtrado restrictivo)
+          if (instructor) {
+            // Normalizar el nombre del instructor
+            const instructorKey = instructor.toString().trim().replace(/\s+/g, ' ');
             
-            if (instructor && instructor !== 'No asignado') {
-              if (!totals[instructor]) {
-                totals[instructor] = { ventas: 0, cursos: 0, areas: new Set(), escuelas: new Set() };
-              }
-              totals[instructor].ventas += courseData.ventas;
-              totals[instructor].cursos += courseData.cursos;
-              totals[instructor].areas.add(area);
-              totals[instructor].escuelas.add(schoolKey);
+            if (!totals[instructorKey]) {
+              totals[instructorKey] = { 
+                ventas: 0, 
+                cursos: 0, 
+                areas: new Set(), 
+                escuelas: new Set(),
+                cursos_detalle: [] 
+              };
             }
+            
+            totals[instructorKey].ventas += courseData.ventas;
+            totals[instructorKey].cursos += courseData.cursos;
+            totals[instructorKey].areas.add(area);
+            totals[instructorKey].escuelas.add(schoolKey);
+            totals[instructorKey].cursos_detalle.push({
+              curso: course,
+              escuela: schoolKey,
+              area: area,
+              ventas: courseData.ventas,
+              cursos: courseData.cursos
+            });
+            
+            console.log(`Instructor "${instructorKey}" agregado/actualizado`);
+          } else {
+            console.warn(`Curso sin instructor: ${course} en ${schoolKey} - ${area}`);
+          }
+        });
+      });
+    }
+  });
+  
+  // Convertir Sets a Arrays
+  Object.keys(totals).forEach(instructor => {
+    totals[instructor].areas = Array.from(totals[instructor].areas);
+    totals[instructor].escuelas = Array.from(totals[instructor].escuelas);
+  });
+  
+  console.log(`Total de instructores encontrados: ${Object.keys(totals).length}`);
+  console.log('Instructores:', Object.keys(totals));
+  
+  return totals;
+};
           });
         });
       }
@@ -2121,6 +2263,12 @@ const Dashboard = () => {
             >
               <DollarSign className="w-4 h-4" />
               Cobranza
+              <button
+  onClick={debugInstructors}
+  className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-lg text-sm hover:bg-yellow-200 font-medium"
+>
+  Debug Instructores
+</button>
             </button>
           </div>
 
