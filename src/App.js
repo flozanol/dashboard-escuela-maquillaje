@@ -358,7 +358,7 @@ const Dashboard = () => {
           instructor: instructor || 'No asignado'
         };
       }
-    });
+    };
     
     return transformedData;
   };
