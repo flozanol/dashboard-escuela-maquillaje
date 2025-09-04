@@ -1552,7 +1552,6 @@ const transformGoogleSheetsData = (rawData) => {
             <div className="space-y-3">
               {Object.entries(getInstructorTotals(selectedMonth))
                 .sort(([,a], [,b]) => b.ventas - a.ventas)
-                .slice(0, 5)
                 .map(([vendedor, data], index) => (
                   <div key={vendedor} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-3">
@@ -1584,7 +1583,6 @@ const transformGoogleSheetsData = (rawData) => {
             <div className="space-y-3">
               {Object.entries(getAreaTotals(selectedMonth))
                 .sort(([,a], [,b]) => b.ventas - a.ventas)
-                .slice(0, 5)
                 .map(([area, data], index) => (
                   <div key={area} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-3">
@@ -1612,7 +1610,6 @@ const transformGoogleSheetsData = (rawData) => {
             <div className="space-y-3">
               {Object.entries(getCourses(selectedMonth))
                 .sort(([,a], [,b]) => b.ventas - a.ventas)
-                .slice(0, 5)
                 .map(([course, data], index) => (
                   <div key={course} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div>
