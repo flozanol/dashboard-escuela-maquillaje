@@ -268,8 +268,7 @@ const Dashboard = () => {
       setIsManualRefresh(false);
     }
   };
-
-  const transformGoogleSheetsData = (rawData) => {
+const transformGoogleSheetsData = (rawData) => {
   const headers = rawData[0];
   const rows = rawData.slice(1);
   const transformedData = {};
@@ -293,9 +292,44 @@ const Dashboard = () => {
     
     console.log(`📝 Procesando: ${curso} - Instructor: "${instructorNormalizado}"`);
     
+    const monthKey = fecha.substring(0, 7);
     
-    return transformedData;
-  };
+    if (!transformedData[monthKey]) {
+      transformedData[monthKey] = {};
+    }
+    
+    if (!transformedData[monthKey][escuela]) {
+      transformedData[monthKey][escuela] = {};
+    }
+    
+    if (!transformedData[monthKey][escuela][area]) {
+      transformedData[monthKey][escuela][area] = {};
+    }
+    
+    const ventasNum = parseNumberFromString(ventas);
+    const cursosNum = parseNumberFromString(cursosVendidos) || 1;
+    
+    if (transformedData[monthKey][escuela][area][curso]) {
+      transformedData[monthKey][escuela][area][curso].ventas += ventasNum;
+      transformedData[monthKey][escuela][area][curso].cursos += cursosNum;
+      // Mantener el instructor existente si el nuevo está vacío
+      if (!transformedData[monthKey][escuela][area][curso].instructor || 
+          transformedData[monthKey][escuela][area][curso].instructor === 'Sin asignar') {
+        transformedData[monthKey][escuela][area][curso].instructor = instructorNormalizado;
+      }
+    } else {
+      transformedData[monthKey][escuela][area][curso] = {
+        ventas: ventasNum,
+        cursos: cursosNum,
+        instructor: instructorNormalizado
+      };
+    }
+  });
+  
+  console.log('✅ Datos transformados:', transformedData);
+  return transformedData;
+};
+  
 
   // Nueva función para transformar datos de medios de contacto
   const transformContactData = (rawData) => {
@@ -734,19 +768,7 @@ const Dashboard = () => {
   
   return totals;
 };
-          });
-        });
-      }
-    });
-    
-    Object.keys(totals).forEach(instructor => {
-      totals[instructor].areas = Array.from(totals[instructor].areas);
-      totals[instructor].escuelas = Array.from(totals[instructor].escuelas);
-    });
-    
-    return totals;
-  };
-
+        
   const getCourses = (month, school = null, area = null) => {
     const courses = {};
     if (!salesData[month]) return courses;
@@ -2184,7 +2206,6 @@ const Dashboard = () => {
               Medio de Contacto
             </button>
             <button
-              <button
               onClick={() => setViewType("cobranza")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "cobranza" 
                 ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg" 
