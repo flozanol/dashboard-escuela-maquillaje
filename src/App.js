@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
-// 🚀 NUEVO: Importamos el ícono Activity que usaste para la nueva pestaña
-import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Star, Target, AlertTriangle, Activity, Phone, Mail, Globe, MessageSquare, Users } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Star, Target, AlertTriangle, Activity, Phone, Mail, Globe, MessageSquare, Users, Calendar } from 'lucide-react';
 
 const GOOGLE_SHEETS_CONFIG = {
   apiKey: 'AIzaSyBXvaWWirK1_29g7x6uIq2qlmLdBL9g3TE',
@@ -9,7 +8,7 @@ const GOOGLE_SHEETS_CONFIG = {
   ranges: {
     ventas: 'Ventas!A:H', // Ampliamos hasta la columna H para incluir medio de contacto
     cobranza: 'Cobranza!A:Z',
-    // 🚀 NUEVO: Añadimos el rango para la nueva hoja
+    // 🚀 NUEVO: Mantenemos el rango amplio A:Z para capturar toda la data
     crecimientoAnual: 'Crecimiento Anual!A:Z' 
   }
 };
@@ -67,17 +66,34 @@ const fallbackContactData = {
   }
 };
 
-// 🚀 NUEVO: Datos de fallback para Crecimiento Anual
+// 🚀 NUEVO: Datos de fallback para Crecimiento Anual (Simulando la estructura ancha A:O)
 const fallbackCrecimientoAnualData = {
-  data: [
-    { year: 2022, ventas: 2500000, matriculas: 400, utilidad: 500000 },
-    { year: 2023, ventas: 3200000, matriculas: 550, utilidad: 750000 },
-    { year: 2024, ventas: 4500000, matriculas: 800, utilidad: 1100000 }
+  headers: ['Año', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic', 'Total', 'Crecimiento'],
+  rows: [
+    [2022, 200000, 250000, 280000, 310000, 350000, 380000, 400000, 420000, 450000, 480000, 500000, 520000, 4540000, 'N/A'],
+    [2023, 300000, 350000, 400000, 450000, 500000, 550000, 600000, 650000, 700000, 750000, 800000, 850000, 7500000, '65.2%'],
+    [2024, 400000, 480000, 550000, 620000, 700000, 780000, 850000, 0, 0, 0, 0, 0, 4380000, '15.6%'] // 2024 con datos parciales
   ],
-  kpis: {
-    tasaCrecimientoVentas: 40.6, // (4500k-3200k)/3200k * 100
-    totalMatriculas: 800,
-    utilidad: 1100000
+  years: [2022, 2023, 2024],
+  monthlyMap: {
+    '2024': [
+      { name: 'Ene', ventas: 400000 }, { name: 'Feb', ventas: 480000 }, { name: 'Mar', ventas: 550000 },
+      { name: 'Abr', ventas: 620000 }, { name: 'May', ventas: 700000 }, { name: 'Jun', ventas: 780000 },
+      { name: 'Jul', ventas: 850000 }, { name: 'Ago', ventas: 0 }, { name: 'Sep', ventas: 0 },
+      { name: 'Oct', ventas: 0 }, { name: 'Nov', ventas: 0 }, { name: 'Dic', ventas: 0 }
+    ],
+    '2023': [
+      { name: 'Ene', ventas: 300000 }, { name: 'Feb', ventas: 350000 }, { name: 'Mar', ventas: 400000 },
+      { name: 'Abr', ventas: 450000 }, { name: 'May', ventas: 500000 }, { name: 'Jun', ventas: 550000 },
+      { name: 'Jul', ventas: 600000 }, { name: 'Ago', ventas: 650000 }, { name: 'Sep', ventas: 700000 },
+      { name: 'Oct', ventas: 750000 }, { name: 'Nov', ventas: 800000 }, { name: 'Dic', ventas: 850000 }
+    ],
+    '2022': [
+      { name: 'Ene', ventas: 200000 }, { name: 'Feb', ventas: 250000 }, { name: 'Mar', ventas: 280000 },
+      { name: 'Abr', ventas: 310000 }, { name: 'May', ventas: 350000 }, { name: 'Jun', ventas: 380000 },
+      { name: 'Jul', ventas: 400000 }, { name: 'Ago', ventas: 420000 }, { name: 'Sep', ventas: 450000 },
+      { name: 'Oct', ventas: 480000 }, { name: 'Nov', ventas: 500000 }, { name: 'Dic', ventas: 520000 }
+    ]
   }
 };
 
@@ -133,6 +149,10 @@ const Dashboard = () => {
   const [isManualRefresh, setIsManualRefresh] = useState(false);
   const [alerts, setAlerts] = useState([]);
 
+  // 🚀 NUEVO: Estado para el selector de año en la pestaña de Crecimiento Anual
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+
+
   const parseNumberFromString = (value) => {
     // Si es undefined, null, o string vacío, retornar 0
     if (value === undefined || value === null || value === '') return 0;
@@ -147,7 +167,7 @@ const Dashboard = () => {
     // Remover símbolos de moneda, comas, espacios y otros caracteres no numéricos
     // Mantener solo dígitos, punto decimal y signo negativo
     const cleaned = str
-      .replace(/[$,\s]/g, '')        // Remover $, comas y espacios
+      .replace(/[$,\s%]/g, '')        // Remover $, comas, % y espacios
       .replace(/[^\d.-]/g, '');      // Mantener solo dígitos, punto y guión
     
     // Si después de limpiar no queda nada o solo caracteres especiales, retornar 0
@@ -159,88 +179,47 @@ const Dashboard = () => {
 
   // Función para ordenar meses cronológicamente (mejorada)
   const sortMonthsChronologically = (months) => {
-    console.log('🔍 Función sortMonthsChronologically recibió:', months);
-    
+    const monthOrder = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+    // Priorizar formatos YYYY-MM para la ordenación cronológica estricta si son meses
+    const parseToStandardDate = (dateStr) => {
+      if (!dateStr) return null;
+      const str = dateStr.toString().trim();
+      
+      // Formato YYYY-MM
+      if (str.match(/^\d{4}-\d{2}$/)) return str;
+      
+      // Intentar convertir nombres de mes (usado en la función original)
+      const monthNames = { 'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04', 'may': '05', 'jun': '06', 'jul': '07', 'ago': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dic': '12' };
+      const parts = str.toLowerCase().split(/[\s-]+/);
+      
+      // Si el formato es solo YYYY, darle un valor genérico
+      if (str.match(/^\d{4}$/)) return str + '-13'; 
+
+      // Si es "Mes" o "Mes AAAA"
+      if (parts.length >= 1) {
+          const monthKey = parts.find(p => monthNames[p]);
+          if (monthKey) {
+              return monthNames[monthKey]; // Devolvemos solo el número de mes para ordenación de meses
+          }
+      }
+      return str; // Devolver original
+    };
+
     return months.sort((a, b) => {
-      console.log(`🔀 Comparando: "${a}" vs "${b}"`);
-      
-      // Función para convertir diferentes formatos a YYYY-MM
-      const parseToStandardDate = (dateStr) => {
-        if (!dateStr) return null;
-        
-        const str = dateStr.toString().trim();
-        console.log(`  📅 Parseando: "${str}"`);
-        
-        // Formato YYYY-MM
-        if (str.match(/^\d{4}-\d{2}$/)) {
-          console.log(`    ✅ Formato YYYY-MM detectado: ${str}`);
-          return str;
-        }
-        
-        // Formato MM/YYYY
-        if (str.match(/^\d{1,2}\/\d{4}$/)) {
-          const [month, year] = str.split('/');
-          const result = `${year}-${month.padStart(2, '0')}`;
-          console.log(`    ✅ Formato MM/YYYY convertido: ${str} -> ${result}`);
-          return result;
-        }
-        
-        // Formato MM-YYYY
-        if (str.match(/^\d{1,2}-\d{4}$/)) {
-          const [month, year] = str.split('-');
-          const result = `${year}-${month.padStart(2, '0')}`;
-          console.log(`    ✅ Formato MM-YYYY convertido: ${str} -> ${result}`);
-          return result;
-        }
-        
-        // Formato "Mes YYYY" en español
-        const monthNames = {
-          'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
-          'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
-          'septiembre': '09', 'octubre': '10', 'noviembre': '11', 'diciembre': '12',
-          'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04',
-          'may': '05', 'jun': '06', 'jul': '07', 'ago': '08',
-          'sep': '09', 'oct': '10', 'nov': '11', 'dic': '12'
-        };
-        
-        const parts = str.toLowerCase().split(/[\s-]+/);
-        if (parts.length === 2) {
-          const month = monthNames[parts[0]];
-          const year = parts[1];
-          if (month && year && year.match(/^\d{4}$/)) {
-            const result = `${year}-${month}`;
-            console.log(`    ✅ Formato español convertido: ${str} -> ${result}`);
-            return result;
-          }
-        }
-        
-        // Formato "YYYY Mes" en español
-        if (parts.length === 2) {
-          const month = monthNames[parts[1]];
-          const year = parts[0];
-          if (month && year && year.match(/^\d{4}$/)) {
-            const result = `${year}-${month}`;
-            console.log(`    ✅ Formato español invertido convertido: ${str} -> ${result}`);
-            return result;
-          }
-        }
-        
-        console.log(`    ❌ Formato no reconocido: ${str}`);
-        return str; // Devolver original si no se puede parsear
-      };
-      
       const dateA = parseToStandardDate(a);
       const dateB = parseToStandardDate(b);
-      
-      if (!dateA || !dateB) {
-        console.log(`    ⚠️ No se pudieron parsear las fechas`);
-        return a.localeCompare(b); // Fallback a orden alfabético
+
+      if (dateA.match(/^\d{4}-\d{2}$/) && dateB.match(/^\d{4}-\d{2}$/)) {
+        // Si son meses completos, comparar cronológicamente
+        return dateA.localeCompare(dateB);
+      } else if (monthOrder.includes(dateA) && monthOrder.includes(dateB)) {
+        // Si son solo nombres de mes (Ene, Feb, etc.), usar el orden predefinido
+        return monthOrder.indexOf(dateA) - monthOrder.indexOf(dateB);
       }
       
-      const comparison = new Date(dateA + '-01') - new Date(dateB + '-01');
-      console.log(`    📊 Resultado: ${dateA} ${comparison < 0 ? '<' : comparison > 0 ? '>' : '='} ${dateB}`);
-      
-      return comparison;
+      // Fallback: ordenar alfabéticamente
+      return a.localeCompare(b); 
     });
   };
 
@@ -280,6 +259,12 @@ const Dashboard = () => {
       const crecimientoAnualData = await crecimientoAnualResponse.json();
       const transformedCrecimientoAnual = transformCrecimientoAnualData(crecimientoAnualData.values);
       setCrecimientoAnualData(transformedCrecimientoAnual); // Establecer los datos transformados
+      
+      // 🚀 NUEVO: Ajustar el año seleccionado al más reciente
+      if (transformedCrecimientoAnual.years.length > 0) {
+        setSelectedYear(transformedCrecimientoAnual.years[transformedCrecimientoAnual.years.length - 1].toString());
+      }
+
 
       setConnectionStatus('connected');
       setLastUpdated(new Date());
@@ -294,7 +279,7 @@ const Dashboard = () => {
         setContactData(fallbackContactData);
       }
       // 🚀 NUEVO: Fallback para Crecimiento Anual en caso de error
-      if (Object.keys(crecimientoAnualData.data).length === 0) {
+      if (crecimientoAnualData.rows.length === 0) {
         setCrecimientoAnualData(fallbackCrecimientoAnualData);
       }
     } finally {
@@ -307,15 +292,10 @@ const transformGoogleSheetsData = (rawData) => {
   const rows = rawData.slice(1);
   const transformedData = {};
   
-  console.log('📊 Transformando datos de Google Sheets...');
-  console.log('Headers:', headers);
-  console.log('Total de filas:', rows.length);
-  
   rows.forEach((row, index) => {
     const [fecha, escuela, area, curso, ventas, cursosVendidos, instructor] = row;
     
     if (!fecha || !escuela || !area || !curso) {
-      console.warn(`Fila ${index + 2} incompleta:`, row);
       return;
     }
     
@@ -323,8 +303,6 @@ const transformGoogleSheetsData = (rawData) => {
     const instructorNormalizado = instructor ? 
       instructor.toString().trim().replace(/\s+/g, ' ') : 
       'Sin asignar';
-    
-    console.log(`📝 Procesando: ${curso} - Instructor: "${instructorNormalizado}"`);
     
     const monthKey = fecha.substring(0, 7);
     
@@ -360,25 +338,20 @@ const transformGoogleSheetsData = (rawData) => {
     }
   });
   
-  console.log('✅ Datos transformados:', transformedData);
   return transformedData;
 };
   
 
   // Nueva función para transformar datos de medios de contacto
   const transformContactData = (rawData) => {
-    const headers = rawData[0];
     const rows = rawData.slice(1);
     const transformedData = {};
     
-    console.log('📞 Transformando datos de medios de contacto...');
-    console.log('Headers:', headers);
-    
-    rows.forEach((row, index) => {
-      const [fecha, escuela, area, curso, ventas, cursosVendidos, instructor, medioContacto] = row;
+    rows.forEach((row) => {
+      const [fecha, , , , ventas, cursosVendidos, , medioContacto] = row;
       
       if (!fecha || !medioContacto) {
-        return; // Saltar filas sin fecha o medio de contacto
+        return; 
       }
       
       const monthKey = fecha.substring(0, 7);
@@ -397,72 +370,51 @@ const transformGoogleSheetsData = (rawData) => {
       
       transformedData[monthKey][medio].ventas += ventasNum;
       transformedData[monthKey][medio].cursos += cursosNum;
-      
-      console.log(`📱 ${monthKey} - ${medio}: +${ventasNum} ventas, +${cursosNum} cursos`);
     });
     
-    console.log('✅ Datos de contacto transformados:', transformedData);
     return transformedData;
   };
   
-  // 🚀 NUEVO: Función para transformar datos de Crecimiento Anual
+  // 🚀 NUEVO: Función para transformar la estructura de tabla ancha A:O de Crecimiento Anual
   const transformCrecimientoAnualData = (rawData) => {
-    if (!rawData || rawData.length <= 1) return fallbackCrecimientoAnualData;
+    if (!rawData || rawData.length < 2) return fallbackCrecimientoAnualData;
 
-    const headers = rawData[0];
-    const rows = rawData.slice(1);
-    const transformedData = [];
+    const [headerRow, ...dataRows] = rawData;
+    // Solo tomamos las columnas hasta la columna O (índice 14), que es el crecimiento
+    const headers = headerRow.slice(0, 15); 
+    const rows = dataRows.filter(row => row.length > 0 && parseNumberFromString(row[0]) > 0).map(row => row.slice(0, 15));
 
-    // Asumimos el orden: [Año, Ventas, Matrículas, Utilidad]
+    const MONTH_ABBREVIATIONS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const monthlyMap = {};
+    const years = [];
+    
     const yearIndex = headers.findIndex(h => h.toLowerCase().includes('año'));
-    const ventasIndex = headers.findIndex(h => h.toLowerCase().includes('ventas'));
-    const matriculasIndex = headers.findIndex(h => h.toLowerCase().includes('matrículas') || h.toLowerCase().includes('matriculas'));
-    const utilidadIndex = headers.findIndex(h => h.toLowerCase().includes('utilidad') || h.toLowerCase().includes('ganancia'));
 
-    let totalVentas = 0;
-    let totalMatriculas = 0;
-    let totalUtilidad = 0;
-
-    rows.forEach((row, index) => {
+    rows.forEach(row => {
         const year = parseNumberFromString(row[yearIndex]);
-        const ventas = parseNumberFromString(row[ventasIndex]);
-        const matriculas = parseNumberFromString(row[matriculasIndex]);
-        const utilidad = parseNumberFromString(row[utilidadIndex]);
-
-        if (year > 0 && ventas >= 0) {
-            transformedData.push({
-                year: year,
-                ventas: ventas,
-                matriculas: matriculas,
-                utilidad: utilidad,
-            });
-            totalVentas += ventas;
-            totalMatriculas += matriculas;
-            totalUtilidad += utilidad;
+        if (year > 0) {
+            years.push(year);
+            monthlyMap[year] = [];
+            
+            // Asumimos que los meses van de B a M (índices 1 a 12)
+            for (let i = 1; i <= 12; i++) {
+                const monthName = MONTH_ABBREVIATIONS[i - 1];
+                const ventas = parseNumberFromString(row[i]);
+                
+                monthlyMap[year].push({
+                    name: monthName,
+                    ventas: ventas,
+                    // Usamos ventas como métrica principal para la gráfica de línea
+                });
+            }
         }
     });
 
-    // Calcular KPI de crecimiento de ventas
-    let tasaCrecimientoVentas = 0;
-    const sortedData = transformedData.sort((a, b) => a.year - b.year);
-
-    if (sortedData.length >= 2) {
-        const currentYear = sortedData[sortedData.length - 1];
-        const prevYear = sortedData[sortedData.length - 2];
-
-        if (prevYear.ventas > 0) {
-            tasaCrecimientoVentas = ((currentYear.ventas - prevYear.ventas) / prevYear.ventas) * 100;
-        }
-    }
-
     return {
-        data: sortedData,
-        kpis: {
-            tasaCrecimientoVentas: parseFloat(tasaCrecimientoVentas.toFixed(1)),
-            totalVentas: totalVentas,
-            totalMatriculas: totalMatriculas,
-            utilidad: totalUtilidad
-        }
+        headers: headers, // [Año, Ene, Feb, ..., Dic, Total, Crecimiento]
+        rows: rows,       // Filas con valores (numéricos ya parseados)
+        years: years,     // Array de años (2022, 2023, 2024...)
+        monthlyMap: monthlyMap // Data lista para gráficas de tendencia mensual
     };
   };
 
@@ -473,41 +425,27 @@ const transformGoogleSheetsData = (rawData) => {
     const rows = rawData.slice(1);
     const result = {};
     
-    console.log('🔄 Transformando datos de cobranza...');
-    console.log('📋 Headers cobranza:', headers);
-    console.log('📊 Filas de datos:', rows.length);
-    
     // La primera columna es la escuela, las siguientes son meses
     const meses = headers.slice(1).filter(header => header && header.trim() !== '');
-    console.log('📅 Meses encontrados en headers:', meses);
     
     rows.forEach((row, rowIndex) => {
       const escuela = row[0];
       if (!escuela || escuela.trim() === '') {
-        console.log(`⚠️ Fila ${rowIndex + 1}: escuela vacía, saltando`);
         return;
       }
       
-      // Limpiar nombre de escuela
       const escuelaClean = escuela.trim();
       result[escuelaClean] = {};
       
-      console.log(`\n🏫 Procesando escuela: "${escuelaClean}" (fila ${rowIndex + 1})`);
-      console.log(`    Datos de fila completa:`, row);
-      
       meses.forEach((mes, mesIndex) => {
-        const cellValue = row[mesIndex + 1]; // +1 porque la primera columna es la escuela
+        const cellValue = row[mesIndex + 1]; 
         const monto = parseNumberFromString(cellValue);
         
-        // Limpiar nombre del mes
         const mesClean = mes.trim();
         result[escuelaClean][mesClean] = monto;
-        
-        console.log(`    📈 ${mesClean} (columna ${mesIndex + 1}): "${cellValue}" -> ${monto.toLocaleString()}`);
       });
     });
     
-    console.log('\n✅ Resultado final de transformación:', result);
     return result;
   };
 
@@ -525,9 +463,9 @@ const transformGoogleSheetsData = (rawData) => {
 
   useEffect(() => {
     const generateAlerts = () => {
+      // ... (Lógica de alertas)
       const newAlerts = [];
       const months = Object.keys(salesData).sort();
-      
       if (months.length < 2) return;
       
       const currentMonth = months[months.length - 1];
@@ -541,64 +479,17 @@ const transformGoogleSheetsData = (rawData) => {
             
             if (previous) {
               const ventasChange = ((current.ventas - previous.ventas) / previous.ventas) * 100;
-              const cursosChange = ((current.cursos - previous.cursos) / previous.cursos) * 100;
-              
               if (ventasChange < -20) {
                 newAlerts.push({
-                  type: 'warning',
-                  category: 'ventas',
-                  message: `${course} en ${school} bajó ${Math.abs(ventasChange).toFixed(1)}% en ventas`,
-                  details: `De $${previous.ventas.toLocaleString()} a $${current.ventas.toLocaleString()}`,
-                  priority: ventasChange < -40 ? 'urgent' : 'high',
-                  curso: course,
-                  escuela: school,
-                  area: area
+                  type: 'warning', category: 'ventas', message: `${course} en ${school} bajó ${Math.abs(ventasChange).toFixed(1)}% en ventas`,
+                  details: `De $${previous.ventas.toLocaleString()} a $${current.ventas.toLocaleString()}`, priority: ventasChange < -40 ? 'urgent' : 'high',
+                  curso: course, escuela: school, area: area
                 });
               }
-              
-              if (cursosChange < -30) {
-                newAlerts.push({
-                  type: 'danger',
-                  category: 'cursos',
-                  message: `${course} en ${school} bajó ${Math.abs(cursosChange).toFixed(1)}% en cursos vendidos`,
-                  details: `De ${previous.cursos} a ${current.cursos} cursos`,
-                  priority: 'urgent',
-                  curso: course,
-                  escuela: school,
-                  area: area
-                });
-              }
-              
-              if (ventasChange > 50) {
-                newAlerts.push({
-                  type: 'success',
-                  category: 'crecimiento',
-                  message: `¡${course} en ${school} creció ${ventasChange.toFixed(1)}% en ventas!`,
-                  details: `De $${previous.ventas.toLocaleString()} a $${current.ventas.toLocaleString()}`,
-                  priority: 'info',
-                  curso: course,
-                  escuela: school,
-                  area: area
-                });
-              }
-            }
-            
-            if (current.ventas === 0) {
-              newAlerts.push({
-                type: 'warning',
-                category: 'sin_ventas',
-                message: `${course} en ${school} no tuvo ventas este mes`,
-                details: 'Revisar estrategia de marketing',
-                priority: 'medium',
-                curso: course,
-                escuela: school,
-                area: area
-              });
             }
           });
         });
       });
-      
       setAlerts(newAlerts.slice(0, 15));
     };
 
@@ -607,6 +498,7 @@ const transformGoogleSheetsData = (rawData) => {
     }
   }, [salesData]);
 
+  // ... (useMemos para schools, areas, instructors, months, contactMethods)
   const schools = useMemo(() => {
     const schoolsSet = new Set();
     Object.values(salesData).forEach(monthData => {
@@ -630,41 +522,33 @@ const transformGoogleSheetsData = (rawData) => {
   }, [salesData]);
 
   const instructors = useMemo(() => {
-  const instructorsSet = new Set();
-  
-  console.log('Recolectando instructores de todos los datos...');
-  
-  Object.values(salesData).forEach((monthData, monthIndex) => {
-    console.log(`Procesando mes ${monthIndex + 1}`);
-    Object.values(monthData).forEach((schoolData, schoolIndex) => {
-      Object.values(schoolData).forEach((areaData, areaIndex) => {
-        Object.values(areaData).forEach((courseData, courseIndex) => {
-          if (courseData.instructor) {
-            const instructorNormalizado = courseData.instructor.toString().trim().replace(/\s+/g, ' ');
-            instructorsSet.add(instructorNormalizado);
-            console.log(`Instructor encontrado: "${instructorNormalizado}"`);
-          }
+    const instructorsSet = new Set();
+    
+    Object.values(salesData).forEach((monthData) => {
+      Object.values(monthData).forEach((schoolData) => {
+        Object.values(schoolData).forEach((areaData) => {
+          Object.values(areaData).forEach((courseData) => {
+            if (courseData.instructor) {
+              const instructorNormalizado = courseData.instructor.toString().trim().replace(/\s+/g, ' ');
+              instructorsSet.add(instructorNormalizado);
+            }
+          });
         });
       });
     });
-  });
-  
-  const instructorsList = Array.from(instructorsSet).filter(instructor => 
-    instructor && instructor !== 'Sin asignar' && instructor !== 'No asignado'
-  );
-  
-  console.log(`Total instructores únicos: ${instructorsList.length}`);
-  console.log('Lista completa:', instructorsList);
-  
-  return instructorsList;
-}, [salesData]);
+    
+    const instructorsList = Array.from(instructorsSet).filter(instructor => 
+      instructor && instructor !== 'Sin asignar' && instructor !== 'No asignado'
+    );
+    
+    return instructorsList;
+  }, [salesData]);
 
 
   const months = useMemo(() => {
     return Object.keys(salesData).sort();
   }, [salesData]);
 
-  // Nuevo computed para medios de contacto
   const contactMethods = useMemo(() => {
     const methodsSet = new Set();
     Object.values(contactData).forEach(monthData => {
@@ -674,6 +558,8 @@ const transformGoogleSheetsData = (rawData) => {
     });
     return Array.from(methodsSet);
   }, [contactData]);
+
+  // ... (formatDateForDisplay, formatDateShort, calculateTrend, TrendIcon, ConnectionStatus, getSchoolTotals, getAreaTotals, getInstructorTotals, getCourses, getContactTotals, executiveKPIs, getViewData, AlertsPanel, ContactDashboard, ExecutiveDashboard, CobranzaDashboard)
 
   const formatDateForDisplay = (monthString) => {
     try {
@@ -689,7 +575,6 @@ const transformGoogleSheetsData = (rawData) => {
         month: 'long' 
       });
     } catch (error) {
-      console.warn('Error formatting date:', monthString, error);
       return monthString;
     }
   };
@@ -708,7 +593,6 @@ const transformGoogleSheetsData = (rawData) => {
         month: 'short' 
       });
     } catch (error) {
-      console.warn('Error formatting short date:', monthString, error);
       return monthString;
     }
   };
@@ -803,8 +687,6 @@ const transformGoogleSheetsData = (rawData) => {
   const totals = {};
   if (!salesData[month]) return totals;
   
-  console.log(`Calculando totales para instructores en ${month}${school ? ` - ${school}` : ''}`);
-  
   const schoolsToProcess = school ? [school] : Object.keys(salesData[month]);
   
   schoolsToProcess.forEach(schoolKey => {
@@ -814,11 +696,7 @@ const transformGoogleSheetsData = (rawData) => {
           const courseData = salesData[month][schoolKey][area][course];
           const instructor = courseData.instructor;
           
-          console.log(`Curso: ${course}, Instructor: "${instructor}"`);
-          
-          // Incluir TODOS los instructores (removemos el filtrado restrictivo)
           if (instructor) {
-            // Normalizar el nombre del instructor
             const instructorKey = instructor.toString().trim().replace(/\s+/g, ' ');
             
             if (!totals[instructorKey]) {
@@ -842,24 +720,16 @@ const transformGoogleSheetsData = (rawData) => {
               ventas: courseData.ventas,
               cursos: courseData.cursos
             });
-            
-            console.log(`Instructor "${instructorKey}" agregado/actualizado`);
-          } else {
-            console.warn(`Curso sin instructor: ${course} en ${schoolKey} - ${area}`);
           }
         });
       });
     }
   });
   
-  // Convertir Sets a Arrays
   Object.keys(totals).forEach(instructor => {
     totals[instructor].areas = Array.from(totals[instructor].areas);
     totals[instructor].escuelas = Array.from(totals[instructor].escuelas);
   });
-  
-  console.log(`Total de instructores encontrados: ${Object.keys(totals).length}`);
-  console.log('Instructores:', Object.keys(totals));
   
   return totals;
 };
@@ -894,7 +764,6 @@ const transformGoogleSheetsData = (rawData) => {
     return courses;
   };
 
-  // Nueva función para obtener totales por medio de contacto
   const getContactTotals = (month) => {
     const totals = {};
     if (!contactData[month]) return totals;
@@ -907,6 +776,7 @@ const transformGoogleSheetsData = (rawData) => {
   };
 
   const executiveKPIs = useMemo(() => {
+    // ... (Lógica de KPIs ejecutivos)
     const currentMonth = salesData[selectedMonth];
     if (!currentMonth) {
       return { totalVentas: 0, totalCursos: 0, ventasGrowth: 0, cursosGrowth: 0, ticketPromedio: 0 };
@@ -957,6 +827,7 @@ const transformGoogleSheetsData = (rawData) => {
 
   const getViewData = useMemo(() => {
     switch (viewType) {
+      // ... (Casos existentes)
       case "escuela":
         const schoolTotals = getSchoolTotals(selectedMonth);
         return schools.map(school => {
@@ -1074,15 +945,18 @@ const transformGoogleSheetsData = (rawData) => {
           return data;
         });
         
-      // 🚀 NUEVO: Caso para la pestaña Crecimiento Anual (No necesita getViewData ya que el componente lo maneja)
+      // 🚀 NUEVO: Caso para la pestaña Crecimiento Anual
       case "crecimientoAnual":
+        // La data para esta pestaña se consume directamente del estado
         return [];
 
       default:
         return [];
     }
   }, [viewType, selectedMonth, selectedSchool, selectedArea, metricType, months, schools, compareMonths, contactData]);
-
+  
+  // ... (AlertsPanel, ContactDashboard, ExecutiveDashboard, CobranzaDashboard)
+  
   const AlertsPanel = () => (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-4">
@@ -1162,8 +1036,7 @@ const transformGoogleSheetsData = (rawData) => {
       )}
     </div>
   );
-
-  // Nuevo componente para el dashboard de medios de contacto
+  
   const ContactDashboard = () => {
     const COLORS = ['#22C55E', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899'];
     
@@ -1841,14 +1714,13 @@ const transformGoogleSheetsData = (rawData) => {
   const CobranzaDashboard = () => {
     // Obtener todos los meses únicos de los datos de cobranza y ordenarlos cronológicamente
     const mesesCobranza = useMemo(() => {
-      // Si no hay datos, retornar array vacío
+      // ... (Lógica de meses Cobranza)
       if (!cobranzaData || Object.keys(cobranzaData).length === 0) {
         return [];
       }
       
       const meses = new Set();
       
-      // Extraer todos los meses de todas las escuelas
       Object.values(cobranzaData).forEach(escuelaData => {
         Object.keys(escuelaData).forEach(mes => {
           if (mes && mes.trim() !== '') {
@@ -1857,53 +1729,28 @@ const transformGoogleSheetsData = (rawData) => {
         });
       });
       
-      // Convertir a array y ordenar cronológicamente
       const mesesArray = Array.from(meses);
       return sortMonthsChronologically(mesesArray);
     }, [cobranzaData]);
 
     // Calcular totales por mes (corregido con debug)
     const totalesPorMes = useMemo(() => {
+      // ... (Lógica de totales por mes Cobranza)
       const totales = {};
       
-      console.log('💰 Iniciando cálculo de totales por mes');
-      console.log('📊 Datos de cobranza completos:', cobranzaData);
-      
-      // Inicializar todos los meses con 0
       mesesCobranza.forEach(mes => {
         totales[mes] = 0;
-        console.log(`📅 Inicializando mes "${mes}" en 0`);
       });
       
-      // Sumar los montos de cada escuela para cada mes
       Object.entries(cobranzaData).forEach(([escuela, datosEscuela]) => {
-        console.log(`\n🏫 Procesando escuela: "${escuela}"`);
-        console.log(`    Datos de escuela:`, datosEscuela);
-        
         Object.entries(datosEscuela).forEach(([mes, monto]) => {
           const mesLimpio = mes.trim();
           
           if (mes && mesLimpio !== '' && mesesCobranza.includes(mesLimpio)) {
-            const montoOriginal = monto;
             const montoNumerico = parseNumberFromString(monto);
-            
-            console.log(`    📈 ${escuela} - ${mesLimpio}:`);
-            console.log(`      Valor original: "${montoOriginal}" (tipo: ${typeof montoOriginal})`);
-            console.log(`      Valor parseado: ${montoNumerico}`);
-            console.log(`      Total anterior: ${totales[mesLimpio]}`);
-            
             totales[mesLimpio] += montoNumerico;
-            
-            console.log(`      Nuevo total: ${totales[mesLimpio]}`);
-          } else {
-            console.log(`    ⚠️ Mes "${mes}" ignorado (limpio: "${mesLimpio}", incluido: ${mesesCobranza.includes(mesLimpio)})`);
           }
         });
-      });
-      
-      console.log('\n🎯 Totales finales por mes:');
-      Object.entries(totales).forEach(([mes, total]) => {
-        console.log(`    ${mes}: ${total.toLocaleString()}`);
       });
       
       return totales;
@@ -1911,9 +1758,9 @@ const transformGoogleSheetsData = (rawData) => {
 
     // Calcular totales por escuela (simplificado)
     const totalesPorEscuela = useMemo(() => {
+      // ... (Lógica de totales por escuela Cobranza)
       const totales = {};
       
-      // Si no hay datos, retornar objeto vacío
       if (!cobranzaData || Object.keys(cobranzaData).length === 0) {
         return totales;
       }
@@ -2187,23 +2034,45 @@ const transformGoogleSheetsData = (rawData) => {
     );
   };
   
-  // 🚀 NUEVO: Componente para el dashboard de Crecimiento Anual
+  // 🚀 NUEVO: Componente para el dashboard de Crecimiento Anual (Implementando la tabla A2:O7)
   const CrecimientoAnualDashboard = () => {
-    const { data, kpis } = crecimientoAnualData;
+    const { headers, rows, years, monthlyMap } = crecimientoAnualData;
     
-    // Asumiendo que el último elemento es el año actual
-    const currentYearData = data[data.length - 1] || {};
-    const prevYearData = data.length >= 2 ? data[data.length - 2] : null;
-    const currentYear = currentYearData.year;
+    // Filtramos la data mensual para el año seleccionado
+    const currentMonthlyData = monthlyMap[selectedYear] || [];
     
+    // Obtener la data anual para la gráfica de tendencia anual
+    const annualChartData = years.map(year => {
+        const row = rows.find(r => parseNumberFromString(r[0]) === year) || [];
+        // Asumimos que Total es el penúltimo elemento (índice headers.length - 2)
+        const totalIndex = headers.length - 2; 
+        // Asumimos que Crecimiento es el último elemento (índice headers.length - 1)
+        const crecimientoIndex = headers.length - 1;
+        
+        // Convertimos el crecimiento de string '40%' a un número 40 para el gráfico
+        const crecimientoString = row[crecimientoIndex] || '0%';
+        const crecimientoValue = parseNumberFromString(crecimientoString.replace('%', ''));
+
+        return {
+            year: year,
+            total: parseNumberFromString(row[totalIndex]),
+            crecimiento: crecimientoValue
+        };
+    }).filter(d => d.total > 0);
+
+    const currentYearDataRow = rows.find(r => parseNumberFromString(r[0]) === parseNumberFromString(selectedYear)) || [];
+    const currentYearTotal = parseNumberFromString(currentYearDataRow[headers.length - 2]);
+    const currentYearGrowth = currentYearDataRow[headers.length - 1] || 'N/A';
+
     const getGrowthIndicator = (value) => {
-        const Icon = value > 0 ? TrendingUp : value < 0 ? TrendingDown : Minus;
-        const color = value > 0 ? 'text-green-500' : value < 0 ? 'text-red-500' : 'text-gray-500';
+        const numericValue = parseNumberFromString(value.replace('%', ''));
+        const Icon = numericValue > 0 ? TrendingUp : numericValue < 0 ? TrendingDown : Minus;
+        const color = numericValue > 0 ? 'text-green-500' : numericValue < 0 ? 'text-red-500' : 'text-gray-500';
         return (
             <div className="flex items-center gap-1">
                 <Icon className={`w-4 h-4 ${color}`} />
                 <span className={`font-medium ${color}`}>
-                    {value.toFixed(1)}%
+                    {value}
                 </span>
             </div>
         );
@@ -2215,129 +2084,131 @@ const transformGoogleSheetsData = (rawData) => {
           <Activity className="w-6 h-6 text-indigo-600" />
           Análisis de Crecimiento Anual
         </h2>
+        
+        {/* Controles y KPIs */}
         <div className="bg-white rounded-lg shadow-lg p-6">
-          <h3 className="text-xl font-semibold mb-4 text-gray-700">
-            Resumen {currentYear} vs {prevYearData?.year || 'Año Anterior'}
-          </h3>
-          {/* KPIs de Crecimiento - Usando los colores primarios de tu dashboard (verde, gris, azul, etc.) */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow p-6 text-white">
-              <p className="text-green-100 text-sm">Ventas Año Actual ({currentYear})</p>
-              <p className="text-3xl font-bold">${currentYearData.ventas?.toLocaleString() || '0'}</p>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                <div className="md:col-span-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Seleccionar Año</label>
+                    <select
+                        value={selectedYear}
+                        onChange={(e) => setSelectedYear(e.target.value)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                        {years.map(year => (
+                            <option key={year} value={year}>{year}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow p-4 text-white">
+                    <p className="text-green-100 text-sm">Ventas Totales {currentYearDataRow[0]}</p>
+                    <p className="text-xl font-bold">${currentYearTotal.toLocaleString()}</p>
+                </div>
+                
+                <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg shadow p-4 text-white">
+                    <p className="text-indigo-100 text-sm">Crecimiento vs Año Ant.</p>
+                    <div className="flex items-center gap-2">
+                        <p className="text-xl font-bold">{currentYearGrowth}</p>
+                        {getGrowthIndicator(currentYearGrowth)}
+                    </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-gray-600 to-gray-700 rounded-lg shadow p-4 text-white">
+                    <p className="text-gray-100 text-sm">Meses con datos</p>
+                    <p className="text-xl font-bold">{currentMonthlyData.filter(d => d.ventas > 0).length} / 12</p>
+                </div>
             </div>
-            <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg shadow p-6 text-white">
-              <p className="text-indigo-100 text-sm">Crecimiento Ventas</p>
-              <div className="flex items-center gap-2">
-                <p className="text-3xl font-bold">{kpis.tasaCrecimientoVentas.toFixed(1)}%</p>
-                {getGrowthIndicator(kpis.tasaCrecimientoVentas)}
-              </div>
+          
+            <h3 className="text-xl font-semibold mb-4 text-gray-700">
+                Tabla de Crecimiento Anual (Filas A2 a O7)
+            </h3>
+            {/* Tabla Principal de Crecimiento Anual */}
+            <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-100">
+                        <tr>
+                            {headers.map((header, index) => (
+                                <th key={index} className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider ${
+                                    header.toLowerCase().includes('total') ? 'bg-green-200 text-green-800' :
+                                    header.toLowerCase().includes('crecimiento') ? 'bg-indigo-200 text-indigo-800' :
+                                    'text-gray-800'
+                                }`}>
+                                    {header}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {rows.map((row, rowIndex) => (
+                            <tr key={rowIndex} className="hover:bg-gray-50">
+                                {row.map((cell, cellIndex) => (
+                                    <td key={cellIndex} className={`px-4 py-3 whitespace-nowrap text-sm ${
+                                        cellIndex === headers.length - 2 ? 'font-bold bg-green-50' : // Total
+                                        cellIndex === headers.length - 1 ? 'font-bold bg-indigo-50' : // Crecimiento
+                                        cellIndex === 0 ? 'font-bold text-gray-900' : // Año
+                                        'text-gray-800'
+                                    }`}>
+                                        {cellIndex > 0 && cellIndex < headers.length - 2 && parseNumberFromString(cell) > 0 ? `$${parseNumberFromString(cell).toLocaleString()}` : cell}
+                                    </td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
-            <div className="bg-gradient-to-r from-gray-600 to-gray-700 rounded-lg shadow p-6 text-white">
-              <p className="text-gray-100 text-sm">Total Matrículas</p>
-              <p className="text-3xl font-bold">{currentYearData.matriculas?.toLocaleString() || '0'}</p>
-            </div>
-            <div className="bg-gradient-to-r from-pink-500 to-pink-600 rounded-lg shadow p-6 text-white">
-              <p className="text-pink-100 text-sm">Utilidad Estimada</p>
-              <p className="text-3xl font-bold">${currentYearData.utilidad?.toLocaleString() || '0'}</p>
-            </div>
-          </div>
         </div>
         
-        {/* Gráficas de Evolución Anual */}
+        {/* Gráficas de Evolución Anual y Mensual */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
-          {/* Gráfico de Barras: Ventas y Utilidad */}
+          {/* 🚀 NUEVO GRÁFICO 1: Tendencia Anual (Total y Crecimiento) */}
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Evolución Anual: Ventas vs. Utilidad</h3>
+            <h3 className="text-lg font-semibold mb-4">Tendencia Anual: Ventas Totales vs. Crecimiento</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data}>
+                <LineChart data={annualChartData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="year" />
-                  <YAxis yAxisId="ventas" orientation="left" stroke="#22C55E" tickFormatter={(value) => `${(value/1000000).toFixed(1)}M`} />
-                  <YAxis yAxisId="utilidad" orientation="right" stroke="#F43F5E" tickFormatter={(value) => `${(value/1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, 'Valor']} />
-                  <Legend />
-                  <Bar yAxisId="ventas" dataKey="ventas" fill="#22C55E" name="Ventas" />
-                  <Bar yAxisId="utilidad" dataKey="utilidad" fill="#6B7280" name="Utilidad" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Gráfico de Línea: Matrículas */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Matrículas por Año</h3>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="year" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="matriculas" 
-                    stroke="#3B82F6" 
-                    strokeWidth={3} 
-                    name="Matrículas" 
-                    dot={{ r: 6 }}
+                  {/* Eje Y izquierdo para Total de Ventas (en Millones) */}
+                  <YAxis yAxisId="total" orientation="left" stroke="#22C55E" tickFormatter={(value) => `${(value/1000000).toFixed(1)}M`} />
+                  {/* Eje Y derecho para Crecimiento (%) */}
+                  <YAxis yAxisId="crecimiento" orientation="right" stroke="#3B82F6" tickFormatter={(value) => `${value}%`} />
+                  <Tooltip 
+                    formatter={(value, name, props) => [
+                        name === 'crecimiento' ? `${value}%` : `$${value.toLocaleString()}`, 
+                        name === 'crecimiento' ? 'Crecimiento' : 'Ventas Anuales'
+                    ]} 
                   />
+                  <Legend />
+                  <Line yAxisId="total" type="monotone" dataKey="total" stroke="#22C55E" strokeWidth={3} name="Ventas Anuales" />
+                  <Line yAxisId="crecimiento" type="monotone" dataKey="crecimiento" stroke="#3B82F6" strokeWidth={2} name="Crecimiento" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           </div>
-        </div>
-        
-        {/* Tabla de Datos de Crecimiento */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h3 className="text-lg font-semibold mb-4">Datos Históricos Anuales</h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Año</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ventas ($)</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matrículas</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilidad ($)</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Crecimiento Ventas (%)</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {data.map((item, index) => {
-                  const prevItem = index > 0 ? data[index - 1] : null;
-                  const crecimiento = prevItem && prevItem.ventas > 0 
-                    ? ((item.ventas - prevItem.ventas) / prevItem.ventas) * 100 
-                    : 0;
 
-                  return (
-                    <tr key={item.year} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.year}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">${item.ventas.toLocaleString()}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.matriculas.toLocaleString()}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.utilidad.toLocaleString()}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {index === 0 ? 'N/A' : (
-                          <span className={`inline-flex items-center gap-1 ${
-                            crecimiento > 5 ? 'text-green-600 font-bold' :
-                            crecimiento < -5 ? 'text-red-600 font-bold' : 'text-gray-600'
-                          }`}>
-                            {crecimiento.toFixed(1)}%
-                            {getGrowthIndicator(crecimiento)}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          {/* 🚀 NUEVO GRÁFICO 2: Tendencia Mensual para el Año Seleccionado */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h3 className="text-lg font-semibold mb-4">Tendencia Mensual de Ventas ({selectedYear})</h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={currentMonthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis tickFormatter={(value) => `${(value/1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, 'Ventas Mensuales']} />
+                  <Legend />
+                  <Bar dataKey="ventas" fill="#8B5CF6" name="Ventas Mensuales" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
       </div>
     );
   };
+  
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -2590,7 +2461,7 @@ const transformGoogleSheetsData = (rawData) => {
         {viewType === "crecimientoAnual" && <CrecimientoAnualDashboard />}
 
         {/* Vistas de tablas */}
-        {(viewType === "escuela" || viewType === "area" || viewType === "instructor" || viewType === "curso" || viewType === "contacto") && !isLoading && viewType !== "contacto" && (
+        {(viewType === "escuela" || viewType === "area" || viewType === "instructor" || viewType === "curso" || viewType === "contacto") && !isLoading && viewType !== "contacto" && viewType !== "crecimientoAnual" && (
           <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold text-gray-800">
