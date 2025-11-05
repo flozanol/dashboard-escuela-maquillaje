@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+// 🚀 NUEVO: Importamos el ícono Activity que usaste para la nueva pestaña
 import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Star, Target, AlertTriangle, Activity, Phone, Mail, Globe, MessageSquare, Users } from 'lucide-react';
 
 const GOOGLE_SHEETS_CONFIG = {
@@ -7,7 +8,9 @@ const GOOGLE_SHEETS_CONFIG = {
   spreadsheetId: '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg',
   ranges: {
     ventas: 'Ventas!A:H', // Ampliamos hasta la columna H para incluir medio de contacto
-    cobranza: 'Cobranza!A:Z'
+    cobranza: 'Cobranza!A:Z',
+    // 🚀 NUEVO: Añadimos el rango para la nueva hoja
+    crecimientoAnual: 'Crecimiento Anual!A:Z' 
   }
 };
 
@@ -64,6 +67,21 @@ const fallbackContactData = {
   }
 };
 
+// 🚀 NUEVO: Datos de fallback para Crecimiento Anual
+const fallbackCrecimientoAnualData = {
+  data: [
+    { year: 2022, ventas: 2500000, matriculas: 400, utilidad: 500000 },
+    { year: 2023, ventas: 3200000, matriculas: 550, utilidad: 750000 },
+    { year: 2024, ventas: 4500000, matriculas: 800, utilidad: 1100000 }
+  ],
+  kpis: {
+    tasaCrecimientoVentas: 40.6, // (4500k-3200k)/3200k * 100
+    totalMatriculas: 800,
+    utilidad: 1100000
+  }
+};
+
+
 const Dashboard = () => {
   // Función de debug para verificar datos de instructores
   const debugInstructors = () => {
@@ -75,9 +93,9 @@ const Dashboard = () => {
         Object.entries(schoolData).forEach(([area, areaData]) => {
           Object.entries(areaData).forEach(([course, courseData]) => {
             console.log(`  ${course} (${school} - ${area})`);
-            console.log(`     Instructor: "${courseData.instructor}"`);
-            console.log(`     Ventas: ${courseData.ventas}`);
-            console.log(`     Cursos: ${courseData.cursos}`);
+            console.log(`    Instructor: "${courseData.instructor}"`);
+            console.log(`    Ventas: ${courseData.ventas}`);
+            console.log(`    Cursos: ${courseData.cursos}`);
           });
         });
       });
@@ -89,10 +107,10 @@ const Dashboard = () => {
       console.log(`Totales por instructor para ${selectedMonth}:`);
       Object.entries(totales).forEach(([instructor, data]) => {
         console.log(`  ${instructor}:`);
-        console.log(`     Ventas: $${data.ventas.toLocaleString()}`);
-        console.log(`     Cursos: ${data.cursos}`);
-        console.log(`     Escuelas: ${data.escuelas.join(', ')}`);
-        console.log(`     Areas: ${data.areas.join(', ')}`);
+        console.log(`    Ventas: $${data.ventas.toLocaleString()}`);
+        console.log(`    Cursos: ${data.cursos}`);
+        console.log(`    Escuelas: ${data.escuelas.join(', ')}`);
+        console.log(`    Areas: ${data.areas.join(', ')}`);
       });
     }
   };
@@ -105,7 +123,9 @@ const Dashboard = () => {
   const [compareMonths, setCompareMonths] = useState(["2024-06", "2024-07"]);
   const [salesData, setSalesData] = useState(fallbackData);
   const [cobranzaData, setCobranzaData] = useState({});
-  const [contactData, setContactData] = useState(fallbackContactData); // Nuevo estado para medios de contacto
+  const [contactData, setContactData] = useState(fallbackContactData);
+  // 🚀 NUEVO: Estado para los datos de crecimiento anual
+  const [crecimientoAnualData, setCrecimientoAnualData] = useState(fallbackCrecimientoAnualData); 
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
@@ -127,8 +147,8 @@ const Dashboard = () => {
     // Remover símbolos de moneda, comas, espacios y otros caracteres no numéricos
     // Mantener solo dígitos, punto decimal y signo negativo
     const cleaned = str
-      .replace(/[$,\s]/g, '')           // Remover $, comas y espacios
-      .replace(/[^\d.-]/g, '');         // Mantener solo dígitos, punto y guión
+      .replace(/[$,\s]/g, '')        // Remover $, comas y espacios
+      .replace(/[^\d.-]/g, '');      // Mantener solo dígitos, punto y guión
     
     // Si después de limpiar no queda nada o solo caracteres especiales, retornar 0
     if (cleaned === '' || cleaned === '.' || cleaned === '-') return 0;
@@ -251,6 +271,16 @@ const Dashboard = () => {
       const transformedCobranza = transformCobranzaData(cobranzaData.values);
       setCobranzaData(transformedCobranza);
       
+      // 🚀 NUEVO: Fetch datos de Crecimiento Anual
+      const crecimientoAnualUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.crecimientoAnual}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
+      const crecimientoAnualResponse = await fetch(crecimientoAnualUrl);
+
+      if (!crecimientoAnualResponse.ok) throw new Error(`Error ${crecimientoAnualResponse.status}: ${crecimientoAnualResponse.statusText}`);
+
+      const crecimientoAnualData = await crecimientoAnualResponse.json();
+      const transformedCrecimientoAnual = transformCrecimientoAnualData(crecimientoAnualData.values);
+      setCrecimientoAnualData(transformedCrecimientoAnual); // Establecer los datos transformados
+
       setConnectionStatus('connected');
       setLastUpdated(new Date());
       setErrorMessage('');
@@ -262,6 +292,10 @@ const Dashboard = () => {
       if (Object.keys(salesData).length === 0) {
         setSalesData(fallbackData);
         setContactData(fallbackContactData);
+      }
+      // 🚀 NUEVO: Fallback para Crecimiento Anual en caso de error
+      if (Object.keys(crecimientoAnualData.data).length === 0) {
+        setCrecimientoAnualData(fallbackCrecimientoAnualData);
       }
     } finally {
       setIsLoading(false);
@@ -370,6 +404,67 @@ const transformGoogleSheetsData = (rawData) => {
     console.log('✅ Datos de contacto transformados:', transformedData);
     return transformedData;
   };
+  
+  // 🚀 NUEVO: Función para transformar datos de Crecimiento Anual
+  const transformCrecimientoAnualData = (rawData) => {
+    if (!rawData || rawData.length <= 1) return fallbackCrecimientoAnualData;
+
+    const headers = rawData[0];
+    const rows = rawData.slice(1);
+    const transformedData = [];
+
+    // Asumimos el orden: [Año, Ventas, Matrículas, Utilidad]
+    const yearIndex = headers.findIndex(h => h.toLowerCase().includes('año'));
+    const ventasIndex = headers.findIndex(h => h.toLowerCase().includes('ventas'));
+    const matriculasIndex = headers.findIndex(h => h.toLowerCase().includes('matrículas') || h.toLowerCase().includes('matriculas'));
+    const utilidadIndex = headers.findIndex(h => h.toLowerCase().includes('utilidad') || h.toLowerCase().includes('ganancia'));
+
+    let totalVentas = 0;
+    let totalMatriculas = 0;
+    let totalUtilidad = 0;
+
+    rows.forEach((row, index) => {
+        const year = parseNumberFromString(row[yearIndex]);
+        const ventas = parseNumberFromString(row[ventasIndex]);
+        const matriculas = parseNumberFromString(row[matriculasIndex]);
+        const utilidad = parseNumberFromString(row[utilidadIndex]);
+
+        if (year > 0 && ventas >= 0) {
+            transformedData.push({
+                year: year,
+                ventas: ventas,
+                matriculas: matriculas,
+                utilidad: utilidad,
+            });
+            totalVentas += ventas;
+            totalMatriculas += matriculas;
+            totalUtilidad += utilidad;
+        }
+    });
+
+    // Calcular KPI de crecimiento de ventas
+    let tasaCrecimientoVentas = 0;
+    const sortedData = transformedData.sort((a, b) => a.year - b.year);
+
+    if (sortedData.length >= 2) {
+        const currentYear = sortedData[sortedData.length - 1];
+        const prevYear = sortedData[sortedData.length - 2];
+
+        if (prevYear.ventas > 0) {
+            tasaCrecimientoVentas = ((currentYear.ventas - prevYear.ventas) / prevYear.ventas) * 100;
+        }
+    }
+
+    return {
+        data: sortedData,
+        kpis: {
+            tasaCrecimientoVentas: parseFloat(tasaCrecimientoVentas.toFixed(1)),
+            totalVentas: totalVentas,
+            totalMatriculas: totalMatriculas,
+            utilidad: totalUtilidad
+        }
+    };
+  };
 
   const transformCobranzaData = (rawData) => {
     if (!rawData || rawData.length === 0) return {};
@@ -398,7 +493,7 @@ const transformGoogleSheetsData = (rawData) => {
       result[escuelaClean] = {};
       
       console.log(`\n🏫 Procesando escuela: "${escuelaClean}" (fila ${rowIndex + 1})`);
-      console.log(`   Datos de fila completa:`, row);
+      console.log(`    Datos de fila completa:`, row);
       
       meses.forEach((mes, mesIndex) => {
         const cellValue = row[mesIndex + 1]; // +1 porque la primera columna es la escuela
@@ -408,7 +503,7 @@ const transformGoogleSheetsData = (rawData) => {
         const mesClean = mes.trim();
         result[escuelaClean][mesClean] = monto;
         
-        console.log(`   📈 ${mesClean} (columna ${mesIndex + 1}): "${cellValue}" -> ${monto.toLocaleString()}`);
+        console.log(`    📈 ${mesClean} (columna ${mesIndex + 1}): "${cellValue}" -> ${monto.toLocaleString()}`);
       });
     });
     
@@ -768,7 +863,7 @@ const transformGoogleSheetsData = (rawData) => {
   
   return totals;
 };
-        
+    
   const getCourses = (month, school = null, area = null) => {
     const courses = {};
     if (!salesData[month]) return courses;
@@ -978,6 +1073,10 @@ const transformGoogleSheetsData = (rawData) => {
           });
           return data;
         });
+        
+      // 🚀 NUEVO: Caso para la pestaña Crecimiento Anual (No necesita getViewData ya que el componente lo maneja)
+      case "crecimientoAnual":
+        return [];
 
       default:
         return [];
@@ -1779,7 +1878,7 @@ const transformGoogleSheetsData = (rawData) => {
       // Sumar los montos de cada escuela para cada mes
       Object.entries(cobranzaData).forEach(([escuela, datosEscuela]) => {
         console.log(`\n🏫 Procesando escuela: "${escuela}"`);
-        console.log(`   Datos de escuela:`, datosEscuela);
+        console.log(`    Datos de escuela:`, datosEscuela);
         
         Object.entries(datosEscuela).forEach(([mes, monto]) => {
           const mesLimpio = mes.trim();
@@ -1788,7 +1887,7 @@ const transformGoogleSheetsData = (rawData) => {
             const montoOriginal = monto;
             const montoNumerico = parseNumberFromString(monto);
             
-            console.log(`   📈 ${escuela} - ${mesLimpio}:`);
+            console.log(`    📈 ${escuela} - ${mesLimpio}:`);
             console.log(`      Valor original: "${montoOriginal}" (tipo: ${typeof montoOriginal})`);
             console.log(`      Valor parseado: ${montoNumerico}`);
             console.log(`      Total anterior: ${totales[mesLimpio]}`);
@@ -1797,14 +1896,14 @@ const transformGoogleSheetsData = (rawData) => {
             
             console.log(`      Nuevo total: ${totales[mesLimpio]}`);
           } else {
-            console.log(`   ⚠️ Mes "${mes}" ignorado (limpio: "${mesLimpio}", incluido: ${mesesCobranza.includes(mesLimpio)})`);
+            console.log(`    ⚠️ Mes "${mes}" ignorado (limpio: "${mesLimpio}", incluido: ${mesesCobranza.includes(mesLimpio)})`);
           }
         });
       });
       
       console.log('\n🎯 Totales finales por mes:');
       Object.entries(totales).forEach(([mes, total]) => {
-        console.log(`   ${mes}: ${total.toLocaleString()}`);
+        console.log(`    ${mes}: ${total.toLocaleString()}`);
       });
       
       return totales;
@@ -2087,6 +2186,158 @@ const transformGoogleSheetsData = (rawData) => {
       </div>
     );
   };
+  
+  // 🚀 NUEVO: Componente para el dashboard de Crecimiento Anual
+  const CrecimientoAnualDashboard = () => {
+    const { data, kpis } = crecimientoAnualData;
+    
+    // Asumiendo que el último elemento es el año actual
+    const currentYearData = data[data.length - 1] || {};
+    const prevYearData = data.length >= 2 ? data[data.length - 2] : null;
+    const currentYear = currentYearData.year;
+    
+    const getGrowthIndicator = (value) => {
+        const Icon = value > 0 ? TrendingUp : value < 0 ? TrendingDown : Minus;
+        const color = value > 0 ? 'text-green-500' : value < 0 ? 'text-red-500' : 'text-gray-500';
+        return (
+            <div className="flex items-center gap-1">
+                <Icon className={`w-4 h-4 ${color}`} />
+                <span className={`font-medium ${color}`}>
+                    {value.toFixed(1)}%
+                </span>
+            </div>
+        );
+    };
+      
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+          <Activity className="w-6 h-6 text-indigo-600" />
+          Análisis de Crecimiento Anual
+        </h2>
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h3 className="text-xl font-semibold mb-4 text-gray-700">
+            Resumen {currentYear} vs {prevYearData?.year || 'Año Anterior'}
+          </h3>
+          {/* KPIs de Crecimiento - Usando los colores primarios de tu dashboard (verde, gris, azul, etc.) */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow p-6 text-white">
+              <p className="text-green-100 text-sm">Ventas Año Actual ({currentYear})</p>
+              <p className="text-3xl font-bold">${currentYearData.ventas?.toLocaleString() || '0'}</p>
+            </div>
+            <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg shadow p-6 text-white">
+              <p className="text-indigo-100 text-sm">Crecimiento Ventas</p>
+              <div className="flex items-center gap-2">
+                <p className="text-3xl font-bold">{kpis.tasaCrecimientoVentas.toFixed(1)}%</p>
+                {getGrowthIndicator(kpis.tasaCrecimientoVentas)}
+              </div>
+            </div>
+            <div className="bg-gradient-to-r from-gray-600 to-gray-700 rounded-lg shadow p-6 text-white">
+              <p className="text-gray-100 text-sm">Total Matrículas</p>
+              <p className="text-3xl font-bold">{currentYearData.matriculas?.toLocaleString() || '0'}</p>
+            </div>
+            <div className="bg-gradient-to-r from-pink-500 to-pink-600 rounded-lg shadow p-6 text-white">
+              <p className="text-pink-100 text-sm">Utilidad Estimada</p>
+              <p className="text-3xl font-bold">${currentYearData.utilidad?.toLocaleString() || '0'}</p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Gráficas de Evolución Anual */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* Gráfico de Barras: Ventas y Utilidad */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h3 className="text-lg font-semibold mb-4">Evolución Anual: Ventas vs. Utilidad</h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="year" />
+                  <YAxis yAxisId="ventas" orientation="left" stroke="#22C55E" tickFormatter={(value) => `${(value/1000000).toFixed(1)}M`} />
+                  <YAxis yAxisId="utilidad" orientation="right" stroke="#F43F5E" tickFormatter={(value) => `${(value/1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, 'Valor']} />
+                  <Legend />
+                  <Bar yAxisId="ventas" dataKey="ventas" fill="#22C55E" name="Ventas" />
+                  <Bar yAxisId="utilidad" dataKey="utilidad" fill="#6B7280" name="Utilidad" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Gráfico de Línea: Matrículas */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h3 className="text-lg font-semibold mb-4">Matrículas por Año</h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="year" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="matriculas" 
+                    stroke="#3B82F6" 
+                    strokeWidth={3} 
+                    name="Matrículas" 
+                    dot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+        
+        {/* Tabla de Datos de Crecimiento */}
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h3 className="text-lg font-semibold mb-4">Datos Históricos Anuales</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Año</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ventas ($)</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Matrículas</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Utilidad ($)</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Crecimiento Ventas (%)</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {data.map((item, index) => {
+                  const prevItem = index > 0 ? data[index - 1] : null;
+                  const crecimiento = prevItem && prevItem.ventas > 0 
+                    ? ((item.ventas - prevItem.ventas) / prevItem.ventas) * 100 
+                    : 0;
+
+                  return (
+                    <tr key={item.year} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{item.year}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">${item.ventas.toLocaleString()}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.matriculas.toLocaleString()}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${item.utilidad.toLocaleString()}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {index === 0 ? 'N/A' : (
+                          <span className={`inline-flex items-center gap-1 ${
+                            crecimiento > 5 ? 'text-green-600 font-bold' :
+                            crecimiento < -5 ? 'text-red-600 font-bold' : 'text-gray-600'
+                          }`}>
+                            {crecimiento.toFixed(1)}%
+                            {getGrowthIndicator(crecimiento)}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -2212,6 +2463,17 @@ const transformGoogleSheetsData = (rawData) => {
               <DollarSign className="w-4 h-4" />
               Cobranza
             </button>
+            {/* 🚀 NUEVO BOTÓN PARA CRECIMIENTO ANUAL */}
+            <button
+              onClick={() => setViewType("crecimientoAnual")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "crecimientoAnual" 
+                ? "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg" 
+                : "bg-gray-100 text-gray-700 hover:bg-indigo-50 hover:text-indigo-700"
+              }`}
+            >
+              <TrendingUp className="w-4 h-4" />
+              Crecimiento Anual
+            </button>
             <button
               onClick={debugInstructors}
               className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-lg text-sm hover:bg-yellow-200 font-medium"
@@ -2221,7 +2483,7 @@ const transformGoogleSheetsData = (rawData) => {
           </div>
 
           {/* Controles específicos según la vista */}
-          {viewType !== "executive" && viewType !== "cobranza" && (
+          {viewType !== "executive" && viewType !== "cobranza" && viewType !== "crecimientoAnual" && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Métrica</label>
@@ -2324,6 +2586,8 @@ const transformGoogleSheetsData = (rawData) => {
         {viewType === "executive" && <ExecutiveDashboard />}
         {viewType === "cobranza" && <CobranzaDashboard />}
         {viewType === "contacto" && <ContactDashboard />}
+        {/* 🚀 NUEVO: Renderizado del nuevo componente */}
+        {viewType === "crecimientoAnual" && <CrecimientoAnualDashboard />}
 
         {/* Vistas de tablas */}
         {(viewType === "escuela" || viewType === "area" || viewType === "instructor" || viewType === "curso" || viewType === "contacto") && !isLoading && viewType !== "contacto" && (
@@ -2351,8 +2615,8 @@ const transformGoogleSheetsData = (rawData) => {
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         {viewType === "escuela" ? "Escuela" : 
-                         viewType === "area" ? "Área" : 
-                         viewType === "instructor" ? "Vendedor" : "Curso"}
+                          viewType === "area" ? "Área" : 
+                          viewType === "instructor" ? "Vendedor" : "Curso"}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         {metricType === "ventas" ? "Ventas" : "Cursos"}
