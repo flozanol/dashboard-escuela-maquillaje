@@ -8,7 +8,6 @@ const GOOGLE_SHEETS_CONFIG = {
   ranges: {
     ventas: 'Ventas!A:H', // Ampliamos hasta la columna H para incluir medio de contacto
     cobranza: 'Cobranza!A:Z',
-    // 🚀 NUEVO: Mantenemos el rango amplio A:Z para capturar toda la data
     crecimientoAnual: 'Crecimiento Anual!A:Z' 
   }
 };
@@ -66,35 +65,40 @@ const fallbackContactData = {
   }
 };
 
-// 🚀 NUEVO: Datos de fallback para Crecimiento Anual (Simulando la estructura ancha A:O)
+// Datos de fallback para Crecimiento Anual (Simulando la estructura ancha A:O)
 const fallbackCrecimientoAnualData = {
   headers: ['Año', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic', 'Total', 'Crecimiento'],
   rows: [
-    [2022, 200000, 250000, 280000, 310000, 350000, 380000, 400000, 420000, 450000, 480000, 500000, 520000, 4540000, 'N/A'],
-    [2023, 300000, 350000, 400000, 450000, 500000, 550000, 600000, 650000, 700000, 750000, 800000, 850000, 7500000, '65.2%'],
-    [2024, 400000, 480000, 550000, 620000, 700000, 780000, 850000, 0, 0, 0, 0, 0, 4380000, '15.6%'] // 2024 con datos parciales
+    [2022, 2000000, 2500000, 2800000, 3100000, 3500000, 3800000, 4000000, 4200000, 4500000, 4800000, 5000000, 5200000, 45400000, 'N/A'],
+    [2023, 3000000, 3500000, 4000000, 4500000, 5000000, 5500000, 6000000, 6500000, 7000000, 7500000, 8000000, 8500000, 75000000, '65.2%'],
+    [2024, 4000000, 4800000, 5500000, 6200000, 7000000, 7800000, 8500000, 0, 0, 0, 0, 0, 43800000, '15.6%'] // 2024 con datos parciales
   ],
   years: [2022, 2023, 2024],
   monthlyMap: {
     '2024': [
-      { name: 'Ene', ventas: 400000 }, { name: 'Feb', ventas: 480000 }, { name: 'Mar', ventas: 550000 },
-      { name: 'Abr', ventas: 620000 }, { name: 'May', ventas: 700000 }, { name: 'Jun', ventas: 780000 },
-      { name: 'Jul', ventas: 850000 }, { name: 'Ago', ventas: 0 }, { name: 'Sep', ventas: 0 },
-      { name: 'Oct', ventas: 0 }, { name: 'Nov', ventas: 0 }, { name: 'Dic', ventas: 0 }
+      { name: 'Ene', '2024': 4000000 }, { name: 'Feb', '2024': 4800000 }, { name: 'Mar', '2024': 5500000 },
+      { name: 'Abr', '2024': 6200000 }, { name: 'May', '2024': 7000000 }, { name: 'Jun', '2024': 7800000 },
+      { name: 'Jul', '2024': 8500000 }, { name: 'Ago', '2024': 0 }, { name: 'Sep', '2024': 0 },
+      { name: 'Oct', '2024': 0 }, { name: 'Nov', '2024': 0 }, { name: 'Dic', '2024': 0 }
     ],
     '2023': [
-      { name: 'Ene', ventas: 300000 }, { name: 'Feb', ventas: 350000 }, { name: 'Mar', ventas: 400000 },
-      { name: 'Abr', ventas: 450000 }, { name: 'May', ventas: 500000 }, { name: 'Jun', ventas: 550000 },
-      { name: 'Jul', ventas: 600000 }, { name: 'Ago', ventas: 650000 }, { name: 'Sep', ventas: 700000 },
-      { name: 'Oct', ventas: 750000 }, { name: 'Nov', ventas: 800000 }, { name: 'Dic', ventas: 850000 }
+      { name: 'Ene', '2023': 3000000 }, { name: 'Feb', '2023': 3500000 }, { name: 'Mar', '2023': 4000000 },
+      { name: 'Abr', '2023': 4500000 }, { name: 'May', '2023': 5000000 }, { name: 'Jun', '2023': 5500000 },
+      { name: 'Jul', '2023': 6000000 }, { name: 'Ago', '2023': 6500000 }, { name: 'Sep', '2023': 7000000 },
+      { name: 'Oct', '2023': 7500000 }, { name: 'Nov', '2023': 8000000 }, { name: 'Dic', '2023': 8500000 }
     ],
     '2022': [
-      { name: 'Ene', ventas: 200000 }, { name: 'Feb', ventas: 250000 }, { name: 'Mar', ventas: 280000 },
-      { name: 'Abr', ventas: 310000 }, { name: 'May', ventas: 350000 }, { name: 'Jun', ventas: 380000 },
-      { name: 'Jul', ventas: 400000 }, { name: 'Ago', ventas: 420000 }, { name: 'Sep', ventas: 450000 },
-      { name: 'Oct', ventas: 480000 }, { name: 'Nov', ventas: 500000 }, { name: 'Dic', ventas: 520000 }
+      { name: 'Ene', '2022': 2000000 }, { name: 'Feb', '2022': 2500000 }, { name: 'Mar', '2022': 2800000 },
+      { name: 'Abr', '2022': 3100000 }, { name: 'May', '2022': 3500000 }, { name: 'Jun', '2022': 3800000 },
+      { name: 'Jul', '2022': 4000000 }, { name: 'Ago', '2022': 4200000 }, { name: 'Sep', '2022': 4500000 },
+      { name: 'Oct', '2022': 4800000 }, { name: 'Nov', '2022': 5000000 }, { name: 'Dic', '2022': 5200000 }
     ]
-  }
+  },
+  annualGrowthData: [
+    { year: 2022, crecimiento: 0 },
+    { year: 2023, crecimiento: 65.2 },
+    { year: 2024, crecimiento: 15.6 }
+  ]
 };
 
 
@@ -165,9 +169,9 @@ const Dashboard = () => {
     if (str === '' || str.toLowerCase() === 'null' || str.toLowerCase() === 'undefined') return 0;
     
     // Remover símbolos de moneda, comas, espacios y otros caracteres no numéricos
-    // Mantener solo dígitos, punto decimal y signo negativo
+    // Mantenemos el punto decimal
     const cleaned = str
-      .replace(/[$,\s%]/g, '')        // Remover $, comas, % y espacios
+      .replace(/[$,\s]/g, '')        // Remover $, comas y espacios
       .replace(/[^\d.-]/g, '');      // Mantener solo dígitos, punto y guión
     
     // Si después de limpiar no queda nada o solo caracteres especiales, retornar 0
@@ -213,9 +217,9 @@ const Dashboard = () => {
       if (dateA.match(/^\d{4}-\d{2}$/) && dateB.match(/^\d{4}-\d{2}$/)) {
         // Si son meses completos, comparar cronológicamente
         return dateA.localeCompare(dateB);
-      } else if (monthOrder.includes(dateA) && monthOrder.includes(dateB)) {
+      } else if (monthOrder.includes(a) && monthOrder.includes(b)) {
         // Si son solo nombres de mes (Ene, Feb, etc.), usar el orden predefinido
-        return monthOrder.indexOf(dateA) - monthOrder.indexOf(dateB);
+        return monthOrder.indexOf(a) - monthOrder.indexOf(b);
       }
       
       // Fallback: ordenar alfabéticamente
@@ -375,46 +379,84 @@ const transformGoogleSheetsData = (rawData) => {
     return transformedData;
   };
   
-  // 🚀 NUEVO: Función para transformar la estructura de tabla ancha A:O de Crecimiento Anual
+  // 🚀 ACTUALIZADO: Función para transformar la estructura de tabla ancha A:O de Crecimiento Anual
   const transformCrecimientoAnualData = (rawData) => {
-    if (!rawData || rawData.length < 2) return fallbackCrecimientoAnualData;
+    // rawData[0] es la fila 1, rawData[1] es la fila 2 (donde están los títulos)
+    if (!rawData || rawData.length < 3) return fallbackCrecimientoAnualData;
 
-    const [headerRow, ...dataRows] = rawData;
-    // Solo tomamos las columnas hasta la columna O (índice 14), que es el crecimiento
-    const headers = headerRow.slice(0, 15); 
-    const rows = dataRows.filter(row => row.length > 0 && parseNumberFromString(row[0]) > 0).map(row => row.slice(0, 15));
+    // 🚀 NUEVO: Headers son la fila 2 (índice 1)
+    const headerRow = rawData[1]; 
+    // Los datos comienzan en la fila 3 (índice 2)
+    const allDataRows = rawData.slice(2);
+    
+    // Solo tomar columnas A a O (índices 0 a 14)
+    const headers = (headerRow || []).slice(0, 15).map(h => h.trim()); 
+
+    // Solo tomar filas con un año válido y recortar hasta la columna O
+    const rows = allDataRows
+        .filter(row => row.length > 0 && parseNumberFromString(row[0]) > 0)
+        .map(row => row.slice(0, 15));
 
     const MONTH_ABBREVIATIONS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     const monthlyMap = {};
     const years = [];
     
     const yearIndex = headers.findIndex(h => h.toLowerCase().includes('año'));
+    
+    const allYears = [];
+    const annualGrowthData = [];
 
+    // 🚀 Preparar data para el Line Chart (Monthly Sales by Year) y Column Chart (Annual Growth)
     rows.forEach(row => {
         const year = parseNumberFromString(row[yearIndex]);
         if (year > 0) {
-            years.push(year);
+            allYears.push(year);
             monthlyMap[year] = [];
             
-            // Asumimos que los meses van de B a M (índices 1 a 12)
+            // Meses van de B a M (índices 1 a 12 en el array)
             for (let i = 1; i <= 12; i++) {
                 const monthName = MONTH_ABBREVIATIONS[i - 1];
                 const ventas = parseNumberFromString(row[i]);
                 
+                // Formato para el LineChart multi-línea
                 monthlyMap[year].push({
                     name: monthName,
-                    ventas: ventas,
-                    // Usamos ventas como métrica principal para la gráfica de línea
+                    [year]: ventas, // Usar el año como key para la línea
                 });
             }
+            
+            // Column Chart (Annual Growth - Col O / Index 14)
+            const crecimientoIndex = headers.length - 1;
+            const crecimientoString = row[crecimientoIndex] || '0%';
+            // parseNumberFromString elimina el %, por ejemplo '65.2%' -> 65.2
+            const crecimientoValue = parseNumberFromString(crecimientoString); 
+
+            annualGrowthData.push({
+                year: year,
+                crecimiento: crecimientoValue
+            });
         }
+    });
+    
+    // Unir la data mensual en un solo array para la gráfica multi-línea
+    const monthlyChartData = [];
+    MONTH_ABBREVIATIONS.forEach(monthName => {
+        const monthData = { name: monthName };
+        allYears.forEach(year => {
+            const dataPoint = monthlyMap[year].find(d => d.name === monthName);
+            if (dataPoint) {
+                monthData[year] = dataPoint[year];
+            }
+        });
+        monthlyChartData.push(monthData);
     });
 
     return {
-        headers: headers, // [Año, Ene, Feb, ..., Dic, Total, Crecimiento]
-        rows: rows,       // Filas con valores (numéricos ya parseados)
-        years: years,     // Array de años (2022, 2023, 2024...)
-        monthlyMap: monthlyMap // Data lista para gráficas de tendencia mensual
+        headers: headers,
+        rows: rows,
+        years: allYears.sort((a, b) => a - b),
+        monthlyMap: monthlyChartData, // Data para el LineChart multi-línea
+        annualGrowthData: annualGrowthData.sort((a, b) => a.year - b.year)
     };
   };
 
@@ -463,7 +505,6 @@ const transformGoogleSheetsData = (rawData) => {
 
   useEffect(() => {
     const generateAlerts = () => {
-      // ... (Lógica de alertas)
       const newAlerts = [];
       const months = Object.keys(salesData).sort();
       if (months.length < 2) return;
@@ -559,8 +600,7 @@ const transformGoogleSheetsData = (rawData) => {
     return Array.from(methodsSet);
   }, [contactData]);
 
-  // ... (formatDateForDisplay, formatDateShort, calculateTrend, TrendIcon, ConnectionStatus, getSchoolTotals, getAreaTotals, getInstructorTotals, getCourses, getContactTotals, executiveKPIs, getViewData, AlertsPanel, ContactDashboard, ExecutiveDashboard, CobranzaDashboard)
-
+  // ... (Resto de funciones utilitarias: formatDateForDisplay, TrendIcon, etc.)
   const formatDateForDisplay = (monthString) => {
     try {
       const [year, month] = monthString.split('-');
@@ -776,7 +816,6 @@ const transformGoogleSheetsData = (rawData) => {
   };
 
   const executiveKPIs = useMemo(() => {
-    // ... (Lógica de KPIs ejecutivos)
     const currentMonth = salesData[selectedMonth];
     if (!currentMonth) {
       return { totalVentas: 0, totalCursos: 0, ventasGrowth: 0, cursosGrowth: 0, ticketPromedio: 0 };
@@ -827,7 +866,6 @@ const transformGoogleSheetsData = (rawData) => {
 
   const getViewData = useMemo(() => {
     switch (viewType) {
-      // ... (Casos existentes)
       case "escuela":
         const schoolTotals = getSchoolTotals(selectedMonth);
         return schools.map(school => {
@@ -945,17 +983,13 @@ const transformGoogleSheetsData = (rawData) => {
           return data;
         });
         
-      // 🚀 NUEVO: Caso para la pestaña Crecimiento Anual
       case "crecimientoAnual":
-        // La data para esta pestaña se consume directamente del estado
         return [];
 
       default:
         return [];
     }
   }, [viewType, selectedMonth, selectedSchool, selectedArea, metricType, months, schools, compareMonths, contactData]);
-  
-  // ... (AlertsPanel, ContactDashboard, ExecutiveDashboard, CobranzaDashboard)
   
   const AlertsPanel = () => (
     <div className="bg-white rounded-lg shadow p-6">
@@ -2034,36 +2068,17 @@ const transformGoogleSheetsData = (rawData) => {
     );
   };
   
-  // 🚀 NUEVO: Componente para el dashboard de Crecimiento Anual (Implementando la tabla A2:O7)
+  // 🚀 ACTUALIZADO: Componente para el dashboard de Crecimiento Anual (Implementando la tabla A2:O7 y las nuevas gráficas)
   const CrecimientoAnualDashboard = () => {
-    const { headers, rows, years, monthlyMap } = crecimientoAnualData;
+    const { headers, rows, years, monthlyMap, annualGrowthData } = crecimientoAnualData;
     
-    // Filtramos la data mensual para el año seleccionado
-    const currentMonthlyData = monthlyMap[selectedYear] || [];
-    
-    // Obtener la data anual para la gráfica de tendencia anual
-    const annualChartData = years.map(year => {
-        const row = rows.find(r => parseNumberFromString(r[0]) === year) || [];
-        // Asumimos que Total es el penúltimo elemento (índice headers.length - 2)
-        const totalIndex = headers.length - 2; 
-        // Asumimos que Crecimiento es el último elemento (índice headers.length - 1)
-        const crecimientoIndex = headers.length - 1;
-        
-        // Convertimos el crecimiento de string '40%' a un número 40 para el gráfico
-        const crecimientoString = row[crecimientoIndex] || '0%';
-        const crecimientoValue = parseNumberFromString(crecimientoString.replace('%', ''));
-
-        return {
-            year: year,
-            total: parseNumberFromString(row[totalIndex]),
-            crecimiento: crecimientoValue
-        };
-    }).filter(d => d.total > 0);
-
+    // Filtramos la data para el año seleccionado (se necesita para mostrar el KPI del año actual)
     const currentYearDataRow = rows.find(r => parseNumberFromString(r[0]) === parseNumberFromString(selectedYear)) || [];
-    const currentYearTotal = parseNumberFromString(currentYearDataRow[headers.length - 2]);
-    const currentYearGrowth = currentYearDataRow[headers.length - 1] || 'N/A';
-
+    const totalIndex = headers.length - 2;
+    const crecimientoIndex = headers.length - 1;
+    const currentYearTotal = parseNumberFromString(currentYearDataRow[totalIndex]);
+    const currentYearGrowth = currentYearDataRow[crecimientoIndex] || 'N/A';
+    
     const getGrowthIndicator = (value) => {
         const numericValue = parseNumberFromString(value.replace('%', ''));
         const Icon = numericValue > 0 ? TrendingUp : numericValue < 0 ? TrendingDown : Minus;
@@ -2077,6 +2092,8 @@ const transformGoogleSheetsData = (rawData) => {
             </div>
         );
     };
+      
+    const COLORS = ['#22C55E', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899'];
       
     return (
       <div className="space-y-6">
@@ -2115,19 +2132,20 @@ const transformGoogleSheetsData = (rawData) => {
                 </div>
 
                 <div className="bg-gradient-to-r from-gray-600 to-gray-700 rounded-lg shadow p-4 text-white">
-                    <p className="text-gray-100 text-sm">Meses con datos</p>
-                    <p className="text-xl font-bold">{currentMonthlyData.filter(d => d.ventas > 0).length} / 12</p>
+                    <p className="text-gray-100 text-sm">Meses con ventas</p>
+                    <p className="text-xl font-bold">{monthlyMap.filter(d => parseNumberFromString(d[selectedYear]) > 0).length} / 12</p>
                 </div>
             </div>
           
             <h3 className="text-xl font-semibold mb-4 text-gray-700">
-                Tabla de Crecimiento Anual (Filas A2 a O7)
+                Tabla de Crecimiento Anual (Data A2:O7)
             </h3>
             {/* Tabla Principal de Crecimiento Anual */}
             <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-100">
                         <tr>
+                            {/* 🚀 NUEVO: Títulos de la tabla usando los headers del estado */}
                             {headers.map((header, index) => (
                                 <th key={index} className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider ${
                                     header.toLowerCase().includes('total') ? 'bg-green-200 text-green-800' :
@@ -2140,7 +2158,8 @@ const transformGoogleSheetsData = (rawData) => {
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {rows.map((row, rowIndex) => (
+                        {/* Asumimos que quieres solo las filas A2 a O7 (máx 6 filas de datos) */}
+                        {rows.slice(0, 6).map((row, rowIndex) => (
                             <tr key={rowIndex} className="hover:bg-gray-50">
                                 {row.map((cell, cellIndex) => (
                                     <td key={cellIndex} className={`px-4 py-3 whitespace-nowrap text-sm ${
@@ -2149,7 +2168,8 @@ const transformGoogleSheetsData = (rawData) => {
                                         cellIndex === 0 ? 'font-bold text-gray-900' : // Año
                                         'text-gray-800'
                                     }`}>
-                                        {cellIndex > 0 && cellIndex < headers.length - 2 && parseNumberFromString(cell) > 0 ? `$${parseNumberFromString(cell).toLocaleString()}` : cell}
+                                        {/* Formateo de números vs. porcentajes/strings */}
+                                        {cellIndex > 0 && cellIndex < headers.length - 1 && typeof cell !== 'string' ? `$${parseNumberFromString(cell).toLocaleString()}` : cell}
                                     </td>
                                 ))}
                             </tr>
@@ -2159,47 +2179,66 @@ const transformGoogleSheetsData = (rawData) => {
             </div>
         </div>
         
-        {/* Gráficas de Evolución Anual y Mensual */}
+        {/* 🚀 NUEVOS GRÁFICOS */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
-          {/* 🚀 NUEVO GRÁFICO 1: Tendencia Anual (Total y Crecimiento) */}
+          {/* Gráfico 1: Tendencia Mensual Comparativa (Line Chart) */}
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Tendencia Anual: Ventas Totales vs. Crecimiento</h3>
+            <h3 className="text-lg font-semibold mb-4">📈 Tendencia Mensual de Ventas por Año</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={annualChartData}>
+                <LineChart data={monthlyMap}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="year" />
-                  {/* Eje Y izquierdo para Total de Ventas (en Millones) */}
-                  <YAxis yAxisId="total" orientation="left" stroke="#22C55E" tickFormatter={(value) => `${(value/1000000).toFixed(1)}M`} />
-                  {/* Eje Y derecho para Crecimiento (%) */}
-                  <YAxis yAxisId="crecimiento" orientation="right" stroke="#3B82F6" tickFormatter={(value) => `${value}%`} />
+                  <XAxis dataKey="name" />
+                  <YAxis yAxisId="ventas" orientation="left" tickFormatter={(value) => `${(value/1000000).toFixed(1)}M`} />
                   <Tooltip 
-                    formatter={(value, name, props) => [
-                        name === 'crecimiento' ? `${value}%` : `$${value.toLocaleString()}`, 
-                        name === 'crecimiento' ? 'Crecimiento' : 'Ventas Anuales'
-                    ]} 
+                    formatter={(value, name) => [`$${value.toLocaleString()}`, `Ventas ${name}`]} 
                   />
                   <Legend />
-                  <Line yAxisId="total" type="monotone" dataKey="total" stroke="#22C55E" strokeWidth={3} name="Ventas Anuales" />
-                  <Line yAxisId="crecimiento" type="monotone" dataKey="crecimiento" stroke="#3B82F6" strokeWidth={2} name="Crecimiento" />
+                  {years.map((year, index) => (
+                      <Line 
+                          key={year} 
+                          type="monotone" 
+                          dataKey={year} 
+                          stroke={COLORS[index % COLORS.length]} 
+                          strokeWidth={2} 
+                          name={`Ventas ${year}`}
+                      />
+                  ))}
                 </LineChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          {/* 🚀 NUEVO GRÁFICO 2: Tendencia Mensual para el Año Seleccionado */}
+          {/* Gráfico 2: Crecimiento Anual (Column Chart) */}
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Tendencia Mensual de Ventas ({selectedYear})</h3>
+            <h3 className="text-lg font-semibold mb-4">📊 Crecimiento Anual (%)</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={currentMonthlyData}>
+                <BarChart data={annualGrowthData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis tickFormatter={(value) => `${(value/1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, 'Ventas Mensuales']} />
+                  <XAxis dataKey="year" />
+                  <YAxis tickFormatter={(value) => `${value}%`} />
+                  <Tooltip 
+                    formatter={(value) => [`${value.toFixed(1)}%`, 'Crecimiento Anual']} 
+                  />
                   <Legend />
-                  <Bar dataKey="ventas" fill="#8B5CF6" name="Ventas Mensuales" />
+                  <Bar 
+                    dataKey="crecimiento" 
+                    name="Crecimiento %"
+                    fill="#3B82F6"
+                    // Aplicar color condicional
+                    isAnimationActive={false}
+                    label={{ 
+                        position: 'top', 
+                        formatter: (value) => `${value.toFixed(1)}%`,
+                        fill: '#333'
+                    }}
+                  >
+                    {annualGrowthData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.crecimiento > 0 ? '#22C55E' : entry.crecimiento < 0 ? '#EF4444' : '#6B7280'} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -2334,7 +2373,7 @@ const transformGoogleSheetsData = (rawData) => {
               <DollarSign className="w-4 h-4" />
               Cobranza
             </button>
-            {/* 🚀 NUEVO BOTÓN PARA CRECIMIENTO ANUAL */}
+            {/* 🚀 BOTÓN CRECIMIENTO ANUAL */}
             <button
               onClick={() => setViewType("crecimientoAnual")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "crecimientoAnual" 
@@ -2457,7 +2496,7 @@ const transformGoogleSheetsData = (rawData) => {
         {viewType === "executive" && <ExecutiveDashboard />}
         {viewType === "cobranza" && <CobranzaDashboard />}
         {viewType === "contacto" && <ContactDashboard />}
-        {/* 🚀 NUEVO: Renderizado del nuevo componente */}
+        {/* 🚀 Renderizado del nuevo componente */}
         {viewType === "crecimientoAnual" && <CrecimientoAnualDashboard />}
 
         {/* Vistas de tablas */}
