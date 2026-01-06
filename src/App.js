@@ -100,34 +100,7 @@ const Dashboard = () => {
 
   const debugInstructors = () => {
     console.log('DEBUG: Verificando datos de instructores...');
-  };
-
-  // --- FUNCIÓN CRÍTICA: Normaliza fechas para que el selector funcione ---
-  const getStandardMonthKey = (dateStr) => {
-    if (!dateStr) return null;
-    const str = dateStr.toString().trim();
-    
-    // Si ya es formato YYYY-MM, devolverlo
-    if (str.match(/^\d{4}-\d{2}$/)) return str;
-    
-    // Detectar formato DD/MM/YYYY o D/M/YYYY
-    const parts = str.split(/[\/\-]/);
-    if (parts.length === 3) {
-      // Asumimos DD/MM/YYYY
-      const day = parts[0].padStart(2, '0');
-      const month = parts[1].padStart(2, '0');
-      const year = parts[2].length === 2 ? `20${parts[2]}` : parts[2]; // Manejar años de 2 dígitos
-      if (year.length === 4) {
-        return `${year}-${month}`;
-      }
-    }
-    
-    // Si es formato ISO YYYY-MM-DD
-    if (str.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        return str.substring(0, 7);
-    }
-
-    return null;
+    // (Tu lógica de debug original)
   };
 
   const parseNumberFromString = (value) => {
@@ -144,8 +117,31 @@ const Dashboard = () => {
   };
 
   const sortMonthsChronologically = (months) => {
+    const monthOrder = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const parseToStandardDate = (dateStr) => {
+      if (!dateStr) return null;
+      const str = dateStr.toString().trim();
+      if (str.match(/^\d{4}-\d{2}$/)) return str;
+      const monthNames = { 'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04', 'may': '05', 'jun': '06', 'jul': '07', 'ago': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dic': '12' };
+      const parts = str.toLowerCase().split(/[\s-]+/);
+      if (str.match(/^\d{4}$/)) return str + '-13'; 
+      if (parts.length >= 1) {
+          const monthKey = parts.find(p => monthNames[p]);
+          if (monthKey) {
+              return monthNames[monthKey]; 
+          }
+      }
+      return str; 
+    };
+
     return months.sort((a, b) => {
-      // Orden simple alfabético funciona bien para formato YYYY-MM
+      const dateA = parseToStandardDate(a);
+      const dateB = parseToStandardDate(b);
+      if (dateA.match(/^\d{4}-\d{2}$/) && dateB.match(/^\d{4}-\d{2}$/)) {
+        return dateA.localeCompare(dateB);
+      } else if (monthOrder.includes(a) && monthOrder.includes(b)) {
+        return monthOrder.indexOf(a) - monthOrder.indexOf(b);
+      }
       return a.localeCompare(b); 
     });
   };
@@ -216,11 +212,7 @@ const Dashboard = () => {
       const instructorNormalizado = instructor ? 
         instructor.toString().trim().replace(/\s+/g, ' ') : 
         'Sin asignar';
-      
-      // USAMOS LA NUEVA FUNCIÓN PARA GENERAR LA CLAVE DEL MES
-      const monthKey = getStandardMonthKey(fecha);
-      if (!monthKey) return; // Si la fecha no es válida, saltamos
-
+      const monthKey = fecha.substring(0, 7);
       if (!transformedData[monthKey]) transformedData[monthKey] = {};
       if (!transformedData[monthKey][escuela]) transformedData[monthKey][escuela] = {};
       if (!transformedData[monthKey][escuela][area]) transformedData[monthKey][escuela][area] = {};
@@ -252,11 +244,7 @@ const Dashboard = () => {
     rows.forEach((row) => {
       const [fecha, , , , ventas, cursosVendidos, , medioContacto] = row;
       if (!fecha || !medioContacto) return; 
-      
-      // USAMOS LA NUEVA FUNCIÓN AQUÍ TAMBIÉN
-      const monthKey = getStandardMonthKey(fecha);
-      if (!monthKey) return;
-
+      const monthKey = fecha.substring(0, 7);
       const medio = medioContacto.trim();
       if (!transformedData[monthKey]) transformedData[monthKey] = {};
       if (!transformedData[monthKey][medio]) transformedData[monthKey][medio] = { ventas: 0, cursos: 0 };
@@ -268,7 +256,7 @@ const Dashboard = () => {
     return transformedData;
   };
 
-  // 🚀 MANTENEMOS TU LÓGICA DE CRECIMIENTO ANUAL ORIGINAL/ACTUALIZADA
+  // 🚀 ACTUALIZADO: Función para transformar datos de Crecimiento Anual incluyendo las nuevas tablas
   const transformCrecimientoAnualData = (rawData) => {
     if (!rawData || rawData.length < 3) return fallbackCrecimientoAnualData;
 
@@ -276,12 +264,18 @@ const Dashboard = () => {
     const allDataRows = rawData.slice(2);
     const headers = (headerRow || []).slice(0, 15).map(h => h.trim()); 
 
+    // --- TABLA PRINCIPAL (General) ---
     const rows = allDataRows
         .slice(0, 8) 
         .filter(row => row.length > 0 && parseNumberFromString(row[0]) > 0)
         .map(row => row.slice(0, 15));
 
+    // --- NUEVA TABLA: QUERÉTARO (A11:O15) ---
+    // Fila 11 es índice 10. Slice(10, 15) toma índices 10, 11, 12, 13, 14.
     const queretaroRows = rawData.slice(10, 15).map(row => row.slice(0, 15));
+
+    // --- NUEVA TABLA: TOTAL (A18:O22) ---
+    // Fila 18 es índice 17. Slice(17, 22) toma índices 17, 18, 19, 20, 21.
     const totalRows = rawData.slice(17, 22).map(row => row.slice(0, 15));
 
     const MONTH_ABBREVIATIONS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -1161,102 +1155,10 @@ const Dashboard = () => {
       return totals;
     };
 
-    // --- LOGICA DE LA TABLA COMPARATIVA AÑO vs AÑO Y YTD ---
-    const getComparisonData = () => {
-        if (!selectedMonth) return null;
-        
-        const [yearStr, monthStr] = selectedMonth.split('-');
-        const currentYear = parseInt(yearStr);
-        const prevYear = currentYear - 1;
-        const selectedMonthIndex = parseInt(monthStr);
-
-        const currentMonthKey = selectedMonth;
-        const prevYearMonthKey = `${prevYear}-${monthStr}`;
-
-        // Función auxiliar para obtener ventas de un mes específico y escuela específica
-        const getMonthSales = (mKey, schoolName = null) => {
-            if (!salesData[mKey]) return 0;
-            let total = 0;
-            const schoolsToProcess = schoolName ? [schoolName] : Object.keys(salesData[mKey]);
-            
-            schoolsToProcess.forEach(s => {
-                if (salesData[mKey][s]) {
-                    Object.values(salesData[mKey][s]).forEach(area => {
-                        Object.values(area).forEach(curso => {
-                            total += curso.ventas || 0;
-                        });
-                    });
-                }
-            });
-            return total;
-        };
-
-        // Función para obtener acumulado (YTD)
-        const getYTD = (year, maxMonth, schoolName = null) => {
-            let total = 0;
-            for (let i = 1; i <= maxMonth; i++) {
-                const mKey = `${year}-${i.toString().padStart(2, '0')}`;
-                total += getMonthSales(mKey, schoolName);
-            }
-            return total;
-        };
-
-        const rows = schools.map(school => {
-            const currentMonthSales = getMonthSales(currentMonthKey, school);
-            const prevYearMonthSales = getMonthSales(prevYearMonthKey, school);
-            
-            const currentYTD = getYTD(currentYear, selectedMonthIndex, school);
-            const prevYTD = getYTD(prevYear, selectedMonthIndex, school);
-
-            const monthGrowth = prevYearMonthSales > 0 ? ((currentMonthSales - prevYearMonthSales) / prevYearMonthSales) * 100 : (currentMonthSales > 0 ? 100 : 0);
-            const ytdGrowth = prevYTD > 0 ? ((currentYTD - prevYTD) / prevYTD) * 100 : (currentYTD > 0 ? 100 : 0);
-
-            return {
-                school,
-                currentMonth: currentMonthSales,
-                prevMonth: prevYearMonthSales,
-                monthGrowth,
-                currentYTD,
-                prevYTD,
-                ytdGrowth
-            };
-        });
-
-        // Totales generales
-        const totalCurrentMonth = rows.reduce((acc, r) => acc + r.currentMonth, 0);
-        const totalPrevMonth = rows.reduce((acc, r) => acc + r.prevMonth, 0);
-        const totalCurrentYTD = rows.reduce((acc, r) => acc + r.currentYTD, 0);
-        const totalPrevYTD = rows.reduce((acc, r) => acc + r.prevYTD, 0);
-        
-        const totalMonthGrowth = totalPrevMonth > 0 ? ((totalCurrentMonth - totalPrevMonth) / totalPrevMonth) * 100 : 0;
-        const totalYtdGrowth = totalPrevYTD > 0 ? ((totalCurrentYTD - totalPrevYTD) / totalPrevYTD) * 100 : 0;
-
-        return {
-            rows,
-            totals: {
-                currentMonth: totalCurrentMonth,
-                prevMonth: totalPrevMonth,
-                monthGrowth: totalMonthGrowth,
-                currentYTD: totalCurrentYTD,
-                prevYTD: totalPrevYTD,
-                ytdGrowth: totalYtdGrowth
-            },
-            prevYear
-        };
-    };
-
-    const comparisonData = getComparisonData();
     const salesBySchool = getSalesBySchoolAndMonth();
     const coursesBySchool = getCoursesBySchoolAndMonth();
     const monthlySalesTotals = calculateMonthlySalesTotals();
     const monthlyCoursesTotals = calculateMonthlyCoursesTotals();
-
-    // Helper para renderizar porcentajes con color
-    const PercentCell = ({ value }) => (
-        <span className={`font-bold ${value > 0 ? 'text-green-600' : value < 0 ? 'text-red-600' : 'text-gray-500'}`}>
-            {value > 0 ? '+' : ''}{value.toFixed(1)}%
-        </span>
-    );
 
     return (
       <div className="space-y-6">
@@ -1467,96 +1369,6 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* 🚀 NUEVA TABLA: COMPARATIVA AÑO vs AÑO Y ACUMULADO */}
-        {comparisonData && (
-        <div className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-blue-500">
-          <h3 className="text-lg font-semibold mb-4 text-gray-800 flex items-center gap-2">
-             <Activity className="w-5 h-5 text-blue-600" />
-             Comparativa Anual y Acumulados ({formatDateForDisplay(selectedMonth)})
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-blue-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-blue-800 uppercase tracking-wider">
-                    Escuela
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-blue-800 uppercase tracking-wider">
-                    {formatDateShort(selectedMonth)} (Actual)
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    {formatDateShort(`${comparisonData.prevYear}-${selectedMonth.split('-')[1]}`)} (Ant.)
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-blue-800 uppercase tracking-wider">
-                    Var %
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-blue-800 uppercase tracking-wider border-l border-gray-200">
-                    Acumulado {selectedMonth.split('-')[0]}
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Acumulado {comparisonData.prevYear}
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-blue-800 uppercase tracking-wider">
-                    Var % YTD
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-100">
-                {comparisonData.rows.map((row, index) => (
-                  <tr key={index} className="hover:bg-blue-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {row.school}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900">
-                      ${row.currentMonth.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">
-                      ${row.prevMonth.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                      <PercentCell value={row.monthGrowth} />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900 border-l border-gray-200">
-                      ${row.currentYTD.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">
-                      ${row.prevYTD.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                      <PercentCell value={row.ytdGrowth} />
-                    </td>
-                  </tr>
-                ))}
-                {/* Fila de Totales */}
-                <tr className="bg-blue-50 border-t-2 border-blue-100">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-900">
-                    TOTAL
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-blue-900">
-                    ${comparisonData.totals.currentMonth.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-600">
-                    ${comparisonData.totals.prevMonth.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                    <PercentCell value={comparisonData.totals.monthGrowth} />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-blue-900 border-l border-gray-300">
-                    ${comparisonData.totals.currentYTD.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-600">
-                    ${comparisonData.totals.prevYTD.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                    <PercentCell value={comparisonData.totals.ytdGrowth} />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        )}
-
         <div className="bg-white rounded-lg shadow-lg p-6">
           <h3 className="text-lg font-semibold mb-4 text-gray-800">Ventas por Escuela (en pesos)</h3>
           <div className="overflow-x-auto">
@@ -1666,7 +1478,502 @@ const Dashboard = () => {
     );
   };
 
-  // ... (Resto de componentes Cobranza, Contacto, etc. incluidos arriba)
+  const CobranzaDashboard = () => {
+    const mesesCobranza = useMemo(() => {
+      if (!cobranzaData || Object.keys(cobranzaData).length === 0) return [];
+      const meses = new Set();
+      Object.values(cobranzaData).forEach(escuelaData => {
+        Object.keys(escuelaData).forEach(mes => {
+          if (mes && mes.trim() !== '') {
+            meses.add(mes.trim());
+          }
+        });
+      });
+      const mesesArray = Array.from(meses);
+      return sortMonthsChronologically(mesesArray);
+    }, [cobranzaData]);
+
+    const totalesPorMes = useMemo(() => {
+      const totales = {};
+      mesesCobranza.forEach(mes => {
+        totales[mes] = 0;
+      });
+      Object.entries(cobranzaData).forEach(([escuela, datosEscuela]) => {
+        Object.entries(datosEscuela).forEach(([mes, monto]) => {
+          const mesLimpio = mes.trim();
+          if (mes && mesLimpio !== '' && mesesCobranza.includes(mesLimpio)) {
+            const montoNumerico = parseNumberFromString(monto);
+            totales[mesLimpio] += montoNumerico;
+          }
+        });
+      });
+      return totales;
+    }, [cobranzaData, mesesCobranza]);
+
+    const totalesPorEscuela = useMemo(() => {
+      const totales = {};
+      if (!cobranzaData || Object.keys(cobranzaData).length === 0) return totales;
+      Object.entries(cobranzaData).forEach(([escuela, datosEscuela]) => {
+        totales[escuela] = 0;
+        Object.values(datosEscuela).forEach(valor => {
+          const valorNumerico = parseNumberFromString(valor);
+          totales[escuela] += valorNumerico;
+        });
+      });
+      return totales;
+    }, [cobranzaData]);
+
+    const escuelas = Object.keys(cobranzaData);
+
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-100 text-sm">Total Cobranza</p>
+                <p className="text-3xl font-bold">
+                  ${Object.values(totalesPorMes).reduce((sum, val) => sum + val, 0).toLocaleString()}
+                </p>
+                <p className="text-blue-100 text-sm">{mesesCobranza.length} meses registrados</p>
+              </div>
+              <DollarSign className="w-8 h-8 text-blue-200" />
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg shadow p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-indigo-100 text-sm">Escuelas Activas</p>
+                <p className="text-3xl font-bold">{escuelas.length}</p>
+                <p className="text-indigo-100 text-sm">Generando ingresos</p>
+              </div>
+              <Building className="w-8 h-8 text-indigo-200" />
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-100 text-sm">Promedio Mensual</p>
+                <p className="text-3xl font-bold">
+                  ${mesesCobranza.length > 0 ? Math.round(Object.values(totalesPorMes).reduce((sum, val) => sum + val, 0) / mesesCobranza.length).toLocaleString() : '0'}
+                </p>
+                <p className="text-purple-100 text-sm">Por mes</p>
+              </div>
+              <BarChart3 className="w-8 h-8 text-purple-200" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-gray-800">
+              Cobranza por Escuela
+            </h2>
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Building className="w-4 h-4" />
+              <span>{escuelas.length} escuelas • {mesesCobranza.length} meses</span>
+            </div>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10">
+                    Escuela
+                  </th>
+                  {mesesCobranza.map(mes => (
+                    <th key={mes} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                      {mes}
+                    </th>
+                  ))}
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50 min-w-[120px]">
+                    Total
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {escuelas.map(escuela => (
+                  <tr key={escuela} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white z-10">
+                      <div className="flex items-center gap-2">
+                        <Building className="w-4 h-4 text-gray-500" />
+                        {escuela}
+                      </div>
+                    </td>
+                    {mesesCobranza.map(mes => {
+                      const monto = parseNumberFromString(cobranzaData[escuela]?.[mes]) || 0;
+                      return (
+                        <td key={`${escuela}-${mes}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <span className={monto > 0 ? 'font-medium' : 'text-gray-400'}>
+                            ${monto.toLocaleString()}
+                          </span>
+                        </td>
+                      );
+                    })}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-900 bg-blue-50">
+                      ${totalesPorEscuela[escuela]?.toLocaleString() || '0'}
+                    </td>
+                  </tr>
+                ))}
+                <tr className="bg-gray-100 font-bold border-t-2 border-gray-300">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 sticky left-0 bg-gray-100 z-10">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-gray-700" />
+                      Total por Mes
+                    </div>
+                  </td>
+                  {mesesCobranza.map(mes => (
+                    <td key={`total-${mes}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      ${totalesPorMes[mes]?.toLocaleString() || '0'}
+                    </td>
+                  ))}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-900 bg-blue-100">
+                    ${Object.values(totalesPorMes).reduce((sum, val) => sum + val, 0).toLocaleString()}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h3 className="text-lg font-semibold mb-4">Tendencia de Cobranza Total</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={mesesCobranza.map(mes => ({
+                mes: mes,
+                total: totalesPorMes[mes] || 0
+              }))}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="mes" 
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                  fontSize={12}
+                />
+                <YAxis tickFormatter={(value) => `${(value/1000).toFixed(0)}k`} />
+                <Tooltip formatter={(value) => [`${value.toLocaleString()}`, 'Cobranza']} />
+                <Line 
+                  type="monotone" 
+                  dataKey="total" 
+                  stroke="#3B82F6" 
+                  strokeWidth={3} 
+                  dot={{ r: 6 }}
+                  activeDot={{ r: 8 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Star className="w-5 h-5 text-yellow-500" />
+            <h3 className="text-lg font-semibold">Top Escuelas por Cobranza Total</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Object.entries(totalesPorEscuela)
+              .sort(([,a], [,b]) => b - a)
+              .slice(0, 6)
+              .map(([escuela, total], index) => (
+                <div key={escuela} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${
+                      index === 0 ? 'bg-yellow-500' : 
+                      index === 1 ? 'bg-gray-400' : 
+                      index === 2 ? 'bg-orange-500' : 
+                      'bg-blue-500'
+                    }`}>
+                      {index + 1}
+                    </span>
+                    <div>
+                      <p className="font-medium text-sm">{escuela}</p>
+                      <p className="text-xs text-gray-500">
+                        {mesesCobranza.filter(mes => {
+                          const monto = parseNumberFromString(cobranzaData[escuela]?.[mes]);
+                          return monto > 0;
+                        }).length} meses activos
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-sm">${total.toLocaleString()}</p>
+                    <p className="text-xs text-gray-500">
+                      ${Math.round(total / Math.max(mesesCobranza.length, 1)).toLocaleString()}/mes
+                    </p>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h3 className="text-lg font-semibold mb-4">Análisis de Rendimiento por Escuela</h3>
+          <div className="space-y-4">
+            {escuelas.map(escuela => {
+              const montos = mesesCobranza.map(mes => parseNumberFromString(cobranzaData[escuela]?.[mes]) || 0);
+              const total = totalesPorEscuela[escuela] || 0;
+              const promedio = total / Math.max(mesesCobranza.length, 1);
+              const mesesActivos = montos.filter(m => m > 0).length;
+              const consistency = mesesActivos / mesesCobranza.length;
+              
+              return (
+                <div key={escuela} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Building className="w-5 h-5 text-gray-500" />
+                      <h4 className="font-medium">{escuela}</h4>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold">${total.toLocaleString()}</p>
+                      <p className="text-sm text-gray-500">Total</p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-500">Promedio Mensual</p>
+                      <p className="font-medium">${Math.round(promedio).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Meses Activos</p>
+                      <p className="font-medium">{mesesActivos} / {mesesCobranza.length}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Consistencia</p>
+                      <p className="font-medium">{(consistency * 100).toFixed(0)}%</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Mejor Mes</p>
+                      <p className="font-medium">${Math.max(...montos).toLocaleString()}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-3">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full ${
+                          consistency >= 0.8 ? 'bg-green-500' :
+                          consistency >= 0.6 ? 'bg-yellow-500' :
+                          'bg-red-500'
+                        }`}
+                        style={{ width: `${consistency * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
+  // 🚀 ACTUALIZADO: Dashboard de Crecimiento Anual con las 3 tablas
+  const CrecimientoAnualDashboard = () => {
+    // Extraemos las nuevas filas (queretaroRows, totalRows)
+    const { headers, rows, queretaroRows, totalRows, years, monthlyMap, annualGrowthData } = crecimientoAnualData;
+    
+    const currentYearDataRow = rows.find(r => parseNumberFromString(r[0]) === parseNumberFromString(selectedYear)) || [];
+    const totalIndex = headers.length - 2;
+    const crecimientoIndex = headers.length - 1;
+    const currentYearTotal = parseNumberFromString(currentYearDataRow[totalIndex]);
+    const currentYearGrowth = currentYearDataRow[crecimientoIndex] || 'N/A';
+    
+    const getGrowthIndicator = (value) => {
+        const numericValue = parseNumberFromString(value.replace('%', ''));
+        const Icon = numericValue > 0 ? TrendingUp : numericValue < 0 ? TrendingDown : Minus;
+        const color = numericValue > 0 ? 'text-green-500' : numericValue < 0 ? 'text-red-500' : 'text-gray-500';
+        return (
+            <div className="flex items-center gap-1">
+                <Icon className={`w-4 h-4 ${color}`} />
+                <span className={`font-medium ${color}`}>
+                    {value}
+                </span>
+            </div>
+        );
+    };
+      
+    const COLORS = ['#22C55E', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899'];
+
+    // Componente reutilizable para las tablas
+    const SimpleTable = ({ title, dataRows, tableHeaders, colorTheme = "gray" }) => {
+        const headerColor = colorTheme === 'blue' ? 'bg-blue-100 text-blue-800' : 
+                            colorTheme === 'orange' ? 'bg-orange-100 text-orange-800' : 
+                            'bg-gray-100 text-gray-800';
+        
+        return (
+            <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <h3 className="text-xl font-semibold mb-4 text-gray-700">{title}</h3>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className={headerColor}>
+                            <tr>
+                                {tableHeaders.map((header, index) => (
+                                    <th key={index} className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider ${
+                                        header.toLowerCase().includes('total') ? 'bg-opacity-50 bg-green-300' : ''
+                                    }`}>
+                                        {header}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {dataRows.map((row, rowIndex) => (
+                                <tr key={rowIndex} className="hover:bg-gray-50">
+                                    {row.map((cell, cellIndex) => (
+                                        <td key={cellIndex} className={`px-4 py-3 whitespace-nowrap text-sm ${
+                                            cellIndex === 0 ? 'font-bold text-gray-900' : 
+                                            cellIndex === tableHeaders.length - 2 ? 'font-bold bg-green-50' : 
+                                            'text-gray-800'
+                                        }`}>
+                                            {cellIndex > 0 && cellIndex < tableHeaders.length - 1 && typeof cell !== 'string' 
+                                                ? `$${parseNumberFromString(cell).toLocaleString()}` 
+                                                : cell}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+    };
+      
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+          <Activity className="w-6 h-6 text-indigo-600" />
+          Análisis de Crecimiento Anual
+        </h2>
+        
+        <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-2">
+                <div className="md:col-span-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Seleccionar Año</label>
+                    <select
+                        value={selectedYear}
+                        onChange={(e) => setSelectedYear(e.target.value)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                        {years.map(year => (
+                            <option key={year} value={year}>{year}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow p-4 text-white">
+                    <p className="text-green-100 text-sm">Ventas Totales {currentYearDataRow[0]}</p>
+                    <p className="text-xl font-bold">${currentYearTotal.toLocaleString()}</p>
+                </div>
+                
+                <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg shadow p-4 text-white">
+                    <p className="text-indigo-100 text-sm">Crecimiento vs Año Ant.</p>
+                    <div className="flex items-center gap-2">
+                        <p className="text-xl font-bold">{currentYearGrowth}</p>
+                        {getGrowthIndicator(currentYearGrowth)}
+                    </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-gray-600 to-gray-700 rounded-lg shadow p-4 text-white">
+                    <p className="text-gray-100 text-sm">Meses con ventas</p>
+                    <p className="text-xl font-bold">{monthlyMap.filter(d => parseNumberFromString(d[selectedYear]) > 0).length} / 12</p>
+                </div>
+            </div>
+        </div>
+        
+        {/* 🚀 TABLAS DE DATOS */}
+        
+        {/* Tabla 1: General (La original) */}
+        <SimpleTable 
+            title="Resumen General Anual" 
+            dataRows={rows} 
+            tableHeaders={headers} 
+            colorTheme="gray"
+        />
+
+        {/* Tabla 2: Querétaro (Nueva) */}
+        {queretaroRows && queretaroRows.length > 0 && (
+            <SimpleTable 
+                title="Querétaro (A11:O15)" 
+                dataRows={queretaroRows} 
+                tableHeaders={headers} 
+                colorTheme="blue"
+            />
+        )}
+
+        {/* Tabla 3: Total (Nueva) */}
+        {totalRows && totalRows.length > 0 && (
+            <SimpleTable 
+                title="Total (A18:O22)" 
+                dataRows={totalRows} 
+                tableHeaders={headers} 
+                colorTheme="orange"
+            />
+        )}
+        
+        {/* GRÁFICOS */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h3 className="text-lg font-semibold mb-4">📈 Tendencia Mensual de Ventas por Año</h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={monthlyMap}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis yAxisId="ventas" orientation="left" tickFormatter={(value) => `${(value/1000000).toFixed(1)}M`} />
+                  <Tooltip formatter={(value, name) => [`$${value.toLocaleString()}`, `Ventas ${name}`]} />
+                  <Legend />
+                  {years.map((year, index) => (
+                      <Line 
+                          key={year} 
+                          type="monotone" 
+                          dataKey={year} 
+                          stroke={COLORS[index % COLORS.length]} 
+                          strokeWidth={2} 
+                          name={`Ventas ${year}`}
+                      />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h3 className="text-lg font-semibold mb-4">📊 Crecimiento Anual (%)</h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={annualGrowthData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="year" />
+                  <YAxis tickFormatter={(value) => `${value}%`} />
+                  <Tooltip formatter={(value) => [`${value.toFixed(1)}%`, 'Crecimiento Anual']} />
+                  <Legend />
+                  <Bar 
+                    dataKey="crecimiento" 
+                    name="Crecimiento %"
+                    fill="#3B82F6"
+                    label={{ position: 'top', formatter: (value) => `${value.toFixed(1)}%`, fill: '#333' }}
+                  >
+                    {annualGrowthData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.crecimiento > 0 ? '#22C55E' : entry.crecimiento < 0 ? '#EF4444' : '#6B7280'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
