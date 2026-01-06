@@ -102,7 +102,7 @@ const Dashboard = () => {
     console.log('DEBUG: Verificando datos de instructores...');
   };
 
-  // --- FUNCIÓN DE LIMPIEZA DE FECHAS (CRÍTICO PARA QUE JALE LA INFO) ---
+  // --- NUEVA FUNCIÓN PARA NORMALIZAR FECHAS (CRUCIAL PARA EL SELECTOR) ---
   const normalizeMonthKey = (dateStr) => {
     if (!dateStr) return null;
     const str = dateStr.toString().trim();
@@ -115,7 +115,10 @@ const Dashboard = () => {
     match = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
     if (match) return `${match[3]}-${match[2].padStart(2, '0')}`;
     
-    return null; // Si no coincide
+    // Si ya es un año o algo que no parece fecha completa, ignorar o manejar según caso
+    if (str.match(/^\d{4}$/)) return str + '-13'; 
+
+    return null; 
   };
 
   const parseNumberFromString = (value) => {
@@ -133,31 +136,13 @@ const Dashboard = () => {
 
   const sortMonthsChronologically = (months) => {
     const monthOrder = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const parseToStandardDate = (dateStr) => {
-      if (!dateStr) return null;
-      const str = dateStr.toString().trim();
-      if (str.match(/^\d{4}-\d{2}$/)) return str;
-      const monthNames = { 'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04', 'may': '05', 'jun': '06', 'jul': '07', 'ago': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dic': '12' };
-      const parts = str.toLowerCase().split(/[\s-]+/);
-      if (str.match(/^\d{4}$/)) return str + '-13'; 
-      if (parts.length >= 1) {
-          const monthKey = parts.find(p => monthNames[p]);
-          if (monthKey) {
-              return monthNames[monthKey]; 
-          }
-      }
-      return str; 
-    };
-
     return months.sort((a, b) => {
-      const dateA = parseToStandardDate(a);
-      const dateB = parseToStandardDate(b);
-      if (dateA.match(/^\d{4}-\d{2}$/) && dateB.match(/^\d{4}-\d{2}$/)) {
-        return dateA.localeCompare(dateB);
-      } else if (monthOrder.includes(a) && monthOrder.includes(b)) {
-        return monthOrder.indexOf(a) - monthOrder.indexOf(b);
-      }
-      return a.localeCompare(b); 
+       // Intenta ordenar por fecha YYYY-MM
+       if (a.match(/^\d{4}-\d{2}$/) && b.match(/^\d{4}-\d{2}$/)) {
+         return a.localeCompare(b);
+       }
+       // Fallback a nombres de mes si fuera el caso
+       return a.localeCompare(b); 
     });
   };
 
@@ -230,7 +215,7 @@ const Dashboard = () => {
       
       // USAMOS LA NUEVA FUNCIÓN DE NORMALIZACIÓN AQUÍ
       const monthKey = normalizeMonthKey(fecha);
-      if (!monthKey) return;
+      if (!monthKey) return; 
 
       if (!transformedData[monthKey]) transformedData[monthKey] = {};
       if (!transformedData[monthKey][escuela]) transformedData[monthKey][escuela] = {};
@@ -286,12 +271,16 @@ const Dashboard = () => {
     const allDataRows = rawData.slice(2);
     const headers = (headerRow || []).slice(0, 15).map(h => h.trim()); 
 
+    // --- TABLA PRINCIPAL (General) ---
     const rows = allDataRows
         .slice(0, 8) 
         .filter(row => row.length > 0 && parseNumberFromString(row[0]) > 0)
         .map(row => row.slice(0, 15));
 
+    // --- NUEVA TABLA: QUERÉTARO (A11:O15) ---
     const queretaroRows = rawData.slice(10, 15).map(row => row.slice(0, 15));
+
+    // --- NUEVA TABLA: TOTAL (A18:O22) ---
     const totalRows = rawData.slice(17, 22).map(row => row.slice(0, 15));
 
     const MONTH_ABBREVIATIONS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -454,6 +443,7 @@ const Dashboard = () => {
   }, [salesData]);
 
   const months = useMemo(() => {
+    // Usamos las claves YYYY-MM que ya vienen normalizadas
     return Object.keys(salesData).sort();
   }, [salesData]);
 
@@ -2541,8 +2531,8 @@ const Dashboard = () => {
           </div>
         )}
       </div>
-    );
-  };
+    </div>
+  );
 };
 
 export default Dashboard;
