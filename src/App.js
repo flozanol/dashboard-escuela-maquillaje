@@ -100,7 +100,6 @@ const Dashboard = () => {
 
   const debugInstructors = () => {
     console.log('DEBUG: Verificando datos de instructores...');
-    // (Tu lógica de debug original)
   };
 
   const parseNumberFromString = (value) => {
@@ -256,7 +255,6 @@ const Dashboard = () => {
     return transformedData;
   };
 
-  // 🚀 ACTUALIZADO: Función para transformar datos de Crecimiento Anual incluyendo las nuevas tablas
   const transformCrecimientoAnualData = (rawData) => {
     if (!rawData || rawData.length < 3) return fallbackCrecimientoAnualData;
 
@@ -264,18 +262,12 @@ const Dashboard = () => {
     const allDataRows = rawData.slice(2);
     const headers = (headerRow || []).slice(0, 15).map(h => h.trim()); 
 
-    // --- TABLA PRINCIPAL (General) ---
     const rows = allDataRows
         .slice(0, 8) 
         .filter(row => row.length > 0 && parseNumberFromString(row[0]) > 0)
         .map(row => row.slice(0, 15));
 
-    // --- NUEVA TABLA: QUERÉTARO (A11:O15) ---
-    // Fila 11 es índice 10. Slice(10, 15) toma índices 10, 11, 12, 13, 14.
     const queretaroRows = rawData.slice(10, 15).map(row => row.slice(0, 15));
-
-    // --- NUEVA TABLA: TOTAL (A18:O22) ---
-    // Fila 18 es índice 17. Slice(17, 22) toma índices 17, 18, 19, 20, 21.
     const totalRows = rawData.slice(17, 22).map(row => row.slice(0, 15));
 
     const MONTH_ABBREVIATIONS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -1155,10 +1147,95 @@ const Dashboard = () => {
       return totals;
     };
 
+    const getComparisonData = () => {
+        const [yearStr, monthStr] = selectedMonth.split('-');
+        const currentYear = parseInt(yearStr);
+        const prevYear = currentYear - 1;
+        const selectedMonthIndex = parseInt(monthStr);
+
+        const currentMonthKey = selectedMonth;
+        const prevYearMonthKey = `${prevYear}-${monthStr}`;
+
+        const getMonthSales = (mKey, schoolName = null) => {
+            if (!salesData[mKey]) return 0;
+            let total = 0;
+            const schoolsToProcess = schoolName ? [schoolName] : Object.keys(salesData[mKey]);
+            
+            schoolsToProcess.forEach(s => {
+                if (salesData[mKey][s]) {
+                    Object.values(salesData[mKey][s]).forEach(area => {
+                        Object.values(area).forEach(curso => {
+                            total += curso.ventas || 0;
+                        });
+                    });
+                }
+            });
+            return total;
+        };
+
+        const getYTD = (year, maxMonth, schoolName = null) => {
+            let total = 0;
+            for (let i = 1; i <= maxMonth; i++) {
+                const mKey = `${year}-${i.toString().padStart(2, '0')}`;
+                total += getMonthSales(mKey, schoolName);
+            }
+            return total;
+        };
+
+        const rows = schools.map(school => {
+            const currentMonthSales = getMonthSales(currentMonthKey, school);
+            const prevYearMonthSales = getMonthSales(prevYearMonthKey, school);
+            
+            const currentYTD = getYTD(currentYear, selectedMonthIndex, school);
+            const prevYTD = getYTD(prevYear, selectedMonthIndex, school);
+
+            const monthGrowth = prevYearMonthSales > 0 ? ((currentMonthSales - prevYearMonthSales) / prevYearMonthSales) * 100 : (currentMonthSales > 0 ? 100 : 0);
+            const ytdGrowth = prevYTD > 0 ? ((currentYTD - prevYTD) / prevYTD) * 100 : (currentYTD > 0 ? 100 : 0);
+
+            return {
+                school,
+                currentMonth: currentMonthSales,
+                prevMonth: prevYearMonthSales,
+                monthGrowth,
+                currentYTD,
+                prevYTD,
+                ytdGrowth
+            };
+        });
+
+        const totalCurrentMonth = rows.reduce((acc, r) => acc + r.currentMonth, 0);
+        const totalPrevMonth = rows.reduce((acc, r) => acc + r.prevMonth, 0);
+        const totalCurrentYTD = rows.reduce((acc, r) => acc + r.currentYTD, 0);
+        const totalPrevYTD = rows.reduce((acc, r) => acc + r.prevYTD, 0);
+        
+        const totalMonthGrowth = totalPrevMonth > 0 ? ((totalCurrentMonth - totalPrevMonth) / totalPrevMonth) * 100 : 0;
+        const totalYtdGrowth = totalPrevYTD > 0 ? ((totalCurrentYTD - totalPrevYTD) / totalPrevYTD) * 100 : 0;
+
+        return {
+            rows,
+            totals: {
+                currentMonth: totalCurrentMonth,
+                prevMonth: totalPrevMonth,
+                monthGrowth: totalMonthGrowth,
+                currentYTD: totalCurrentYTD,
+                prevYTD: totalPrevYTD,
+                ytdGrowth: totalYtdGrowth
+            },
+            prevYear
+        };
+    };
+
+    const comparisonData = getComparisonData();
     const salesBySchool = getSalesBySchoolAndMonth();
     const coursesBySchool = getCoursesBySchoolAndMonth();
     const monthlySalesTotals = calculateMonthlySalesTotals();
     const monthlyCoursesTotals = calculateMonthlyCoursesTotals();
+
+    const PercentCell = ({ value }) => (
+        <span className={`font-bold ${value > 0 ? 'text-green-600' : value < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+            {value > 0 ? '+' : ''}{value.toFixed(1)}%
+        </span>
+    );
 
     return (
       <div className="space-y-6">
@@ -1366,6 +1443,92 @@ const Dashboard = () => {
                   </div>
                 ))}
             </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-lg p-6 border-l-4 border-blue-500">
+          <h3 className="text-lg font-semibold mb-4 text-gray-800 flex items-center gap-2">
+             <Activity className="w-5 h-5 text-blue-600" />
+             Comparativa Anual ({formatDateForDisplay(selectedMonth)})
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-blue-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-blue-800 uppercase tracking-wider">
+                    Escuela
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-blue-800 uppercase tracking-wider">
+                    {formatDateShort(selectedMonth)} (Actual)
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {formatDateShort(`${comparisonData.prevYear}-${selectedMonth.split('-')[1]}`)} (Ant.)
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-blue-800 uppercase tracking-wider">
+                    Var %
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-blue-800 uppercase tracking-wider border-l border-gray-200">
+                    Acumulado {selectedMonth.split('-')[0]}
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Acumulado {comparisonData.prevYear}
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-blue-800 uppercase tracking-wider">
+                    Var % YTD
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {comparisonData.rows.map((row, index) => (
+                  <tr key={index} className="hover:bg-blue-50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {row.school}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900">
+                      ${row.currentMonth.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">
+                      ${row.prevMonth.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                      <PercentCell value={row.monthGrowth} />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-gray-900 border-l border-gray-200">
+                      ${row.currentYTD.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">
+                      ${row.prevYTD.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                      <PercentCell value={row.ytdGrowth} />
+                    </td>
+                  </tr>
+                ))}
+                <tr className="bg-blue-50 border-t-2 border-blue-100">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-900">
+                    TOTAL
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-blue-900">
+                    ${comparisonData.totals.currentMonth.toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-600">
+                    ${comparisonData.totals.prevMonth.toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                    <PercentCell value={comparisonData.totals.monthGrowth} />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-blue-900 border-l border-gray-300">
+                    ${comparisonData.totals.currentYTD.toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-600">
+                    ${comparisonData.totals.prevYTD.toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
+                    <PercentCell value={comparisonData.totals.ytdGrowth} />
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -1774,9 +1937,7 @@ const Dashboard = () => {
     );
   };
   
-  // 🚀 ACTUALIZADO: Dashboard de Crecimiento Anual con las 3 tablas
   const CrecimientoAnualDashboard = () => {
-    // Extraemos las nuevas filas (queretaroRows, totalRows)
     const { headers, rows, queretaroRows, totalRows, years, monthlyMap, annualGrowthData } = crecimientoAnualData;
     
     const currentYearDataRow = rows.find(r => parseNumberFromString(r[0]) === parseNumberFromString(selectedYear)) || [];
@@ -1801,7 +1962,6 @@ const Dashboard = () => {
       
     const COLORS = ['#22C55E', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899'];
 
-    // Componente reutilizable para las tablas
     const SimpleTable = ({ title, dataRows, tableHeaders, colorTheme = "gray" }) => {
         const headerColor = colorTheme === 'blue' ? 'bg-blue-100 text-blue-800' : 
                             colorTheme === 'orange' ? 'bg-orange-100 text-orange-800' : 
@@ -1888,9 +2048,6 @@ const Dashboard = () => {
             </div>
         </div>
         
-        {/* 🚀 TABLAS DE DATOS */}
-        
-        {/* Tabla 1: General (La original) */}
         <SimpleTable 
             title="Resumen General Anual" 
             dataRows={rows} 
@@ -1898,7 +2055,6 @@ const Dashboard = () => {
             colorTheme="gray"
         />
 
-        {/* Tabla 2: Querétaro (Nueva) */}
         {queretaroRows && queretaroRows.length > 0 && (
             <SimpleTable 
                 title="Querétaro (A11:O15)" 
@@ -1908,7 +2064,6 @@ const Dashboard = () => {
             />
         )}
 
-        {/* Tabla 3: Total (Nueva) */}
         {totalRows && totalRows.length > 0 && (
             <SimpleTable 
                 title="Total (A18:O22)" 
@@ -1918,7 +2073,6 @@ const Dashboard = () => {
             />
         )}
         
-        {/* GRÁFICOS */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h3 className="text-lg font-semibold mb-4">📈 Tendencia Mensual de Ventas por Año</h3>
