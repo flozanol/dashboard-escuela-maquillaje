@@ -100,7 +100,6 @@ const Dashboard = () => {
 
   const debugInstructors = () => {
     console.log('DEBUG: Verificando datos de instructores...');
-    // (Tu lógica de debug original)
   };
 
   const parseNumberFromString = (value) => {
@@ -126,10 +125,10 @@ const Dashboard = () => {
       const parts = str.toLowerCase().split(/[\s-]+/);
       if (str.match(/^\d{4}$/)) return str + '-13'; 
       if (parts.length >= 1) {
-          const monthKey = parts.find(p => monthNames[p]);
-          if (monthKey) {
-              return monthNames[monthKey]; 
-          }
+        const monthKey = parts.find(p => monthNames[p]);
+        if (monthKey) {
+          return monthNames[monthKey]; 
+        }
       }
       return str; 
     };
@@ -170,8 +169,8 @@ const Dashboard = () => {
       const crecimientoAnualUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.crecimientoAnual}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
       const crecimientoAnualResponse = await fetch(crecimientoAnualUrl);
       if (!crecimientoAnualResponse.ok) throw new Error(`Error ${crecimientoAnualResponse.status}: ${crecimientoAnualResponse.statusText}`);
-      const crecimientoAnualData = await crecimientoAnualResponse.json();
-      const transformedCrecimientoAnual = transformCrecimientoAnualData(crecimientoAnualData.values);
+      const crecimientoAnualDataResp = await crecimientoAnualResponse.json();
+      const transformedCrecimientoAnual = transformCrecimientoAnualData(crecimientoAnualDataResp.values);
       setCrecimientoAnualData(transformedCrecimientoAnual); 
       
       if (transformedCrecimientoAnual.years.length > 0) {
@@ -181,7 +180,7 @@ const Dashboard = () => {
       setConnectionStatus('connected');
       setLastUpdated(new Date());
       setErrorMessage('');
-    } catch (error) {
+    } catch (error:any) {
       console.error('Error fetching Google Sheets data:', error);
       setConnectionStatus('error');
       setErrorMessage(error.message);
@@ -202,7 +201,7 @@ const Dashboard = () => {
   const transformGoogleSheetsData = (rawData) => {
     const headers = rawData[0];
     const rows = rawData.slice(1);
-    const transformedData = {};
+    const transformedData:any = {};
     
     rows.forEach((row, index) => {
       const [fecha, escuela, area, curso, ventas, cursosVendidos, instructor] = row;
@@ -240,7 +239,7 @@ const Dashboard = () => {
 
   const transformContactData = (rawData) => {
     const rows = rawData.slice(1);
-    const transformedData = {};
+    const transformedData:any = {};
     rows.forEach((row) => {
       const [fecha, , , , ventas, cursosVendidos, , medioContacto] = row;
       if (!fecha || !medioContacto) return; 
@@ -256,78 +255,72 @@ const Dashboard = () => {
     return transformedData;
   };
 
-  // 🚀 ACTUALIZADO: Función para transformar datos de Crecimiento Anual incluyendo las nuevas tablas
+  // ACTUALIZADO: Crecimiento Anual
   const transformCrecimientoAnualData = (rawData) => {
     if (!rawData || rawData.length < 3) return fallbackCrecimientoAnualData;
 
     const headerRow = rawData[1]; 
     const allDataRows = rawData.slice(2);
-    const headers = (headerRow || []).slice(0, 15).map(h => h.trim()); 
+    const headers = (headerRow || []).slice(0, 15).map((h:any) => h.trim()); 
 
-    // --- TABLA PRINCIPAL (General) ---
     const rows = allDataRows
-        .slice(0, 8) 
-        .filter(row => row.length > 0 && parseNumberFromString(row[0]) > 0)
-        .map(row => row.slice(0, 15));
+      .slice(0, 8) 
+      .filter(row => row.length > 0 && parseNumberFromString(row[0]) > 0)
+      .map(row => row.slice(0, 15));
 
-    // --- NUEVA TABLA: QUERÉTARO (A11:O15) ---
-    // Fila 11 es índice 10. Slice(10, 15) toma índices 10, 11, 12, 13, 14.
     const queretaroRows = rawData.slice(10, 15).map(row => row.slice(0, 15));
-
-    // --- NUEVA TABLA: TOTAL (A18:O22) ---
-    // Fila 18 es índice 17. Slice(17, 22) toma índices 17, 18, 19, 20, 21.
     const totalRows = rawData.slice(17, 22).map(row => row.slice(0, 15));
 
     const MONTH_ABBREVIATIONS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const monthlyMap = {};
-    const years = [];
+    const monthlyMap:any = {};
+    const years:number[] = [];
     const yearIndex = headers.findIndex(h => h.toLowerCase().includes('año'));
-    const allYears = [];
-    const annualGrowthData = [];
+    const allYears:number[] = [];
+    const annualGrowthData:any[] = [];
 
-    rows.forEach(row => {
-        const year = parseNumberFromString(row[yearIndex]);
-        if (year > 0) {
-            allYears.push(year);
-            monthlyMap[year] = [];
-            for (let i = 1; i <= 12; i++) {
-                const monthName = MONTH_ABBREVIATIONS[i - 1];
-                const ventas = parseNumberFromString(row[i]);
-                monthlyMap[year].push({
-                    name: monthName,
-                    [year]: ventas, 
-                });
-            }
-            const crecimientoIndex = headers.length - 1;
-            const crecimientoString = row[crecimientoIndex] || '0%';
-            const crecimientoValue = parseNumberFromString(crecimientoString); 
-            annualGrowthData.push({
-                year: year,
-                crecimiento: crecimientoValue
-            });
+    rows.forEach((row:any) => {
+      const year = parseNumberFromString(row[yearIndex]);
+      if (year > 0) {
+        allYears.push(year);
+        monthlyMap[year] = [];
+        for (let i = 1; i <= 12; i++) {
+          const monthName = MONTH_ABBREVIATIONS[i - 1];
+          const ventas = parseNumberFromString(row[i]);
+          monthlyMap[year].push({
+            name: monthName,
+            [year]: ventas, 
+          });
         }
+        const crecimientoIndex = headers.length - 1;
+        const crecimientoString = row[crecimientoIndex] || '0%';
+        const crecimientoValue = parseNumberFromString(crecimientoString); 
+        annualGrowthData.push({
+          year: year,
+          crecimiento: crecimientoValue
+        });
+      }
     });
     
-    const monthlyChartData = [];
+    const monthlyChartData:any[] = [];
     MONTH_ABBREVIATIONS.forEach(monthName => {
-        const monthData = { name: monthName };
-        allYears.forEach(year => {
-            const dataPoint = monthlyMap[year].find(d => d.name === monthName);
-            if (dataPoint) {
-                monthData[year] = dataPoint[year];
-            }
-        });
-        monthlyChartData.push(monthData);
+      const monthData:any = { name: monthName };
+      allYears.forEach(year => {
+        const dataPoint = monthlyMap[year].find((d:any) => d.name === monthName);
+        if (dataPoint) {
+          monthData[year] = dataPoint[year];
+        }
+      });
+      monthlyChartData.push(monthData);
     });
 
     return {
-        headers: headers,
-        rows: rows,
-        queretaroRows: queretaroRows, 
-        totalRows: totalRows,
-        years: allYears.sort((a, b) => a - b),
-        monthlyMap: monthlyChartData,
-        annualGrowthData: annualGrowthData.sort((a, b) => a.year - b.year)
+      headers: headers,
+      rows: rows,
+      queretaroRows: queretaroRows, 
+      totalRows: totalRows,
+      years: allYears.sort((a, b) => a - b),
+      monthlyMap: monthlyChartData,
+      annualGrowthData: annualGrowthData.sort((a, b) => a.year - b.year)
     };
   };
 
@@ -335,14 +328,14 @@ const Dashboard = () => {
     if (!rawData || rawData.length === 0) return {};
     const headers = rawData[0];
     const rows = rawData.slice(1);
-    const result = {};
-    const meses = headers.slice(1).filter(header => header && header.trim() !== '');
-    rows.forEach((row, rowIndex) => {
+    const result:any = {};
+    const meses = headers.slice(1).filter((header:any) => header && header.trim() !== '');
+    rows.forEach((row:any) => {
       const escuela = row[0];
       if (!escuela || escuela.trim() === '') return;
       const escuelaClean = escuela.trim();
       result[escuelaClean] = {};
-      meses.forEach((mes, mesIndex) => {
+      meses.forEach((mes:any, mesIndex:number) => {
         const cellValue = row[mesIndex + 1]; 
         const monto = parseNumberFromString(cellValue);
         const mesClean = mes.trim();
@@ -365,11 +358,11 @@ const Dashboard = () => {
 
   useEffect(() => {
     const generateAlerts = () => {
-      const newAlerts = [];
-      const months = Object.keys(salesData).sort();
-      if (months.length < 2) return;
-      const currentMonth = months[months.length - 1];
-      const previousMonth = months[months.length - 2];
+      const newAlerts:any[] = [];
+      const monthsKeys = Object.keys(salesData).sort();
+      if (monthsKeys.length < 2) return;
+      const currentMonth = monthsKeys[monthsKeys.length - 1];
+      const previousMonth = monthsKeys[monthsKeys.length - 2];
       Object.keys(salesData[currentMonth]).forEach(school => {
         Object.keys(salesData[currentMonth][school]).forEach(area => {
           Object.keys(salesData[currentMonth][school][area]).forEach(course => {
@@ -379,9 +372,14 @@ const Dashboard = () => {
               const ventasChange = ((current.ventas - previous.ventas) / previous.ventas) * 100;
               if (ventasChange < -20) {
                 newAlerts.push({
-                  type: 'warning', category: 'ventas', message: `${course} en ${school} bajó ${Math.abs(ventasChange).toFixed(1)}% en ventas`,
-                  details: `De $${previous.ventas.toLocaleString()} a $${current.ventas.toLocaleString()}`, priority: ventasChange < -40 ? 'urgent' : 'high',
-                  curso: course, escuela: school, area: area
+                  type: 'warning',
+                  category: 'ventas',
+                  message: `${course} en ${school} bajó ${Math.abs(ventasChange).toFixed(1)}% en ventas`,
+                  details: `De $${previous.ventas.toLocaleString()} a $${current.ventas.toLocaleString()}`,
+                  priority: ventasChange < -40 ? 'urgent' : 'high',
+                  curso: course,
+                  escuela: school,
+                  area: area
                 });
               }
             }
@@ -396,9 +394,9 @@ const Dashboard = () => {
   }, [salesData]);
 
   const schools = useMemo(() => {
-    const schoolsSet = new Set();
-    Object.values(salesData).forEach(monthData => {
-      Object.keys(monthData).forEach(school => {
+    const schoolsSet = new Set<string>();
+    Object.values(salesData).forEach((monthData:any) => {
+      Object.keys(monthData).forEach((school) => {
         schoolsSet.add(school);
       });
     });
@@ -406,10 +404,10 @@ const Dashboard = () => {
   }, [salesData]);
 
   const areas = useMemo(() => {
-    const areasSet = new Set();
-    Object.values(salesData).forEach(monthData => {
-      Object.values(monthData).forEach(schoolData => {
-        Object.keys(schoolData).forEach(area => {
+    const areasSet = new Set<string>();
+    Object.values(salesData).forEach((monthData:any) => {
+      Object.values(monthData).forEach((schoolData:any) => {
+        Object.keys(schoolData).forEach((area) => {
           areasSet.add(area);
         });
       });
@@ -418,11 +416,11 @@ const Dashboard = () => {
   }, [salesData]);
 
   const instructors = useMemo(() => {
-    const instructorsSet = new Set();
-    Object.values(salesData).forEach((monthData) => {
-      Object.values(monthData).forEach((schoolData) => {
-        Object.values(schoolData).forEach((areaData) => {
-          Object.values(areaData).forEach((courseData) => {
+    const instructorsSet = new Set<string>();
+    Object.values(salesData).forEach((monthData:any) => {
+      Object.values(monthData).forEach((schoolData:any) => {
+        Object.values(schoolData).forEach((areaData:any) => {
+          Object.values(areaData).forEach((courseData:any) => {
             if (courseData.instructor) {
               const instructorNormalizado = courseData.instructor.toString().trim().replace(/\s+/g, ' ');
               instructorsSet.add(instructorNormalizado);
@@ -442,8 +440,8 @@ const Dashboard = () => {
   }, [salesData]);
 
   const contactMethods = useMemo(() => {
-    const methodsSet = new Set();
-    Object.values(contactData).forEach(monthData => {
+    const methodsSet = new Set<string>();
+    Object.values(contactData).forEach((monthData:any) => {
       Object.keys(monthData).forEach(method => {
         methodsSet.add(method);
       });
@@ -451,7 +449,7 @@ const Dashboard = () => {
     return Array.from(methodsSet);
   }, [contactData]);
 
-  const formatDateForDisplay = (monthString) => {
+  const formatDateForDisplay = (monthString:string) => {
     try {
       const [year, month] = monthString.split('-');
       const date = new Date(parseInt(year), parseInt(month) - 1, 1);
@@ -460,7 +458,7 @@ const Dashboard = () => {
     } catch (error) { return monthString; }
   };
 
-  const formatDateShort = (monthString) => {
+  const formatDateShort = (monthString:string) => {
     try {
       const [year, month] = monthString.split('-');
       const date = new Date(parseInt(year), parseInt(month) - 1, 1);
@@ -469,7 +467,7 @@ const Dashboard = () => {
     } catch (error) { return monthString; }
   };
 
-  const calculateTrend = (values) => {
+  const calculateTrend = (values:number[]) => {
     if (values.length < 2) return "stable";
     const lastTwo = values.slice(-2);
     const change = ((lastTwo[1] - lastTwo[0]) / lastTwo[0]) * 100;
@@ -478,7 +476,7 @@ const Dashboard = () => {
     return "stable";
   };
 
-  const TrendIcon = ({ trend }) => {
+  const TrendIcon = ({ trend }:{trend:string}) => {
     switch (trend) {
       case "up": return <TrendingUp className="w-4 h-4 text-green-500" />;
       case "down": return <TrendingDown className="w-4 h-4 text-red-500" />;
@@ -514,8 +512,8 @@ const Dashboard = () => {
     </div>
   );
 
-  const getSchoolTotals = (month) => {
-    const totals = {};
+  const getSchoolTotals = (month:string) => {
+    const totals:any = {};
     if (!salesData[month]) return totals;
     Object.keys(salesData[month]).forEach(school => {
       totals[school] = { ventas: 0, cursos: 0 };
@@ -529,8 +527,8 @@ const Dashboard = () => {
     return totals;
   };
 
-  const getAreaTotals = (month, school = null) => {
-    const totals = {};
+  const getAreaTotals = (month:string, school:string|null = null) => {
+    const totals:any = {};
     if (!salesData[month]) return totals;
     const schoolsToProcess = school ? [school] : Object.keys(salesData[month]);
     schoolsToProcess.forEach(schoolKey => {
@@ -549,8 +547,8 @@ const Dashboard = () => {
     return totals;
   };
 
-  const getInstructorTotals = (month, school = null) => {
-    const totals = {};
+  const getInstructorTotals = (month:string, school:string|null = null) => {
+    const totals:any = {};
     if (!salesData[month]) return totals;
     const schoolsToProcess = school ? [school] : Object.keys(salesData[month]);
     schoolsToProcess.forEach(schoolKey => {
@@ -563,7 +561,7 @@ const Dashboard = () => {
               const instructorKey = instructor.toString().trim().replace(/\s+/g, ' ');
               if (!totals[instructorKey]) {
                 totals[instructorKey] = { 
-                  ventas: 0, cursos: 0, areas: new Set(), escuelas: new Set(), cursos_detalle: [] 
+                  ventas: 0, cursos: 0, areas: new Set<string>(), escuelas: new Set<string>(), cursos_detalle: [] as any[]
                 };
               }
               totals[instructorKey].ventas += courseData.ventas;
@@ -585,8 +583,8 @@ const Dashboard = () => {
     return totals;
   };
 
-  const getCourses = (month, school = null, area = null) => {
-    const courses = {};
+  const getCourses = (month:string, school:string|null = null, area:string|null = null) => {
+    const courses:any = {};
     if (!salesData[month]) return courses;
     const schoolsToProcess = school ? [school] : Object.keys(salesData[month]);
     schoolsToProcess.forEach(schoolKey => {
@@ -611,8 +609,8 @@ const Dashboard = () => {
     return courses;
   };
 
-  const getContactTotals = (month) => {
-    const totals = {};
+  const getContactTotals = (month:string) => {
+    const totals:any = {};
     if (!contactData[month]) return totals;
     Object.keys(contactData[month]).forEach(method => {
       totals[method] = contactData[month][method];
@@ -654,6 +652,95 @@ const Dashboard = () => {
     return { totalVentas, totalCursos, ventasGrowth, cursosGrowth, ticketPromedio };
   }, [selectedMonth, salesData, months]);
 
+  // NUEVO: helpers para comparativo mes vs año anterior
+  const getMonthsForYear = (year:number, allMonths:string[]) => {
+    return allMonths
+      .filter(m => m.startsWith(`${year}-`))
+      .sort();
+  };
+
+  const getMonthlyTotals = (month:string) => {
+    const monthData = salesData[month];
+    let totalVentas = 0;
+    let totalCursos = 0;
+
+    if (!monthData) return { totalVentas, totalCursos };
+
+    Object.values(monthData as any).forEach((schoolData:any) => {
+      Object.values(schoolData as any).forEach((areaData:any) => {
+        Object.values(areaData as any).forEach((courseData:any) => {
+          totalVentas += courseData.ventas;
+          totalCursos += courseData.cursos;
+        });
+      });
+    });
+
+    return { totalVentas, totalCursos };
+  };
+
+  const getYearToDateTotals = (year:number, month:string, allMonths:string[]) => {
+    const monthsOfYear = getMonthsForYear(year, allMonths);
+    const cutoffMonth = month.slice(5); // "MM"
+
+    let totalVentas = 0;
+    let totalCursos = 0;
+
+    monthsOfYear.forEach(m => {
+      const mMonth = m.slice(5);
+      if (mMonth <= cutoffMonth) {
+        const { totalVentas: v, totalCursos: c } = getMonthlyTotals(m);
+        totalVentas += v;
+        totalCursos += c;
+      }
+    });
+
+    return { totalVentas, totalCursos };
+  };
+
+  const getVariation = (current:number, previous:number) => {
+    if (!previous) return 0;
+    return ((current - previous) / previous) * 100;
+  };
+
+  const monthComparisonData = useMemo(() => {
+    if (!selectedMonth) return null;
+    if (!months || months.length === 0) return null;
+
+    const [yearStr, monthStr] = selectedMonth.split("-");
+    const currentYear = parseInt(yearStr, 10);
+    const previousYear = currentYear - 1;
+    const previousMonthKey = `${previousYear}-${monthStr}`;
+
+    const { totalVentas: ventasActual, totalCursos: cursosActual } =
+      getMonthlyTotals(selectedMonth);
+    const { totalVentas: ventasPrev, totalCursos: cursosPrev } =
+      getMonthlyTotals(previousMonthKey);
+
+    const { totalVentas: ventasYTDActual, totalCursos: cursosYTDActual } =
+      getYearToDateTotals(currentYear, selectedMonth, months);
+    const { totalVentas: ventasYTDPrev, totalCursos: cursosYTDPrev } =
+      getYearToDateTotals(previousYear, previousMonthKey, months);
+
+    return {
+      currentYear,
+      previousYear,
+      currentMonthKey: selectedMonth,
+      previousMonthKey,
+      ventasActual,
+      ventasPrev,
+      cursosActual,
+      cursosPrev,
+      ventasYTDActual,
+      ventasYTDPrev,
+      cursosYTDActual,
+      cursosYTDPrev,
+      ventasVar: getVariation(ventasActual, ventasPrev),
+      cursosVar: getVariation(cursosActual, cursosPrev),
+      ventasYTDVar: getVariation(ventasYTDActual, ventasYTDPrev),
+      cursosYTDVar: getVariation(cursosYTDActual, cursosYTDPrev),
+    };
+  }, [selectedMonth, salesData, months]);
+
   const getViewData = useMemo(() => {
     switch (viewType) {
       case "escuela":
@@ -663,7 +750,7 @@ const Dashboard = () => {
             const totals = getSchoolTotals(month);
             return totals[school] ? totals[school][metricType] : 0;
           });
-          const average = schoolValues.reduce((a, b) => a + b, 0) / schoolValues.length;
+          const average = schoolValues.reduce((a, b) => a + b, 0) / (schoolValues.length || 1);
           const trend = calculateTrend(schoolValues);
           return {
             nombre: school,
@@ -681,7 +768,7 @@ const Dashboard = () => {
             const totals = getAreaTotals(month, selectedSchool);
             return totals[area] ? totals[area][metricType] : 0;
           });
-          const average = areaValues.reduce((a, b) => a + b, 0) / areaValues.length;
+          const average = areaValues.reduce((a, b) => a + b, 0) / (areaValues.length || 1);
           const trend = calculateTrend(areaValues);
           return {
             nombre: area,
@@ -699,7 +786,7 @@ const Dashboard = () => {
             const totals = getInstructorTotals(month, selectedSchool);
             return totals[instructor] ? totals[instructor][metricType] : 0;
           });
-          const average = instructorValues.reduce((a, b) => a + b, 0) / instructorValues.length;
+          const average = instructorValues.reduce((a, b) => a + b, 0) / (instructorValues.length || 1);
           const trend = calculateTrend(instructorValues);
           return {
             nombre: instructor,
@@ -719,7 +806,7 @@ const Dashboard = () => {
             const coursesInMonth = getCourses(month, selectedSchool, selectedArea);
             return coursesInMonth[courseName] ? coursesInMonth[courseName][metricType] : 0;
           });
-          const average = courseValues.reduce((a, b) => a + b, 0) / courseValues.length;
+          const average = courseValues.reduce((a, b) => a + b, 0) / (courseValues.length || 1);
           const trend = calculateTrend(courseValues);
           return {
             nombre: courseName,
@@ -738,10 +825,10 @@ const Dashboard = () => {
             const totals = getContactTotals(month);
             return totals[method] ? totals[method][metricType] : 0;
           });
-          const average = methodValues.reduce((a, b) => a + b, 0) / methodValues.length;
+          const average = methodValues.reduce((a, b) => a + b, 0) / (methodValues.length || 1);
           const trend = calculateTrend(methodValues);
-          const getContactIcon = (method) => {
-            const methodLower = method.toLowerCase();
+          const getContactIcon = (methodName:string) => {
+            const methodLower = methodName.toLowerCase();
             if (methodLower.includes('whatsapp')) return MessageSquare;
             if (methodLower.includes('instagram') || methodLower.includes('facebook')) return Users;
             if (methodLower.includes('teléfono') || methodLower.includes('telefono')) return Phone;
@@ -759,7 +846,7 @@ const Dashboard = () => {
 
       case "comparacion":
         return schools.map(school => {
-          const data = { escuela: school };
+          const data:any = { escuela: school };
           compareMonths.forEach(month => {
             const totals = getSchoolTotals(month);
             data[month] = totals[school] ? totals[school][metricType] : 0;
@@ -773,8 +860,8 @@ const Dashboard = () => {
       default:
         return [];
     }
-  }, [viewType, selectedMonth, selectedSchool, selectedArea, metricType, months, schools, compareMonths, contactData]);
-  
+  }, [viewType, selectedMonth, selectedSchool, selectedArea, metricType, months, schools, compareMonths, contactData, salesData]);
+
   const AlertsPanel = () => (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-4">
@@ -800,7 +887,7 @@ const Dashboard = () => {
             <p className="text-gray-500">No hay alertas en este momento</p>
           </div>
         ) : (
-          alerts.map((alert, index) => (
+          alerts.map((alert:any, index:number) => (
             <div key={index} className={`p-3 rounded-lg border-l-4 ${
               alert.type === 'danger' ? 'bg-red-50 border-red-500' :
               alert.type === 'warning' ? 'bg-yellow-50 border-yellow-500' :
@@ -854,13 +941,13 @@ const Dashboard = () => {
       )}
     </div>
   );
-  
+
   const ContactDashboard = () => {
     const COLORS = ['#22C55E', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899'];
     const contactTotals = getContactTotals(selectedMonth);
-    const totalVentas = Object.values(contactTotals).reduce((sum, method) => sum + method.ventas, 0);
-    const totalCursos = Object.values(contactTotals).reduce((sum, method) => sum + method.cursos, 0);
-    const pieData = Object.entries(contactTotals).map(([method, data]) => ({
+    const totalVentas = Object.values(contactTotals).reduce((sum:any, method:any) => sum + method.ventas, 0);
+    const totalCursos = Object.values(contactTotals).reduce((sum:any, method:any) => sum + method.cursos, 0);
+    const pieData = Object.entries(contactTotals).map(([method, data]:[string,any]) => ({
       name: method,
       value: data[metricType],
       percentage: totalVentas > 0 ? ((data.ventas / totalVentas) * 100).toFixed(1) : 0
@@ -868,7 +955,7 @@ const Dashboard = () => {
 
     const trendData = months.map(month => {
       const monthData = getContactTotals(month);
-      const result = { month: formatDateShort(month) };
+      const result:any = { month: formatDateShort(month) };
       Object.keys(contactTotals).forEach(method => {
         result[method] = monthData[method] ? monthData[method][metricType] : 0;
       });
@@ -912,7 +999,9 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-orange-100 text-sm">Ticket Promedio</p>
-                <p className="text-3xl font-bold">${totalCursos > 0 ? (totalVentas / totalCursos).toFixed(0) : '0'}</p>
+                <p className="text-3xl font-bold">
+                  ${totalCursos > 0 ? (totalVentas / totalCursos).toFixed(0) : '0'}
+                </p>
                 <p className="text-orange-100 text-sm">Por canal</p>
               </div>
               <Target className="w-8 h-8 text-orange-200" />
@@ -945,10 +1034,12 @@ const Dashboard = () => {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => [
-                    metricType === 'ventas' ? `${value.toLocaleString()}` : value.toLocaleString(),
-                    metricType === 'ventas' ? 'Ventas' : 'Cursos'
-                  ]} />
+                  <Tooltip
+                    formatter={(value:any) => [
+                      metricType === 'ventas' ? `${value.toLocaleString()}` : value.toLocaleString(),
+                      metricType === 'ventas' ? 'Ventas' : 'Cursos'
+                    ]}
+                  />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -964,9 +1055,11 @@ const Dashboard = () => {
                 <LineChart data={trendData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
-                  <YAxis tickFormatter={(value) => 
-                    metricType === "ventas" ? `${(value/1000).toFixed(0)}k` : value.toString()
-                  } />
+                  <YAxis
+                    tickFormatter={(value:any) =>
+                      metricType === "ventas" ? `${(value/1000).toFixed(0)}k` : value.toString()
+                    }
+                  />
                   <Tooltip />
                   <Legend />
                   {Object.keys(contactTotals).map((method, index) => (
@@ -1000,12 +1093,12 @@ const Dashboard = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {Object.entries(contactTotals)
-                  .sort(([,a], [,b]) => b.ventas - a.ventas)
-                  .map(([method, data], index) => {
+                  .sort(([,a]:any, [,b]:any) => b.ventas - a.ventas)
+                  .map(([method, data]:[string,any]) => {
                     const ticketPromedio = data.cursos > 0 ? data.ventas / data.cursos : 0;
                     const porcentaje = totalVentas > 0 ? (data.ventas / totalVentas) * 100 : 0;
-                    const getContactIcon = (method) => {
-                      const methodLower = method.toLowerCase();
+                    const getContactIcon = (methodName:string) => {
+                      const methodLower = methodName.toLowerCase();
                       if (methodLower.includes('whatsapp')) return MessageSquare;
                       if (methodLower.includes('instagram') || methodLower.includes('facebook')) return Users;
                       if (methodLower.includes('teléfono') || methodLower.includes('telefono')) return Phone;
@@ -1063,10 +1156,10 @@ const Dashboard = () => {
               {Object.entries(contactTotals).length > 0 && (
                 <div className="p-4 bg-green-50 rounded-lg">
                   <p className="text-green-800 font-medium">
-                    {Object.entries(contactTotals).sort(([,a], [,b]) => b.ventas - a.ventas)[0][0]}
+                    {Object.entries(contactTotals).sort(([,a]:any, [,b]:any) => b.ventas - a.ventas)[0][0]}
                   </p>
                   <p className="text-green-600 text-sm">
-                    ${Object.entries(contactTotals).sort(([,a], [,b]) => b.ventas - a.ventas)[0][1].ventas.toLocaleString()} en ventas
+                    ${Object.entries(contactTotals).sort(([,a]:any, [,b]:any) => b.ventas - a.ventas)[0][1].ventas.toLocaleString()} en ventas
                   </p>
                 </div>
               )}
@@ -1081,9 +1174,9 @@ const Dashboard = () => {
             <div className="space-y-4">
               <h4 className="font-medium text-gray-800">📈 Oportunidades de mejora:</h4>
               {Object.entries(contactTotals)
-                .sort(([,a], [,b]) => a.ventas - b.ventas)
+                .sort(([,a]:any, [,b]:any) => a.ventas - b.ventas)
                 .slice(0, 2)
-                .map(([method, data]) => (
+                .map(([method, data]:[string,any]) => (
                   <div key={method} className="p-3 bg-orange-50 rounded-lg">
                     <p className="text-orange-800 font-medium text-sm">{method}</p>
                     <p className="text-orange-600 text-xs">
@@ -1100,7 +1193,7 @@ const Dashboard = () => {
 
   const ExecutiveDashboard = () => {
     const getSalesBySchoolAndMonth = () => {
-      const data = {};
+      const data:any = {};
       schools.forEach(school => {
         data[school] = {};
         months.forEach(month => {
@@ -1112,7 +1205,7 @@ const Dashboard = () => {
     };
 
     const getCoursesBySchoolAndMonth = () => {
-      const data = {};
+      const data:any = {};
       schools.forEach(school => {
         data[school] = {};
         months.forEach(month => {
@@ -1124,13 +1217,13 @@ const Dashboard = () => {
     };
 
     const calculateMonthlySalesTotals = () => {
-      const totals = {};
+      const totals:any = {};
       months.forEach(month => {
         totals[month] = 0;
         const monthData = salesData[month] || {};
-        Object.values(monthData).forEach(school => {
-          Object.values(school).forEach(area => {
-            Object.values(area).forEach(course => {
+        Object.values(monthData as any).forEach((school:any) => {
+          Object.values(school as any).forEach((area:any) => {
+            Object.values(area as any).forEach((course:any) => {
               totals[month] += course.ventas;
             });
           });
@@ -1140,13 +1233,13 @@ const Dashboard = () => {
     };
 
     const calculateMonthlyCoursesTotals = () => {
-      const totals = {};
+      const totals:any = {};
       months.forEach(month => {
         totals[month] = 0;
         const monthData = salesData[month] || {};
-        Object.values(monthData).forEach(school => {
-          Object.values(school).forEach(area => {
-            Object.values(area).forEach(course => {
+        Object.values(monthData as any).forEach((school:any) => {
+          Object.values(school as any).forEach((area:any) => {
+            Object.values(area as any).forEach((course:any) => {
               totals[month] += course.cursos;
             });
           });
@@ -1162,15 +1255,143 @@ const Dashboard = () => {
 
     return (
       <div className="space-y-6">
+
+        {/* NUEVO BLOQUE: TABLA MES VS AÑO ANTERIOR + ACUMULADO */}
+        {monthComparisonData && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h3 className="text-lg font-semibold mb-2">
+              Comparativo Mes vs Año Anterior
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              {formatDateForDisplay(monthComparisonData.currentMonthKey)} vs{" "}
+              {formatDateForDisplay(monthComparisonData.previousMonthKey)}
+            </p>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left font-semibold">Concepto</th>
+                    <th className="px-4 py-2 text-right font-semibold">
+                      {monthComparisonData.previousYear}
+                    </th>
+                    <th className="px-4 py-2 text-right font-semibold">
+                      {monthComparisonData.currentYear}
+                    </th>
+                    <th className="px-4 py-2 text-right font-semibold">% Var.</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {/* Ventas mes */}
+                  <tr>
+                    <td className="px-4 py-2 font-medium text-gray-800">
+                      Ventas mes
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      {monthComparisonData.ventasPrev.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      {monthComparisonData.ventasActual.toLocaleString()}
+                    </td>
+                    <td
+                      className={`px-4 py-2 text-right ${
+                        monthComparisonData.ventasVar > 0
+                          ? "text-green-600"
+                          : monthComparisonData.ventasVar < 0
+                          ? "text-red-600"
+                          : "text-gray-600"
+                      }`}
+                    >
+                      {monthComparisonData.ventasVar.toFixed(1)}%
+                    </td>
+                  </tr>
+
+                  {/* Ventas acumuladas YTD */}
+                  <tr>
+                    <td className="px-4 py-2 font-medium text-gray-800">
+                      Ventas acumuladas (YTD)
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      {monthComparisonData.ventasYTDPrev.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      {monthComparisonData.ventasYTDActual.toLocaleString()}
+                    </td>
+                    <td
+                      className={`px-4 py-2 text-right ${
+                        monthComparisonData.ventasYTDVar > 0
+                          ? "text-green-600"
+                          : monthComparisonData.ventasYTDVar < 0
+                          ? "text-red-600"
+                          : "text-gray-600"
+                      }`}
+                    >
+                      {monthComparisonData.ventasYTDVar.toFixed(1)}%
+                    </td>
+                  </tr>
+
+                  {/* Cursos mes */}
+                  <tr>
+                    <td className="px-4 py-2 font-medium text-gray-800">
+                      Cursos mes
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      {monthComparisonData.cursosPrev.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      {monthComparisonData.cursosActual.toLocaleString()}
+                    </td>
+                    <td
+                      className={`px-4 py-2 text-right ${
+                        monthComparisonData.cursosVar > 0
+                          ? "text-green-600"
+                          : monthComparisonData.cursosVar < 0
+                          ? "text-red-600"
+                          : "text-gray-600"
+                      }`}
+                    >
+                      {monthComparisonData.cursosVar.toFixed(1)}%
+                    </td>
+                  </tr>
+
+                  {/* Cursos acumulados YTD */}
+                  <tr>
+                    <td className="px-4 py-2 font-medium text-gray-800">
+                      Cursos acumulados (YTD)
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      {monthComparisonData.cursosYTDPrev.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      {monthComparisonData.cursosYTDActual.toLocaleString()}
+                    </td>
+                    <td
+                      className={`px-4 py-2 text-right ${
+                        monthComparisonData.cursosYTDVar > 0
+                          ? "text-green-600"
+                          : monthComparisonData.cursosYTDVar < 0
+                          ? "text-red-600"
+                          : "text-gray-600"
+                      }`}
+                    >
+                      {monthComparisonData.cursosYTDVar.toFixed(1)}%
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         <div className="bg-white rounded-lg shadow p-4">
           <div className="flex items-center justify-between">
             <ConnectionStatus />
             <div className="flex items-center gap-2">
               <div className="text-xs text-gray-500">
-                {Object.values(salesData).reduce((total, month) => {
+                {Object.values(salesData).reduce((total:any, month:any) => {
                   let monthTotal = 0;
-                  Object.values(month).forEach(school => {
-                    Object.values(school).forEach(area => {
+                  Object.values(month).forEach((school:any) => {
+                    Object.values(school).forEach((area:any) => {
                       monthTotal += Object.keys(area).length;
                     });
                   });
@@ -1267,16 +1488,16 @@ const Dashboard = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={months.map(month => {
                   const totals = getSchoolTotals(month);
-                  const totalVentas = Object.values(totals).reduce((sum, school) => sum + school.ventas, 0);
+                  const totalVentas = Object.values(totals).reduce((sum:any, school:any) => sum + school.ventas, 0);
                   return {
                     month: month.substring(5),
                     ventas: totalVentas,
-                    cursos: Object.values(totals).reduce((sum, school) => sum + school.cursos, 0)
+                    cursos: Object.values(totals).reduce((sum:any, school:any) => sum + school.cursos, 0)
                   };
                 })}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
-                  <YAxis yAxisId="ventas" orientation="left" tickFormatter={(value) => `${(value/1000).toFixed(0)}k`} />
+                  <YAxis yAxisId="ventas" orientation="left" tickFormatter={(value:any) => `${(value/1000).toFixed(0)}k`} />
                   <YAxis yAxisId="cursos" orientation="right" />
                   <Tooltip />
                   <Legend />
@@ -1296,8 +1517,8 @@ const Dashboard = () => {
             </div>
             <div className="space-y-3">
               {Object.entries(getInstructorTotals(selectedMonth))
-                .sort(([,a], [,b]) => b.ventas - a.ventas)
-                .map(([vendedor, data], index) => (
+                .sort(([,a]:any, [,b]:any) => b.ventas - a.ventas)
+                .map(([vendedor, data]:[string,any], index) => (
                   <div key={vendedor} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-3">
                       <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
@@ -1326,8 +1547,8 @@ const Dashboard = () => {
             </div>
             <div className="space-y-3">
               {Object.entries(getAreaTotals(selectedMonth))
-                .sort(([,a], [,b]) => b.ventas - a.ventas)
-                .map(([area, data], index) => (
+                .sort(([,a]:any, [,b]:any) => b.ventas - a.ventas)
+                .map(([area, data]:[string,any]) => (
                   <div key={area} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center gap-3">
                       <BookOpen className="w-5 h-5 text-green-500" />
@@ -1352,8 +1573,8 @@ const Dashboard = () => {
             </div>
             <div className="space-y-3">
               {Object.entries(getCourses(selectedMonth))
-                .sort(([,a], [,b]) => b.ventas - a.ventas)
-                .map(([course, data], index) => (
+                .sort(([,a]:any, [,b]:any) => b.ventas - a.ventas)
+                .map(([course, data]:[string,any]) => (
                   <div key={course} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div>
                       <p className="font-medium text-sm">{course.split(' (')[0]}</p>
@@ -1474,6 +1695,7 @@ const Dashboard = () => {
             </table>
           </div>
         </div>
+
       </div>
     );
   };
@@ -1481,8 +1703,8 @@ const Dashboard = () => {
   const CobranzaDashboard = () => {
     const mesesCobranza = useMemo(() => {
       if (!cobranzaData || Object.keys(cobranzaData).length === 0) return [];
-      const meses = new Set();
-      Object.values(cobranzaData).forEach(escuelaData => {
+      const meses = new Set<string>();
+      Object.values(cobranzaData).forEach((escuelaData:any) => {
         Object.keys(escuelaData).forEach(mes => {
           if (mes && mes.trim() !== '') {
             meses.add(mes.trim());
@@ -1494,12 +1716,12 @@ const Dashboard = () => {
     }, [cobranzaData]);
 
     const totalesPorMes = useMemo(() => {
-      const totales = {};
+      const totales:any = {};
       mesesCobranza.forEach(mes => {
         totales[mes] = 0;
       });
-      Object.entries(cobranzaData).forEach(([escuela, datosEscuela]) => {
-        Object.entries(datosEscuela).forEach(([mes, monto]) => {
+      Object.entries(cobranzaData).forEach(([escuela, datosEscuela]:[string,any]) => {
+        Object.entries(datosEscuela).forEach(([mes, monto]:[string,any]) => {
           const mesLimpio = mes.trim();
           if (mes && mesLimpio !== '' && mesesCobranza.includes(mesLimpio)) {
             const montoNumerico = parseNumberFromString(monto);
@@ -1511,11 +1733,11 @@ const Dashboard = () => {
     }, [cobranzaData, mesesCobranza]);
 
     const totalesPorEscuela = useMemo(() => {
-      const totales = {};
+      const totales:any = {};
       if (!cobranzaData || Object.keys(cobranzaData).length === 0) return totales;
-      Object.entries(cobranzaData).forEach(([escuela, datosEscuela]) => {
+      Object.entries(cobranzaData).forEach(([escuela, datosEscuela]:[string,any]) => {
         totales[escuela] = 0;
-        Object.values(datosEscuela).forEach(valor => {
+        Object.values(datosEscuela).forEach((valor:any) => {
           const valorNumerico = parseNumberFromString(valor);
           totales[escuela] += valorNumerico;
         });
@@ -1533,7 +1755,7 @@ const Dashboard = () => {
               <div>
                 <p className="text-blue-100 text-sm">Total Cobranza</p>
                 <p className="text-3xl font-bold">
-                  ${Object.values(totalesPorMes).reduce((sum, val) => sum + val, 0).toLocaleString()}
+                  ${Object.values(totalesPorMes).reduce((sum:any, val:any) => sum + val, 0).toLocaleString()}
                 </p>
                 <p className="text-blue-100 text-sm">{mesesCobranza.length} meses registrados</p>
               </div>
@@ -1557,7 +1779,7 @@ const Dashboard = () => {
               <div>
                 <p className="text-purple-100 text-sm">Promedio Mensual</p>
                 <p className="text-3xl font-bold">
-                  ${mesesCobranza.length > 0 ? Math.round(Object.values(totalesPorMes).reduce((sum, val) => sum + val, 0) / mesesCobranza.length).toLocaleString() : '0'}
+                  ${mesesCobranza.length > 0 ? Math.round(Object.values(totalesPorMes).reduce((sum:any, val:any) => sum + val, 0) / mesesCobranza.length).toLocaleString() : '0'}
                 </p>
                 <p className="text-purple-100 text-sm">Por mes</p>
               </div>
@@ -1631,7 +1853,7 @@ const Dashboard = () => {
                     </td>
                   ))}
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-900 bg-blue-100">
-                    ${Object.values(totalesPorMes).reduce((sum, val) => sum + val, 0).toLocaleString()}
+                    ${Object.values(totalesPorMes).reduce((sum:any, val:any) => sum + val, 0).toLocaleString()}
                   </td>
                 </tr>
               </tbody>
@@ -1655,8 +1877,8 @@ const Dashboard = () => {
                   height={80}
                   fontSize={12}
                 />
-                <YAxis tickFormatter={(value) => `${(value/1000).toFixed(0)}k`} />
-                <Tooltip formatter={(value) => [`${value.toLocaleString()}`, 'Cobranza']} />
+                <YAxis tickFormatter={(value:any) => `${(value/1000).toFixed(0)}k`} />
+                <Tooltip formatter={(value:any) => [`${value.toLocaleString()}`, 'Cobranza']} />
                 <Line 
                   type="monotone" 
                   dataKey="total" 
@@ -1677,9 +1899,9 @@ const Dashboard = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {Object.entries(totalesPorEscuela)
-              .sort(([,a], [,b]) => b - a)
+              .sort(([,a]:any, [,b]:any) => b - a)
               .slice(0, 6)
-              .map(([escuela, total], index) => (
+              .map(([escuela, total]:[string,any], index) => (
                 <div key={escuela} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-3">
                     <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white ${
@@ -1774,76 +1996,86 @@ const Dashboard = () => {
     );
   };
   
-  // 🚀 ACTUALIZADO: Dashboard de Crecimiento Anual con las 3 tablas
   const CrecimientoAnualDashboard = () => {
-    // Extraemos las nuevas filas (queretaroRows, totalRows)
     const { headers, rows, queretaroRows, totalRows, years, monthlyMap, annualGrowthData } = crecimientoAnualData;
     
-    const currentYearDataRow = rows.find(r => parseNumberFromString(r[0]) === parseNumberFromString(selectedYear)) || [];
+    const currentYearDataRow = rows.find((r:any) => parseNumberFromString(r[0]) === parseNumberFromString(selectedYear)) || [];
     const totalIndex = headers.length - 2;
     const crecimientoIndex = headers.length - 1;
     const currentYearTotal = parseNumberFromString(currentYearDataRow[totalIndex]);
     const currentYearGrowth = currentYearDataRow[crecimientoIndex] || 'N/A';
     
-    const getGrowthIndicator = (value) => {
-        const numericValue = parseNumberFromString(value.replace('%', ''));
-        const Icon = numericValue > 0 ? TrendingUp : numericValue < 0 ? TrendingDown : Minus;
-        const color = numericValue > 0 ? 'text-green-500' : numericValue < 0 ? 'text-red-500' : 'text-gray-500';
-        return (
-            <div className="flex items-center gap-1">
-                <Icon className={`w-4 h-4 ${color}`} />
-                <span className={`font-medium ${color}`}>
-                    {value}
-                </span>
-            </div>
-        );
+    const getGrowthIndicator = (value:string) => {
+      const numericValue = parseNumberFromString(value.replace('%', ''));
+      const Icon = numericValue > 0 ? TrendingUp : numericValue < 0 ? TrendingDown : Minus;
+      const color = numericValue > 0 ? 'text-green-500' : numericValue < 0 ? 'text-red-500' : 'text-gray-500';
+      return (
+        <div className="flex items-center gap-1">
+          <Icon className={`w-4 h-4 ${color}`} />
+          <span className={`font-medium ${color}`}>
+            {value}
+          </span>
+        </div>
+      );
     };
       
     const COLORS = ['#22C55E', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899'];
 
-    // Componente reutilizable para las tablas
-    const SimpleTable = ({ title, dataRows, tableHeaders, colorTheme = "gray" }) => {
-        const headerColor = colorTheme === 'blue' ? 'bg-blue-100 text-blue-800' : 
-                            colorTheme === 'orange' ? 'bg-orange-100 text-orange-800' : 
-                            'bg-gray-100 text-gray-800';
-        
-        return (
-            <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-                <h3 className="text-xl font-semibold mb-4 text-gray-700">{title}</h3>
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className={headerColor}>
-                            <tr>
-                                {tableHeaders.map((header, index) => (
-                                    <th key={index} className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider ${
-                                        header.toLowerCase().includes('total') ? 'bg-opacity-50 bg-green-300' : ''
-                                    }`}>
-                                        {header}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {dataRows.map((row, rowIndex) => (
-                                <tr key={rowIndex} className="hover:bg-gray-50">
-                                    {row.map((cell, cellIndex) => (
-                                        <td key={cellIndex} className={`px-4 py-3 whitespace-nowrap text-sm ${
-                                            cellIndex === 0 ? 'font-bold text-gray-900' : 
-                                            cellIndex === tableHeaders.length - 2 ? 'font-bold bg-green-50' : 
-                                            'text-gray-800'
-                                        }`}>
-                                            {cellIndex > 0 && cellIndex < tableHeaders.length - 1 && typeof cell !== 'string' 
-                                                ? `$${parseNumberFromString(cell).toLocaleString()}` 
-                                                : cell}
-                                        </td>
-                                    ))}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        );
+    const SimpleTable = ({ title, dataRows, tableHeaders, colorTheme = "gray" }:{
+      title:string;
+      dataRows:any[];
+      tableHeaders:string[];
+      colorTheme?:string;
+    }) => {
+      const headerColor = colorTheme === 'blue' ? 'bg-blue-100 text-blue-800' : 
+                          colorTheme === 'orange' ? 'bg-orange-100 text-orange-800' : 
+                          'bg-gray-100 text-gray-800';
+      
+      return (
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+          <h3 className="text-xl font-semibold mb-4 text-gray-700">{title}</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className={headerColor}>
+                <tr>
+                  {tableHeaders.map((header, index) => (
+                    <th
+                      key={index}
+                      className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider ${
+                        header.toLowerCase().includes('total') ? 'bg-opacity-50 bg-green-300' : ''
+                      }`}
+                    >
+                      {header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {dataRows.map((row, rowIndex) => (
+                  <tr key={rowIndex} className="hover:bg-gray-50">
+                    {row.map((cell:any, cellIndex:number) => (
+                      <td
+                        key={cellIndex}
+                        className={`px-4 py-3 whitespace-nowrap text-sm ${
+                          cellIndex === 0
+                            ? 'font-bold text-gray-900'
+                            : cellIndex === tableHeaders.length - 2
+                            ? 'font-bold bg-green-50'
+                            : 'text-gray-800'
+                        }`}
+                      >
+                        {cellIndex > 0 && cellIndex < tableHeaders.length - 1 && typeof cell !== 'string'
+                          ? `$${parseNumberFromString(cell).toLocaleString()}`
+                          : cell}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      );
     };
       
     return (
@@ -1854,127 +2086,108 @@ const Dashboard = () => {
         </h2>
         
         <div className="bg-white rounded-lg shadow-lg p-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-2">
-                <div className="md:col-span-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Seleccionar Año</label>
-                    <select
-                        value={selectedYear}
-                        onChange={(e) => setSelectedYear(e.target.value)}
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                        {years.map(year => (
-                            <option key={year} value={year}>{year}</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow p-4 text-white">
-                    <p className="text-green-100 text-sm">Ventas Totales {currentYearDataRow[0]}</p>
-                    <p className="text-xl font-bold">${currentYearTotal.toLocaleString()}</p>
-                </div>
-                
-                <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg shadow p-4 text-white">
-                    <p className="text-indigo-100 text-sm">Crecimiento vs Año Ant.</p>
-                    <div className="flex items-center gap-2">
-                        <p className="text-xl font-bold">{currentYearGrowth}</p>
-                        {getGrowthIndicator(currentYearGrowth)}
-                    </div>
-                </div>
-
-                <div className="bg-gradient-to-r from-gray-600 to-gray-700 rounded-lg shadow p-4 text-white">
-                    <p className="text-gray-100 text-sm">Meses con ventas</p>
-                    <p className="text-xl font-bold">{monthlyMap.filter(d => parseNumberFromString(d[selectedYear]) > 0).length} / 12</p>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-2">
+            <div className="md:col-span-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Seleccionar Año</label>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {years.map((year:number) => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
             </div>
-        </div>
-        
-        {/* 🚀 TABLAS DE DATOS */}
-        
-        {/* Tabla 1: General (La original) */}
-        <SimpleTable 
-            title="Resumen General Anual" 
-            dataRows={rows} 
-            tableHeaders={headers} 
-            colorTheme="gray"
-        />
 
-        {/* Tabla 2: Querétaro (Nueva) */}
-        {queretaroRows && queretaroRows.length > 0 && (
-            <SimpleTable 
-                title="Querétaro (A11:O15)" 
-                dataRows={queretaroRows} 
-                tableHeaders={headers} 
-                colorTheme="blue"
-            />
-        )}
+            <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow p-4 text-white">
+              <p className="text-green-100 text-sm">Ventas Totales {currentYearDataRow[0]}</p>
+              <p className="text-xl font-bold">${currentYearTotal.toLocaleString()}</p>
+            </div>
+            
+            <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-lg shadow p-4 text-white">
+              <p className="text-indigo-100 text-sm">Crecimiento vs Año Ant.</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xl font-bold">{currentYearGrowth}</p>
+                {getGrowthIndicator(currentYearGrowth)}
+              </div>
+            </div>
 
-        {/* Tabla 3: Total (Nueva) */}
-        {totalRows && totalRows.length > 0 && (
-            <SimpleTable 
-                title="Total (A18:O22)" 
-                dataRows={totalRows} 
-                tableHeaders={headers} 
-                colorTheme="orange"
-            />
-        )}
-        
-        {/* GRÁFICOS */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">📈 Tendencia Mensual de Ventas por Año</h3>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={monthlyMap}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis yAxisId="ventas" orientation="left" tickFormatter={(value) => `${(value/1000000).toFixed(1)}M`} />
-                  <Tooltip formatter={(value, name) => [`$${value.toLocaleString()}`, `Ventas ${name}`]} />
-                  <Legend />
-                  {years.map((year, index) => (
-                      <Line 
-                          key={year} 
-                          type="monotone" 
-                          dataKey={year} 
-                          stroke={COLORS[index % COLORS.length]} 
-                          strokeWidth={2} 
-                          name={`Ventas ${year}`}
-                      />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
+            <div className="bg-gradient-to-r from-gray-600 to-gray-700 rounded-lg shadow p-4 text-white">
+              <p className="text-gray-100 text-sm">Meses con ventas</p>
+              <p className="text-xl font-bold">
+                {monthlyMap.filter((d:any) => parseNumberFromString(d[selectedYear]) > 0).length} / 12
+              </p>
             </div>
           </div>
+        </div>
+        
+        <SimpleTable 
+          title="Resumen General Anual" 
+          dataRows={rows} 
+          tableHeaders={headers} 
+          colorTheme="gray"
+        />
 
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">📊 Crecimiento Anual (%)</h3>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={annualGrowthData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="year" />
-                  <YAxis tickFormatter={(value) => `${value}%`} />
-                  <Tooltip formatter={(value) => [`${value.toFixed(1)}%`, 'Crecimiento Anual']} />
-                  <Legend />
-                  <Bar 
-                    dataKey="crecimiento" 
-                    name="Crecimiento %"
-                    fill="#3B82F6"
-                    label={{ position: 'top', formatter: (value) => `${value.toFixed(1)}%`, fill: '#333' }}
-                  >
-                    {annualGrowthData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.crecimiento > 0 ? '#22C55E' : entry.crecimiento < 0 ? '#EF4444' : '#6B7280'} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+        <SimpleTable 
+          title="Detalle Querétaro" 
+          dataRows={queretaroRows} 
+          tableHeaders={headers} 
+          colorTheme="blue"
+        />
+
+        <SimpleTable 
+          title="Totales Globales" 
+          dataRows={totalRows} 
+          tableHeaders={headers} 
+          colorTheme="orange"
+        />
+
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h3 className="text-lg font-semibold mb-4">Evolución Mensual por Año</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={monthlyMap}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis tickFormatter={(value:any) => `${(value/1000000).toFixed(1)}M`} />
+                <Tooltip formatter={(value:any) => [`$${value.toLocaleString()}`, 'Ventas']} />
+                <Legend />
+                {years.map((year:number, index:number) => (
+                  <Line
+                    key={year}
+                    type="monotone"
+                    dataKey={year.toString()}
+                    stroke={COLORS[index % COLORS.length]}
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h3 className="text-lg font-semibold mb-4">Crecimiento Anual (%)</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={annualGrowthData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="year" />
+                <YAxis tickFormatter={(value:any) => `${value.toFixed(1)}%`} />
+                <Tooltip formatter={(value:any) => [`${value.toFixed(1)}%`, 'Crecimiento']} />
+                <Legend />
+                <Bar dataKey="crecimiento" fill="#22C55E" name="Crecimiento Anual" />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>
     );
   };
   
-
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -1985,7 +2198,7 @@ const Dashboard = () => {
                 src="https://idip.com.mx/wp-content/uploads/2024/08/logos-IDIP-sin-fondo-1-2.png" 
                 alt="IDIP - Instituto de Imagen Personal"
                 className="h-16 w-auto object-contain"
-                onError={(e) => {
+                onError={(e:any) => {
                   e.target.style.display = 'none';
                   e.target.nextSibling.style.display = 'flex';
                 }}
@@ -2165,11 +2378,27 @@ const Dashboard = () => {
                   <select 
                     value={selectedArea}
                     onChange={(e) => setSelectedArea(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                   >
                     <option value="">Todas las áreas</option>
                     {areas.map(area => (
                       <option key={area} value={area}>{area}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {viewType === "instructor" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Vendedor</label>
+                  <select 
+                    value={selectedInstructor}
+                    onChange={(e) => setSelectedInstructor(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="">Todos</option>
+                    {instructors.map(instructor => (
+                      <option key={instructor} value={instructor}>{instructor}</option>
                     ))}
                   </select>
                 </div>
@@ -2180,11 +2409,11 @@ const Dashboard = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Meses a Comparar</label>
                   <div className="flex gap-2">
                     {[0, 1].map(index => (
-                      <select 
+                      <select
                         key={index}
-                        value={compareMonths[index] || ''}
+                        value={compareMonths[index]}
                         onChange={(e) => {
-                          const newMonths = [...compareMonths];
+                          const newMonths = [...compareMonths] as string[];
                           newMonths[index] = e.target.value;
                           setCompareMonths(newMonths);
                         }}
@@ -2204,148 +2433,120 @@ const Dashboard = () => {
           )}
         </div>
 
-        {isLoading && isManualRefresh && (
+        {isLoading && !isManualRefresh && (
           <div className="bg-white rounded-lg shadow-lg p-8 mb-8 text-center">
             <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-500" />
             <p className="text-gray-600">Cargando datos desde Google Sheets...</p>
           </div>
         )}
 
-        {viewType === "executive" && <ExecutiveDashboard />}
-        {viewType === "cobranza" && <CobranzaDashboard />}
-        {viewType === "contacto" && <ContactDashboard />}
-        {viewType === "crecimientoAnual" && <CrecimientoAnualDashboard />}
+        {!isLoading && viewType === "executive" && <ExecutiveDashboard />}
+        {!isLoading && viewType === "contacto" && <ContactDashboard />}
+        {!isLoading && viewType === "cobranza" && <CobranzaDashboard />}
+        {!isLoading && viewType === "crecimientoAnual" && <CrecimientoAnualDashboard />}
 
-        {(viewType === "escuela" || viewType === "area" || viewType === "instructor" || viewType === "curso" || viewType === "contacto") && !isLoading && viewType !== "contacto" && viewType !== "crecimientoAnual" && (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-800">
-                {viewType === "escuela" && "Análisis por Escuela"}
-                {viewType === "area" && `Análisis por Área${selectedSchool ? ` - ${selectedSchool}` : ""}`}
-                {viewType === "instructor" && `Análisis por Vendedor${selectedSchool ? ` - ${selectedSchool}` : ""}`}
-                {viewType === "curso" && `Análisis por Curso${selectedSchool ? ` - ${selectedSchool}` : ""}${selectedArea ? ` - ${selectedArea}` : ""}`}
-              </h2>
-              <div className="flex items-center gap-2">
-                {metricType === "ventas" ? <DollarSign className="w-5 h-5" /> : <ShoppingCart className="w-5 h-5" />}
-                <span className="text-sm font-medium">
-                  {metricType === "ventas" ? "Pesos Mexicanos" : "Unidades Vendidas"}
-                </span>
-              </div>
-            </div>
-
+        {!isLoading && viewType !== "executive" && viewType !== "cobranza" && viewType !== "contacto" && viewType !== "crecimientoAnual" && (
+          <div className="bg-white rounded-lg shadow-lg p-6 mt-6">
+            <h3 className="text-lg font-semibold mb-4">Vista Detallada</h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {viewType === "escuela" ? "Escuela" : 
-                          viewType === "area" ? "Área" : 
-                          viewType === "instructor" ? "Vendedor" : "Curso"}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {metricType === "ventas" ? "Ventas" : "Cursos"}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Promedio
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Tendencia
-                      </th>
-                      {(viewType === "instructor" || viewType === "curso") && (
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          {viewType === "instructor" ? "Áreas" : "Vendedor"}
-                        </th>
+              <div>
+                <h4 className="text-md font-semibold mb-2">
+                  {viewType === "escuela" && "Desempeño por Escuela"}
+                  {viewType === "area" && "Desempeño por Área"}
+                  {viewType === "instructor" && "Desempeño por Vendedor"}
+                  {viewType === "curso" && "Desempeño por Curso"}
+                  {viewType === "comparacion" && "Comparación de Meses por Escuela"}
+                </h4>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={getViewData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey={viewType === "comparacion" ? "escuela" : "nombre"} 
+                        angle={-45}
+                        textAnchor="end"
+                        height={100}
+                        fontSize={12}
+                      />
+                      <YAxis
+                        tickFormatter={(value:any) =>
+                          metricType === "ventas" ? `${(value/1000).toFixed(0)}k` : value.toString()
+                        }
+                      />
+                      <Tooltip
+                        formatter={(value:any) => [
+                          metricType === "ventas" ? `${value.toLocaleString()}` : value.toLocaleString(),
+                          metricType === "ventas" ? "Ventas" : "Cursos"
+                        ]}
+                      />
+                      {viewType === "comparacion" ? (
+                        compareMonths.map((month, index) => (
+                          <Bar
+                            key={month}
+                            dataKey={month}
+                            fill={index === 0 ? "#22C55E" : "#6B7280"}
+                            name={formatDateForDisplay(month)}
+                          />
+                        ))
+                      ) : (
+                        <>
+                          <Bar dataKey="valor" fill="#22C55E" />
+                          <Bar dataKey="promedio" fill="#6B7280" />
+                        </>
                       )}
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {getViewData.map((row, index) => {
-                      const IconComponent = row.icono;
-                      return (
-                        <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            <div className="flex items-center gap-2">
-                              {IconComponent && <IconComponent className="w-4 h-4 text-gray-500" />}
-                              {row.nombre}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {metricType === "ventas" ? `${row.valor.toLocaleString()}` : row.valor.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {metricType === "ventas" ? `${row.promedio.toLocaleString()}` : row.promedio.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <TrendIcon trend={row.tendencia} />
-                          </td>
-                          {(viewType === "instructor" || viewType === "curso") && (
-                            <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-500">
-                              {viewType === "instructor" ? row.areas : row.instructor}
-                            </td>
-                          )}
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {viewType !== "comparacion" && (
+                <div>
+                  <h4 className="text-md font-semibold mb-2">Detalle Tabular</h4>
+                  <div className="overflow-x-auto max-h-64">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left font-semibold">Nombre</th>
+                          <th className="px-4 py-2 text-right font-semibold">
+                            {metricType === "ventas" ? "Ventas ($)" : "Cursos"}
+                          </th>
+                          <th className="px-4 py-2 text-right font-semibold">Promedio</th>
+                          <th className="px-4 py-2 text-center font-semibold">Tendencia</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={getViewData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="nombre" 
-                      angle={-45}
-                      textAnchor="end"
-                      height={100}
-                      fontSize={12}
-                    />
-                    <YAxis tickFormatter={(value) => 
-                      metricType === "ventas" ? `${(value/1000).toFixed(0)}k` : value.toString()
-                    } />
-                    <Tooltip formatter={(value) => [
-                      metricType === "ventas" ? `${value.toLocaleString()}` : value.toLocaleString(),
-                      metricType === "ventas" ? "Ventas" : "Cursos"
-                    ]} />
-                    <Bar dataKey="valor" fill="#22C55E" />
-                    <Bar dataKey="promedio" fill="#6B7280" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {getViewData.map((row:any, index:number) => (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="px-4 py-2">
+                              <div className="flex items-center gap-2">
+                                {row.icono && <row.icono className="w-4 h-4 text-gray-500" />}
+                                <span className="font-medium text-gray-800">{row.nombre}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-2 text-right">
+                              {metricType === "ventas"
+                                ? `$${row.valor.toLocaleString()}`
+                                : row.valor.toLocaleString()}
+                            </td>
+                            <td className="px-4 py-2 text-right">
+                              {metricType === "ventas"
+                                ? `$${row.promedio.toLocaleString()}`
+                                : row.promedio.toLocaleString()}
+                            </td>
+                            <td className="px-4 py-2 text-center">
+                              <TrendIcon trend={row.tendencia} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {viewType === "comparacion" && !isLoading && (
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-6">
-              Comparación de Meses por Escuela
-            </h2>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={getViewData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="escuela" />
-                  <YAxis tickFormatter={(value) => 
-                    metricType === "ventas" ? `${(value/1000).toFixed(0)}k` : value.toString()
-                  } />
-                  <Tooltip />
-                  <Legend />
-                  {compareMonths.map((month, index) => (
-                    <Bar 
-                      key={month} 
-                      dataKey={month} 
-                      fill={index === 0 ? "#22C55E" : "#6B7280"} 
-                      name={formatDateForDisplay(month)}
-                    />
-                  ))}
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
