@@ -8,11 +8,12 @@ const GOOGLE_SHEETS_CONFIG = {
   apiKey: process.env.REACT_APP_GSHEETS_API_KEY,
   spreadsheetId: '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg',
   ranges: {
-    ventas: 'Ventas!A:H',              // ← Fijo CDMX
+    ventas: SEDE === 'QRO' ? 'Ventas Qro!A:H' : 'Ventas!A:H',
     cobranza: 'Cobranza!A:Z',
     crecimientoAnual: 'Crecimiento Anual!A:Z'
   }
 };
+
 
 const fallbackData = {
   "2024-01": {
