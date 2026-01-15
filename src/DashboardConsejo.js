@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 
 async function fetchConsejoData() {
   const apiKey = process.env.REACT_APP_GSHEETS_API_KEY;
-  const spreadsheetId = '1DHt8N8bEPElP4Stu1m2Wwb2brLKO5uM8y_Ca3nVg';
+  const spreadsheetId = '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg';
   const ranges = ['Ventas!A:H', 'Ventas Qro!A:H'];
 
   const url =
