@@ -154,6 +154,8 @@ const Dashboard = () => {
     
     try {
       const ventasUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.ventas}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
+      console.log('DEBUG API KEY:', GOOGLE_SHEETS_CONFIG.apiKey);
+console.log('DEBUG URL:', ventasUrl);
       const ventasResponse = await fetch(ventasUrl);
       if (!ventasResponse.ok) throw new Error(`Error ${ventasResponse.status}: ${ventasResponse.statusText}`);
       const ventasData = await ventasResponse.json();
