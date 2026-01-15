@@ -8,7 +8,7 @@ const GOOGLE_SHEETS_CONFIG = {
   apiKey: import.meta.env.VITE_GSHEETS_API_KEY,
   spreadsheetId: '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg',
   ranges: {
-    ventas: SEDE === 'QRO' ? 'Ventas Qro!A:H' : 'Ventas!A:H',
+    ventas: 'Ventas!A:H',              // ← Fijo CDMX
     cobranza: 'Cobranza!A:Z',
     crecimientoAnual: 'Crecimiento Anual!A:Z'
   }
