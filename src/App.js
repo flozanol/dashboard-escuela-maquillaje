@@ -1,9 +1,11 @@
-import DashboardConsejo from './DashboardConsejo';
 import React, { useState, useMemo, useEffect } from 'react';
+import DashboardConsejo from './DashboardConsejo';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Star, Target, AlertTriangle, Activity, Phone, Mail, Globe, MessageSquare, Users, Calendar } from 'lucide-react';
 
 const SEDE = process.env.REACT_APP_SEDE || 'CDMX';
+const MODO = process.env.REACT_APP_MODO || 'ESCUELA';
+
 
 const GOOGLE_SHEETS_CONFIG = {
   apiKey: process.env.REACT_APP_GSHEETS_API_KEY,
@@ -1980,6 +1982,9 @@ console.log('DEBUG URL:', ventasUrl);
     );
   };
   
+if (MODO === 'CONSEJO') {
+    return <DashboardConsejo />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
