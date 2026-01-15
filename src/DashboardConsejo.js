@@ -17,13 +17,21 @@ async function fetchConsejoData() {
 
 // Aquí asumimos que la columna H (posición 7) es el monto de venta.
 function sumVentas(rows) {
+  console.log('DEBUG sumVentas - rows:', rows);
   let total = 0;
   for (let i = 1; i < rows.length; i++) {
-    const valor = parseFloat(rows[i][7] || 0);
-    if (!isNaN(valor)) total += valor;
+    const row = rows[i];
+    console.log(`Row ${i}:`, row);
+    const valor = parseFloat(row[7] || 0);
+    if (!isNaN(valor)) {
+      console.log(`  Sumando de índice 7:`, valor);
+      total += valor;
+    }
   }
+  console.log('Total final:', total);
   return total;
 }
+
 
 export default function DashboardConsejo() {
   const [loading, setLoading] = useState(true);
