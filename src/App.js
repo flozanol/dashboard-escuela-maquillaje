@@ -290,8 +290,6 @@ const headers = rawData[0];
 
     const MONTH_ABBREVIATIONS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     const monthlyMap = {};
-    // eslint-disable-next-line no-unused-vars
-const years = ...
     const yearIndex = headers.findIndex(h => h.toLowerCase().includes('año'));
     const allYears = [];
     const annualGrowthData = [];
