@@ -12,7 +12,7 @@ function parseNumber(value) {
 async function fetchData() {
   const apiKey = process.env.REACT_APP_GSHEETS_API_KEY;
   const spreadsheetId = '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg';
-  const range = 'Ventas Consolidadas!A:H';
+  const range = 'Ventas Consolidadas!A:I';
 
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}?key=${apiKey}`;
 
@@ -22,12 +22,11 @@ async function fetchData() {
 }
 
 
-function processData(rows, sede) {
-  if (!rows || rows.length < 2) return { sede, ventas: 0, cursos: 0, escuelas: {} };
+function processData(rows) {
+  if (!rows || rows.length < 2) return { cdmx: { ventas: 0, cursos: 0, escuelas: {} }, qro: { ventas: 0, cursos: 0, escuelas: {} } };
   
-  let ventas = 0;
-  let cursos = 0;
-  const escuelas = {};
+  const dataCDMX = { ventas: 0, cursos: 0, escuelas: {} };
+  const dataQRO = { ventas: 0, cursos: 0, escuelas: {} };
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
@@ -36,16 +35,27 @@ function processData(rows, sede) {
     const escuela = row[1];
     const ventasNum = parseNumber(row[4]);
     const cursosNum = parseNumber(row[5]) || 1;
+    const sede = (row[8] || '').toString().trim().toUpperCase();
 
-    ventas += ventasNum;
-    cursos += cursosNum;
+    const isCDMX = sede === 'CDMX' || sede === 'POLANCO';
+    const isQRO = sede === 'QUERÉTARO' || sede === 'QRO';
 
-    if (!escuelas[escuela]) escuelas[escuela] = { ventas: 0, cursos: 0 };
-    escuelas[escuela].ventas += ventasNum;
-    escuelas[escuela].cursos += cursosNum;
+    if (isCDMX) {
+      dataCDMX.ventas += ventasNum;
+      dataCDMX.cursos += cursosNum;
+      if (!dataCDMX.escuelas[escuela]) dataCDMX.escuelas[escuela] = { ventas: 0, cursos: 0 };
+      dataCDMX.escuelas[escuela].ventas += ventasNum;
+      dataCDMX.escuelas[escuela].cursos += cursosNum;
+    } else if (isQRO) {
+      dataQRO.ventas += ventasNum;
+      dataQRO.cursos += cursosNum;
+      if (!dataQRO.escuelas[escuela]) dataQRO.escuelas[escuela] = { ventas: 0, cursos: 0 };
+      dataQRO.escuelas[escuela].ventas += ventasNum;
+      dataQRO.escuelas[escuela].cursos += cursosNum;
+    }
   }
 
-  return { sede, ventas, cursos, escuelas };
+  return { cdmx: dataCDMX, qro: dataQRO };
 }
 
 export default function DashboardConsejo() {
@@ -57,20 +67,20 @@ export default function DashboardConsejo() {
   useEffect(() => {
   async function load() {
     try {
-      const data = await fetchData();
-      const allData = processData(data, 'TODAS');
-      
-      // Separar por escuela que contenga "Qro" o "Querétaro" en el nombre
-      const escuelasCDMX = {};
-      const escuelasQRO = {};
-      
-      Object.entries(allData.escuelas).forEach(([nombre, datos]) => {
-        if (nombre.toLowerCase().includes('qro') || nombre.toLowerCase().includes('querétaro')) {
-          escuelasQRO[nombre] = datos;
-        } else {
-          escuelasCDMX[nombre] = datos;
-        }
-      });
+      const rows = await fetchData();
+      const { cdmx, qro } = processData(rows);
+      setCdmx(cdmx);
+      setQro(qro);
+    } catch (e) {
+      console.error(e);
+      setError('Error cargando datos');
+    } finally {
+      setLoading(false);
+    }
+  }
+  load();
+}, []);
+
       
       const ventasCDMX = Object.values(escuelasCDMX).reduce((sum, e) => sum + e.ventas, 0);
       const cursosCDMX = Object.values(escuelasCDMX).reduce((sum, e) => sum + e.cursos, 0);
