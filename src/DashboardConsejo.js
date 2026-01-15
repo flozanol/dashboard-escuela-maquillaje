@@ -22,7 +22,7 @@ function sumVentas(rows) {
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
     console.log(`Row ${i}:`, row);
-    const valor = parseFloat(row[7] || 0);
+    const valor = parseFloat(rows[i][4] || 0);
     if (!isNaN(valor)) {
       console.log(`  Sumando de índice 7:`, valor);
       total += valor;
