@@ -12,15 +12,15 @@ function parseNumber(value) {
 async function fetchData() {
   const apiKey = process.env.REACT_APP_GSHEETS_API_KEY;
   const spreadsheetId = '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg';
-  const ranges = ['Ventas!A:H', 'Ventas Qro!A:H'];
+  const range = 'Ventas Consolidadas!A:H';
 
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchGet?key=${apiKey}&` +
-    ranges.map(r => `ranges=${encodeURIComponent(r)}`).join('&');
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}?key=${apiKey}`;
 
   const res = await fetch(url);
   const data = await res.json();
-  return data.valueRanges;
+  return data.values;
 }
+
 
 function processData(rows, sede) {
   if (!rows || rows.length < 2) return { sede, ventas: 0, cursos: 0, escuelas: {} };
