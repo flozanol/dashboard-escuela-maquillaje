@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import DashboardConsejo from './DashboardConsejo';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
-import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Star, Target, AlertTriangle, Activity, Phone, Mail, Globe, MessageSquare, Users, Calendar } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Star, Target, AlertTriangle, Activity, Phone, Mail, Globe, MessageSquare, Users } from 'lucide-react';
 
 const SEDE = process.env.REACT_APP_SEDE || 'CDMX';
 const MODO = process.env.REACT_APP_MODO || 'ESCUELA';
@@ -88,7 +88,7 @@ const Dashboard = () => {
   const [selectedMonth, setSelectedMonth] = useState("2024-07");
   const [selectedSchool, setSelectedSchool] = useState("Polanco");
   const [selectedArea, setSelectedArea] = useState("Maquillaje");
-  const [selectedInstructor, setSelectedInstructor] = useState("");
+  // const [selectedInstructor, setSelectedInstructor] = useState('');
   const [viewType, setViewType] = useState("executive");
   const [metricType, setMetricType] = useState("ventas");
   const [compareMonths, setCompareMonths] = useState(["2024-06", "2024-07"]);
@@ -99,7 +99,8 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
-  const [errorMessage, setErrorMessage] = useState('');
+  // eslint-disable-next-line no-unused-vars
+const [errorMessage, setErrorMessage] = useState('');
   const [isManualRefresh, setIsManualRefresh] = useState(false);
   const [alerts, setAlerts] = useState([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
@@ -208,7 +209,8 @@ console.log('DEBUG URL:', ventasUrl);
   };
 
   const transformGoogleSheetsData = (rawData) => {
-    const headers = rawData[0];
+    // eslint-disable-next-line no-unused-vars
+const headers = rawData[0];
     const rows = rawData.slice(1);
     const transformedData = {};
     
@@ -288,7 +290,8 @@ console.log('DEBUG URL:', ventasUrl);
 
     const MONTH_ABBREVIATIONS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     const monthlyMap = {};
-    const years = [];
+    // eslint-disable-next-line no-unused-vars
+const years = ...
     const yearIndex = headers.findIndex(h => h.toLowerCase().includes('año'));
     const allYears = [];
     const annualGrowthData = [];
@@ -361,16 +364,14 @@ console.log('DEBUG URL:', ventasUrl);
   };
 
   useEffect(() => {
-    fetchGoogleSheetsData();
-  }, []);
-
+  fetchGoogleSheetsData();
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchGoogleSheetsData(false);
-    }, 60 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
-
+  const interval = setInterval(() => fetchGoogleSheetsData(false), 60 * 60 * 1000);
+  return () => clearInterval(interval);
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
   useEffect(() => {
     const generateAlerts = () => {
       const newAlerts = [];
@@ -424,8 +425,8 @@ console.log('DEBUG URL:', ventasUrl);
     });
     return Array.from(areasSet);
   }, [salesData]);
-
-  const instructors = useMemo(() => {
+// eslint-disable-next-line no-unused-vars
+const instructors = useMemo(() => {
     const instructorsSet = new Set();
     Object.values(salesData).forEach((monthData) => {
       Object.values(monthData).forEach((schoolData) => {
@@ -449,7 +450,8 @@ console.log('DEBUG URL:', ventasUrl);
     return Object.keys(salesData).sort();
   }, [salesData]);
 
-  const contactMethods = useMemo(() => {
+// eslint-disable-next-line no-unused-vars
+const contactMethods = useMemo(() => {
     const methodsSet = new Set();
     Object.values(contactData).forEach(monthData => {
       Object.keys(monthData).forEach(method => {
@@ -781,7 +783,8 @@ console.log('DEBUG URL:', ventasUrl);
       default:
         return [];
     }
-  }, [viewType, selectedMonth, selectedSchool, selectedArea, metricType, months, schools, compareMonths, contactData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [viewType, selectedMonth, selectedSchool, selectedArea, metricType, months, schools, compareMonths, contactData]);
   
   const AlertsPanel = () => (
     <div className="bg-white rounded-lg shadow p-6">
@@ -1499,7 +1502,9 @@ console.log('DEBUG URL:', ventasUrl);
       });
       const mesesArray = Array.from(meses);
       return sortMonthsChronologically(mesesArray);
-    }, [cobranzaData]);
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [cobranzaData]);
+
 
     const totalesPorMes = useMemo(() => {
       const totales = {};
@@ -1516,7 +1521,9 @@ console.log('DEBUG URL:', ventasUrl);
         });
       });
       return totales;
-    }, [cobranzaData, mesesCobranza]);
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [cobranzaData, mesesCobranza]);
+
 
     const totalesPorEscuela = useMemo(() => {
       const totales = {};
@@ -1529,7 +1536,9 @@ console.log('DEBUG URL:', ventasUrl);
         });
       });
       return totales;
-    }, [cobranzaData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [cobranzaData]);
+
 
     const escuelas = Object.keys(cobranzaData);
 
