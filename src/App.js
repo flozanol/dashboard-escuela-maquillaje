@@ -2,10 +2,10 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Star, Target, AlertTriangle, Activity, Phone, Mail, Globe, MessageSquare, Users, Calendar } from 'lucide-react';
 
-const SEDE = import.meta.env.VITE_SEDE || 'CDMX';
+const SEDE = process.env.REACT_APP_SEDE || 'CDMX';
 
 const GOOGLE_SHEETS_CONFIG = {
-  apiKey: import.meta.env.VITE_GSHEETS_API_KEY,
+  apiKey: process.env.REACT_APP_GSHEETS_API_KEY,
   spreadsheetId: '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg',
   ranges: {
     ventas: 'Ventas!A:H',              // ← Fijo CDMX
