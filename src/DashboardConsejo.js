@@ -55,13 +55,31 @@ export default function DashboardConsejo() {
   const [qro, setQro] = useState(null);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const data = await fetchData();
-        const dataCdmx = processData(data[0].values, 'CDMX');
-        const dataQro = processData(data[1].values, 'Querétaro');
-        setCdmx(dataCdmx);
-        setQro(dataQro);
+  async function load() {
+    try {
+      const data = await fetchData();
+      const allData = processData(data, 'TODAS');
+      
+      // Separar por escuela que contenga "Qro" o "Querétaro" en el nombre
+      const escuelasCDMX = {};
+      const escuelasQRO = {};
+      
+      Object.entries(allData.escuelas).forEach(([nombre, datos]) => {
+        if (nombre.toLowerCase().includes('qro') || nombre.toLowerCase().includes('querétaro')) {
+          escuelasQRO[nombre] = datos;
+        } else {
+          escuelasCDMX[nombre] = datos;
+        }
+      });
+      
+      const ventasCDMX = Object.values(escuelasCDMX).reduce((sum, e) => sum + e.ventas, 0);
+      const cursosCDMX = Object.values(escuelasCDMX).reduce((sum, e) => sum + e.cursos, 0);
+      const ventasQRO = Object.values(escuelasQRO).reduce((sum, e) => sum + e.ventas, 0);
+      const cursosQRO = Object.values(escuelasQRO).reduce((sum, e) => sum + e.cursos, 0);
+      
+      setCdmx({ ventas: ventasCDMX, cursos: cursosCDMX, escuelas: escuelasCDMX });
+      setQro({ ventas: ventasQRO, cursos: cursosQRO, escuelas: escuelasQRO });
+
       } catch (e) {
         console.error(e);
         setError('Error cargando datos');
