@@ -294,6 +294,7 @@ export default function DashboardConsejo() {
                   <Legend />
                   <Line type="monotone" dataKey="cdmxVentas" stroke="#3B82F6" strokeWidth={3} name="CDMX" />
                   <Line type="monotone" dataKey="qroVentas" stroke="#A855F7" strokeWidth={3} name="Querétaro" />
+                <Line type="monotone" dataKey="totalVentas" stroke="#22C55E" strokeWidth={2} strokeDasharray="5 5" name="Total" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -310,6 +311,7 @@ export default function DashboardConsejo() {
                   <Legend />
                   <Line type="monotone" dataKey="cdmxCursos" stroke="#3B82F6" strokeWidth={3} name="CDMX" />
                   <Line type="monotone" dataKey="qroCursos" stroke="#A855F7" strokeWidth={3} name="Querétaro" />
+                <Line type="monotone" dataKey="totalCursos" stroke="#22C55E" strokeWidth={2} strokeDasharray="5 5" name="Total" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
