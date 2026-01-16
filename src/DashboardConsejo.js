@@ -26,7 +26,17 @@ function processVentas(rows) {
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
     if (!row[0] || !row[1]) continue;
-    const fecha = row[0];
+    const fechaRaw = row[0].toString();
+let fecha = fechaRaw;
+// Convertir fechas seriales de Excel/Sheets (números como 44927) a texto
+if (!isNaN(fechaRaw) && fechaRaw.length < 10) {
+  const dateNum = parseFloat(fechaRaw);
+  const excelEpoch = new Date(1899, 11, 30);
+  const jsDate = new Date(excelEpoch.getTime() + dateNum * 86400000);
+  fecha = jsDate.toISOString().substring(0, 10);
+} else {
+  fecha = fechaRaw.replace(/\//g, '-');
+}
     const mes = fecha.substring(0, 7);
     const ano = fecha.substring(0, 4);
     const mesNum = fecha.substring(5, 7);
