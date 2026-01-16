@@ -20,6 +20,15 @@ async function fetchAllData() {
 }
 
 function processVentas(rows) {
+  console.log('DEBUG - Total filas recibidas:', rows ? rows.length : 0);
+  console.log('DEBUG - Fila 0 (headers):', rows[0]);
+  console.log('DEBUG - Fila 1 (primera venta):', rows[1]);
+  console.log('DEBUG - Fila 10 (ejemplo CDMX):', rows[10]);
+  
+  if (!rows || rows.length < 2) return { 
+    cdmx: { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} }, 
+    qro: { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} } 
+  };
   if (!rows || rows.length < 2) return { cdmx: { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} }, qro: { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} } };
   const dataCDMX = { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} };
   const dataQRO = { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} };
