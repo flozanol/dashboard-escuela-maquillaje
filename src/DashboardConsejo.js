@@ -76,6 +76,7 @@ function processObjetivos(rows) {
     const mes = row[0];
     const sede = row[1].toString().trim().toUpperCase();
     const objVentas = parseNumber(row[2]);
+    console.log(`DEBUG Objetivo ${mes} ${sede} - Raw ventas:`, row[2], '- Parsed:', objVentas);
     const objCursos = parseNumber(row[3]);
     const key = `${mes}-${sede}`;
     objetivos[key] = { ventas: objVentas, cursos: objCursos };
