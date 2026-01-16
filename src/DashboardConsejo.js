@@ -159,7 +159,16 @@ export default function DashboardConsejo() {
   const mesesCDMX = Object.keys(cdmx?.porMes || {}).sort();
   const mesesQRO = Object.keys(qro?.porMes || {}).sort();
   const todosMeses = [...new Set([...mesesCDMX, ...mesesQRO])].sort();
-  const dataMensual = todosMeses.map(mes => ({ mes: mes.substring(5), cdmxVentas: cdmx?.porMes[mes]?.ventas || 0, cdmxCursos: cdmx?.porMes[mes]?.cursos || 0, qroVentas: qro?.porMes[mes]?.ventas || 0, qroCursos: qro?.porMes[mes]?.cursos || 0 }));
+  const dataMensual = todosMeses.map(mes => ({
+  mes: mes.substring(5),
+  cdmxVentas: cdmx?.porMes[mes]?.ventas || 0,
+  cdmxCursos: cdmx?.porMes[mes]?.cursos || 0,
+  qroVentas: qro?.porMes[mes]?.ventas || 0,
+  qroCursos: qro?.porMes[mes]?.cursos || 0,
+  totalVentas: (cdmx?.porMes[mes]?.ventas || 0) + (qro?.porMes[mes]?.ventas || 0),
+  totalCursos: (cdmx?.porMes[mes]?.cursos || 0) + (qro?.porMes[mes]?.cursos || 0)
+}));
+
   const todasEscuelas = [...Object.entries(cdmx?.escuelas || {}).map(([nombre, data]) => ({ nombre: nombre + ' (CDMX)', ventas: data.ventas, cursos: data.cursos })), ...Object.entries(qro?.escuelas || {}).map(([nombre, data]) => ({ nombre: nombre + ' (QRO)', ventas: data.ventas, cursos: data.cursos }))].sort((a, b) => b.ventas - a.ventas);
 
   return (
