@@ -87,9 +87,9 @@ export default function DashboardConsejo() {
       const ventasQRO = Object.values(escuelasQRO).reduce((sum, e) => sum + e.ventas, 0);
       const cursosQRO = Object.values(escuelasQRO).reduce((sum, e) => sum + e.cursos, 0);
       
-      setCdmx({ ventas: ventasCDMX, cursos: cursosCDMX, escuelas: escuelasCDMX });
+            setCdmx({ ventas: ventasCDMX, cursos: cursosCDMX, escuelas: escuelasCDMX });
       setQro({ ventas: ventasQRO, cursos: cursosQRO, escuelas: escuelasQRO });
-      catch (e) {
+    } catch (e) {
         console.error(e);
         setError('Error cargando datos');
       } finally {
