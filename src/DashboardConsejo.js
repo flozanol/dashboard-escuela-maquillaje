@@ -89,8 +89,7 @@ export default function DashboardConsejo() {
       
       setCdmx({ ventas: ventasCDMX, cursos: cursosCDMX, escuelas: escuelasCDMX });
       setQro({ ventas: ventasQRO, cursos: cursosQRO, escuelas: escuelasQRO });
-
-      } catch (e) {
+      catch (e) {
         console.error(e);
         setError('Error cargando datos');
       } finally {
