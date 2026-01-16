@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { DollarSign, Building, Target, ShoppingCart } from 'lucide-react';
+import { DollarSign, Building, Target } from 'lucide-react';
 
 function parseNumber(value) {
   if (!value) return 0;
@@ -13,63 +13,47 @@ async function fetchData() {
   const apiKey = process.env.REACT_APP_GSHEETS_API_KEY;
   const spreadsheetId = '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg';
   const range = 'Ventas Consolidadas!A:I';
-
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}?key=${apiKey}`;
-
   const res = await fetch(url);
   const data = await res.json();
   return data.values;
 }
 
 function processData(rows) {
-  if (!rows || rows.length < 2) return { 
-    cdmx: { ventas: 0, cursos: 0, escuelas: {}, porMes: {} }, 
-    qro: { ventas: 0, cursos: 0, escuelas: {}, porMes: {} } 
-  };
-  
+  if (!rows || rows.length < 2) return { cdmx: { ventas: 0, cursos: 0, escuelas: {}, porMes: {} }, qro: { ventas: 0, cursos: 0, escuelas: {}, porMes: {} } };
   const dataCDMX = { ventas: 0, cursos: 0, escuelas: {}, porMes: {} };
   const dataQRO = { ventas: 0, cursos: 0, escuelas: {}, porMes: {} };
-
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
     if (!row[0] || !row[1]) continue;
-
     const fecha = row[0];
     const mes = fecha.substring(0, 7);
     const escuela = row[1];
     const ventasNum = parseNumber(row[4]);
     const cursosNum = parseNumber(row[5]) || 1;
     const sede = (row[8] || '').toString().trim().toUpperCase();
-
     const isCDMX = sede === 'CDMX' || sede === 'POLANCO';
     const isQRO = sede === 'QUERÉTARO' || sede === 'QRO';
-
     if (isCDMX) {
       dataCDMX.ventas += ventasNum;
       dataCDMX.cursos += cursosNum;
-      
       if (!dataCDMX.escuelas[escuela]) dataCDMX.escuelas[escuela] = { ventas: 0, cursos: 0 };
       dataCDMX.escuelas[escuela].ventas += ventasNum;
       dataCDMX.escuelas[escuela].cursos += cursosNum;
-
       if (!dataCDMX.porMes[mes]) dataCDMX.porMes[mes] = { ventas: 0, cursos: 0 };
       dataCDMX.porMes[mes].ventas += ventasNum;
       dataCDMX.porMes[mes].cursos += cursosNum;
-
     } else if (isQRO) {
       dataQRO.ventas += ventasNum;
       dataQRO.cursos += cursosNum;
-      
       if (!dataQRO.escuelas[escuela]) dataQRO.escuelas[escuela] = { ventas: 0, cursos: 0 };
       dataQRO.escuelas[escuela].ventas += ventasNum;
       dataQRO.escuelas[escuela].cursos += cursosNum;
-
       if (!dataQRO.porMes[mes]) dataQRO.porMes[mes] = { ventas: 0, cursos: 0 };
       dataQRO.porMes[mes].ventas += ventasNum;
       dataQRO.porMes[mes].cursos += cursosNum;
     }
   }
-
   return { cdmx: dataCDMX, qro: dataQRO };
 }
 
@@ -78,7 +62,6 @@ export default function DashboardConsejo() {
   const [error, setError] = useState(null);
   const [cdmx, setCdmx] = useState(null);
   const [qro, setQro] = useState(null);
-
   useEffect(() => {
     async function load() {
       try {
@@ -95,23 +78,18 @@ export default function DashboardConsejo() {
     }
     load();
   }, []);
-
   if (loading) return <div className="p-8 text-center">Cargando...</div>;
   if (error) return <div className="p-8 text-center text-red-600">{error}</div>;
-
   const total = (cdmx?.ventas || 0) + (qro?.ventas || 0);
   const totalCursos = (cdmx?.cursos || 0) + (qro?.cursos || 0);
   const ticket = totalCursos > 0 ? total / totalCursos : 0;
-
   const comparativoSedes = [
     { sede: 'CDMX', ventas: cdmx?.ventas || 0, cursos: cdmx?.cursos || 0 },
     { sede: 'Querétaro', ventas: qro?.ventas || 0, cursos: qro?.cursos || 0 }
   ];
-
   const mesesCDMX = Object.keys(cdmx?.porMes || {}).sort();
   const mesesQRO = Object.keys(qro?.porMes || {}).sort();
   const todosMeses = [...new Set([...mesesCDMX, ...mesesQRO])].sort();
-
   const dataMensual = todosMeses.map(mes => ({
     mes: mes.substring(5),
     cdmxVentas: cdmx?.porMes[mes]?.ventas || 0,
@@ -121,7 +99,6 @@ export default function DashboardConsejo() {
     totalVentas: (cdmx?.porMes[mes]?.ventas || 0) + (qro?.porMes[mes]?.ventas || 0),
     totalCursos: (cdmx?.porMes[mes]?.cursos || 0) + (qro?.porMes[mes]?.cursos || 0)
   }));
-
   const todasEscuelas = [
     ...Object.entries(cdmx?.escuelas || {}).map(([nombre, data]) => ({
       nombre: nombre + ' (CDMX)',
@@ -229,7 +206,7 @@ export default function DashboardConsejo() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Comparativo Ventas por Sede</h3>
+            <h3 className="text-lg font-semibold mb-4">Comparativo Ventas</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={comparativoSedes}>
@@ -245,7 +222,53 @@ export default function DashboardConsejo() {
           </div>
 
           <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Comparativo Cursos por Sede</h3>
+            <h3 className="text-lg font-semibold mb-4">Comparativo Cursos</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={comparativoS
+                <BarChart data={comparativoSedes}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="sede" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="cursos" fill="#3B82F6" name="Cursos" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4">Ranking de Escuelas (Todas las Sedes)</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Escuela</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ventas</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cursos</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ticket Promedio</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {todasEscuelas.map((escuela, index) => {
+                  const ticketEsc = escuela.cursos > 0 ? escuela.ventas / escuela.cursos : 0;
+                  return (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{escuela.nombre}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${escuela.ventas.toLocaleString()}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{escuela.cursos}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${Math.round(ticketEsc).toLocaleString()}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
