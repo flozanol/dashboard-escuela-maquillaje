@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { DollarSign, Building, Target, ShoppingCart, TrendingUp } from 'lucide-react';
+import { DollarSign, Building, Target, ShoppingCart } from 'lucide-react';
 
 function parseNumber(value) {
   if (!value) return 0;
@@ -35,7 +35,7 @@ function processData(rows) {
     if (!row[0] || !row[1]) continue;
 
     const fecha = row[0];
-    const mes = fecha.substring(0, 7); // 2024-01
+    const mes = fecha.substring(0, 7);
     const escuela = row[1];
     const ventasNum = parseNumber(row[4]);
     const cursosNum = parseNumber(row[5]) || 1;
@@ -108,14 +108,12 @@ export default function DashboardConsejo() {
     { sede: 'Querétaro', ventas: qro?.ventas || 0, cursos: qro?.cursos || 0 }
   ];
 
-  // Datos mensuales para gráficas
   const mesesCDMX = Object.keys(cdmx?.porMes || {}).sort();
   const mesesQRO = Object.keys(qro?.porMes || {}).sort();
   const todosMeses = [...new Set([...mesesCDMX, ...mesesQRO])].sort();
 
   const dataMensual = todosMeses.map(mes => ({
-    mes: mes.substring(5), // Solo "01", "02", etc.
-    mesFull: mes,
+    mes: mes.substring(5),
     cdmxVentas: cdmx?.porMes[mes]?.ventas || 0,
     cdmxCursos: cdmx?.porMes[mes]?.cursos || 0,
     qroVentas: qro?.porMes[mes]?.ventas || 0,
@@ -124,19 +122,18 @@ export default function DashboardConsejo() {
     totalCursos: (cdmx?.porMes[mes]?.cursos || 0) + (qro?.porMes[mes]?.cursos || 0)
   }));
 
-  const escuelasCDMX = Object.entries(cdmx?.escuelas || {}).map(([nombre, data]) => ({
-    nombre: `${nombre} (CDMX)`,
-    ventas: data.ventas,
-    cursos: data.cursos
-  }));
-
-  const escuelasQRO = Object.entries(qro?.escuelas || {}).map(([nombre, data]) => ({
-    nombre: `${nombre} (QRO)`,
-    ventas: data.ventas,
-    cursos: data.cursos
-  }));
-
-  const todasEscuelas = [...escuelasCDMX, ...escuelasQRO].sort((a, b) => b.ventas - a.ventas);
+  const todasEscuelas = [
+    ...Object.entries(cdmx?.escuelas || {}).map(([nombre, data]) => ({
+      nombre: nombre + ' (CDMX)',
+      ventas: data.ventas,
+      cursos: data.cursos
+    })),
+    ...Object.entries(qro?.escuelas || {}).map(([nombre, data]) => ({
+      nombre: nombre + ' (QRO)',
+      ventas: data.ventas,
+      cursos: data.cursos
+    }))
+  ].sort((a, b) => b.ventas - a.ventas);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -146,7 +143,6 @@ export default function DashboardConsejo() {
           <p className="text-gray-600 mt-2">Vista consolidada CDMX + Querétaro</p>
         </div>
 
-        {/* KPIs Principales */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow p-6 text-white">
             <div className="flex items-center justify-between">
@@ -193,7 +189,6 @@ export default function DashboardConsejo() {
           </div>
         </div>
 
-        {/* Gráficas de Tendencia Mensual */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold mb-4">Tendencia Mensual de Ventas</h3>
@@ -214,7 +209,7 @@ export default function DashboardConsejo() {
           </div>
 
           <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Tendencia Mensual de Cursos Vendidos</h3>
+            <h3 className="text-lg font-semibold mb-4">Cursos Vendidos por Mes</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={dataMensual}>
@@ -232,10 +227,25 @@ export default function DashboardConsejo() {
           </div>
         </div>
 
-        {/* Comparativos por Sede */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Comparativo de Ventas por Sede</h3>
+            <h3 className="text-lg font-semibold mb-4">Comparativo Ventas por Sede</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                
+                <BarChart data={comparativoSedes}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="sede" />
+                  <YAxis tickFormatter={(value) => `$${(value/1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(value) => `$${value.toLocaleString()}`} />
+                  <Legend />
+                  <Bar dataKey="ventas" fill="#22C55E" name="Ventas" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <h3 className="text-lg font-semibold mb-4">Comparativo Cursos por Sede</h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={comparativoS
