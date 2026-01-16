@@ -36,6 +36,10 @@ function processVentas(rows) {
     const sede = (row[8] || '').toString().trim().toUpperCase();
     const isCDMX = sede === 'CDMX' || sede === 'POLANCO';
     const isQRO = sede === 'QUERÉTARO' || sede === 'QRO';
+    
+    if (mes === '2026-01' && isCDMX) {
+  console.log('DEBUG CDMX Enero - Fecha:', fecha, 'Escuela:', escuela, 'Ventas:', ventasNum, 'Sede col I:', row[8]);
+}
     if (isCDMX) {
       dataCDMX.ventas += ventasNum;
       dataCDMX.cursos += cursosNum;
