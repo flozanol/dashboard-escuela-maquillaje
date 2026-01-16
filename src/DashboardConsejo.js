@@ -21,7 +21,6 @@ async function fetchData() {
   return data.values;
 }
 
-
 function processData(rows) {
   if (!rows || rows.length < 2) return { cdmx: { ventas: 0, cursos: 0, escuelas: {} }, qro: { ventas: 0, cursos: 0, escuelas: {} } };
   
@@ -65,31 +64,13 @@ export default function DashboardConsejo() {
   const [qro, setQro] = useState(null);
 
   useEffect(() => {
-  async function load() {
-    try {
-      const rows = await fetchData();
-      const { cdmx, qro } = processData(rows);
-      setCdmx(cdmx);
-      setQro(qro);
-    } catch (e) {
-      console.error(e);
-      setError('Error cargando datos');
-    } finally {
-      setLoading(false);
-    }
-  }
-  load();
-}, []);
-
-      
-      const ventasCDMX = Object.values(escuelasCDMX).reduce((sum, e) => sum + e.ventas, 0);
-      const cursosCDMX = Object.values(escuelasCDMX).reduce((sum, e) => sum + e.cursos, 0);
-      const ventasQRO = Object.values(escuelasQRO).reduce((sum, e) => sum + e.ventas, 0);
-      const cursosQRO = Object.values(escuelasQRO).reduce((sum, e) => sum + e.cursos, 0);
-      
-            setCdmx({ ventas: ventasCDMX, cursos: cursosCDMX, escuelas: escuelasCDMX });
-      setQro({ ventas: ventasQRO, cursos: cursosQRO, escuelas: escuelasQRO });
-    } catch (e) {
+    async function load() {
+      try {
+        const rows = await fetchData();
+        const { cdmx, qro } = processData(rows);
+        setCdmx(cdmx);
+        setQro(qro);
+      } catch (e) {
         console.error(e);
         setError('Error cargando datos');
       } finally {
@@ -121,18 +102,21 @@ export default function DashboardConsejo() {
             <Building className="w-8 h-8 mb-2" />
             <p className="text-sm">CDMX</p>
             <p className="text-2xl font-bold">${(cdmx?.ventas || 0).toLocaleString()}</p>
+            <p className="text-sm mt-1">{(cdmx?.cursos || 0)} cursos</p>
           </div>
 
           <div className="bg-purple-500 rounded-lg shadow p-6 text-white">
             <Building className="w-8 h-8 mb-2" />
             <p className="text-sm">Querétaro</p>
             <p className="text-2xl font-bold">${(qro?.ventas || 0).toLocaleString()}</p>
+            <p className="text-sm mt-1">{(qro?.cursos || 0)} cursos</p>
           </div>
 
           <div className="bg-green-500 rounded-lg shadow p-6 text-white">
             <DollarSign className="w-8 h-8 mb-2" />
-            <p className="text-sm">Total</p>
+            <p className="text-sm">Total General</p>
             <p className="text-2xl font-bold">${total.toLocaleString()}</p>
+            <p className="text-sm mt-1">{totalCursos} cursos</p>
           </div>
 
           <div className="bg-orange-500 rounded-lg shadow p-6 text-white">
@@ -143,14 +127,14 @@ export default function DashboardConsejo() {
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">Comparativo</h3>
+          <h3 className="text-lg font-semibold mb-4">Comparativo de Ventas por Sede</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="sede" />
-                <YAxis />
-                <Tooltip />
+                <YAxis tickFormatter={(value) => `$${(value/1000).toFixed(0)}k`} />
+                <Tooltip formatter={(value) => `$${value.toLocaleString()}`} />
                 <Legend />
                 <Bar dataKey="ventas" fill="#22C55E" name="Ventas" />
               </BarChart>
