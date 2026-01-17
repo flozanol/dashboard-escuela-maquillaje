@@ -11,7 +11,6 @@ const GOOGLE_SHEETS_CONFIG = {
   apiKey: process.env.REACT_APP_GSHEETS_API_KEY,
   spreadsheetId: '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg',
   ranges: {
-    // 🚀 CAMBIO 1: Ampliamos el rango a A:I para incluir la edad (o A:Z para asegurar todo)
     ventas: SEDE === 'QRO' ? 'Ventas Qro!A:Z' : 'Ventas!A:Z',
     cobranza: 'Cobranza!A:Z',
     crecimientoAnual: 'Crecimiento Anual!A:Z'
@@ -70,7 +69,6 @@ const fallbackContactData = {
   }
 };
 
-// 🚀 CAMBIO 2: Datos de ejemplo para Edades (Fallback)
 const fallbackAgeData = {
   "2024-07": {
     "18-24": 15,
@@ -106,13 +104,13 @@ const Dashboard = () => {
   const [salesData, setSalesData] = useState(fallbackData);
   const [cobranzaData, setCobranzaData] = useState({});
   const [contactData, setContactData] = useState(fallbackContactData);
-  // 🚀 CAMBIO 3: Nuevo estado para Edades
   const [ageData, setAgeData] = useState(fallbackAgeData);
   const [crecimientoAnualData, setCrecimientoAnualData] = useState(fallbackCrecimientoAnualData); 
   
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  // Se usa ahora en la interfaz para evitar error de linting
   const [errorMessage, setErrorMessage] = useState('');
   const [isManualRefresh, setIsManualRefresh] = useState(false);
   const [alerts, setAlerts] = useState([]);
@@ -177,7 +175,6 @@ const Dashboard = () => {
       
       const transformedVentas = transformGoogleSheetsData(ventasDataResponse.values);
       const transformedContact = transformContactData(ventasDataResponse.values); 
-      // 🚀 CAMBIO 4: Procesar datos de edades
       const transformedAge = transformAgeData(ventasDataResponse.values);
 
       setSalesData(transformedVentas);
@@ -282,7 +279,6 @@ const Dashboard = () => {
     return transformedData;
   };
 
-  // 🚀 CAMBIO 5: Función para transformar los datos de Edades (Columna I)
   const transformAgeData = (rawData) => {
     const rows = rawData.slice(1);
     const transformedData = {};
@@ -292,7 +288,6 @@ const Dashboard = () => {
 
     rows.forEach((row) => {
         const fecha = row[0];
-        // Aseguramos que exista la columna de edad, si no, es "N/A"
         const rawAge = row[AGE_COLUMN_INDEX] ? row[AGE_COLUMN_INDEX].toString().trim() : '';
         
         if (!fecha) return;
@@ -311,7 +306,6 @@ const Dashboard = () => {
             else if (ageNum >= 45 && ageNum <= 54) ageRange = "45-54";
             else ageRange = "55+";
         } else if (rawAge !== '') {
-            // Si hay texto pero no es número (ej "25-30") se podría agrupar por texto
             ageRange = "Otro";
         } else {
             ageRange = "Sin dato";
@@ -320,7 +314,7 @@ const Dashboard = () => {
         if (!transformedData[monthKey][ageRange]) {
             transformedData[monthKey][ageRange] = 0;
         }
-        transformedData[monthKey][ageRange] += 1; // Contamos 1 alumno por fila
+        transformedData[monthKey][ageRange] += 1; 
     });
     return transformedData;
   };
@@ -476,6 +470,7 @@ const Dashboard = () => {
     });
     return Array.from(areasSet);
   }, [salesData]);
+
 // eslint-disable-next-line no-unused-vars
 const instructors = useMemo(() => {
     const instructorsSet = new Set();
@@ -681,12 +676,9 @@ const contactMethods = useMemo(() => {
     return totals;
   };
 
-  // 🚀 CAMBIO 6: Helper para obtener datos de edad del mes seleccionado
   const getAgeDistribution = (month) => {
     if (!ageData || !ageData[month]) return [];
     
-    // Convertir objeto { "18-24": 10 } a array [{ name: "18-24", value: 10 }]
-    // Y aseguramos el orden de los rangos
     const order = ["Menores de 18", "18-24", "25-34", "35-44", "45-54", "55+", "Otro", "Sin dato", "Desconocido"];
     
     return Object.entries(ageData[month])
@@ -694,7 +686,6 @@ const contactMethods = useMemo(() => {
         .sort((a, b) => {
             const indexA = order.indexOf(a.name);
             const indexB = order.indexOf(b.name);
-            // Si no está en la lista (index -1), lo ponemos al final
             return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
         });
   };
@@ -1179,7 +1170,6 @@ const contactMethods = useMemo(() => {
   };
 
   const ExecutiveDashboard = () => {
-    // 🚀 CAMBIO 7: Preparar datos para el gráfico de Edades
     const ageChartData = getAgeDistribution(selectedMonth);
 
     const getSalesBySchoolAndMonth = () => {
@@ -1288,6 +1278,8 @@ const contactMethods = useMemo(() => {
               <p className="text-sm text-yellow-800">
                 <strong>📊 Usando datos de respaldo.</strong> Verifica tu API Key y Spreadsheet ID.
               </p>
+              {/* Aquí se usa la variable para evitar el error de build */}
+              {errorMessage && <p className="text-xs text-yellow-700 mt-1">Detalle: {errorMessage}</p>}
             </div>
           )}
         </div>
@@ -1371,9 +1363,7 @@ const contactMethods = useMemo(() => {
           </div>
         </div>
 
-        {/* 🚀 CAMBIO 8: NUEVA SECCIÓN DE EDADES */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* ... Top Vendedores y Top Areas existentes ... */}
             <div className="bg-white rounded-lg shadow p-6">
                 <div className="flex items-center gap-2 mb-4">
                     <Star className="w-5 h-5 text-yellow-500" />
