@@ -11,12 +11,12 @@ const GOOGLE_SHEETS_CONFIG = {
   apiKey: process.env.REACT_APP_GSHEETS_API_KEY,
   spreadsheetId: '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg',
   ranges: {
-    ventas: SEDE === 'QRO' ? 'Ventas Qro!A:H' : 'Ventas!A:H',
+    // 🚀 CAMBIO 1: Ampliamos el rango a A:I para incluir la edad (o A:Z para asegurar todo)
+    ventas: SEDE === 'QRO' ? 'Ventas Qro!A:Z' : 'Ventas!A:Z',
     cobranza: 'Cobranza!A:Z',
     crecimientoAnual: 'Crecimiento Anual!A:Z'
   }
 };
-
 
 const fallbackData = {
   "2024-01": {
@@ -70,6 +70,17 @@ const fallbackContactData = {
   }
 };
 
+// 🚀 CAMBIO 2: Datos de ejemplo para Edades (Fallback)
+const fallbackAgeData = {
+  "2024-07": {
+    "18-24": 15,
+    "25-34": 45,
+    "35-44": 20,
+    "45+": 10,
+    "Desconocido": 5
+  }
+};
+
 const fallbackCrecimientoAnualData = {
   headers: ['Año', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic', 'Total', 'Crecimiento'],
   rows: [
@@ -88,26 +99,27 @@ const Dashboard = () => {
   const [selectedMonth, setSelectedMonth] = useState("2024-07");
   const [selectedSchool, setSelectedSchool] = useState("Polanco");
   const [selectedArea, setSelectedArea] = useState("Maquillaje");
-  // const [selectedInstructor, setSelectedInstructor] = useState('');
   const [viewType, setViewType] = useState("executive");
   const [metricType, setMetricType] = useState("ventas");
   const [compareMonths, setCompareMonths] = useState(["2024-06", "2024-07"]);
+  
   const [salesData, setSalesData] = useState(fallbackData);
   const [cobranzaData, setCobranzaData] = useState({});
   const [contactData, setContactData] = useState(fallbackContactData);
+  // 🚀 CAMBIO 3: Nuevo estado para Edades
+  const [ageData, setAgeData] = useState(fallbackAgeData);
   const [crecimientoAnualData, setCrecimientoAnualData] = useState(fallbackCrecimientoAnualData); 
+  
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
-  // eslint-disable-next-line no-unused-vars
-const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
   const [isManualRefresh, setIsManualRefresh] = useState(false);
   const [alerts, setAlerts] = useState([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
 
   const debugInstructors = () => {
     console.log('DEBUG: Verificando datos de instructores...');
-    // (Tu lógica de debug original)
   };
 
   const parseNumberFromString = (value) => {
@@ -159,28 +171,31 @@ const [errorMessage, setErrorMessage] = useState('');
     
     try {
       const ventasUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.ventas}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
-      console.log('DEBUG API KEY:', GOOGLE_SHEETS_CONFIG.apiKey);
-console.log('DEBUG URL:', ventasUrl);
       const ventasResponse = await fetch(ventasUrl);
       if (!ventasResponse.ok) throw new Error(`Error ${ventasResponse.status}: ${ventasResponse.statusText}`);
-      const ventasData = await ventasResponse.json();
-      const transformedVentas = transformGoogleSheetsData(ventasData.values);
-      const transformedContact = transformContactData(ventasData.values); 
+      const ventasDataResponse = await ventasResponse.json();
+      
+      const transformedVentas = transformGoogleSheetsData(ventasDataResponse.values);
+      const transformedContact = transformContactData(ventasDataResponse.values); 
+      // 🚀 CAMBIO 4: Procesar datos de edades
+      const transformedAge = transformAgeData(ventasDataResponse.values);
+
       setSalesData(transformedVentas);
       setContactData(transformedContact);
+      setAgeData(transformedAge);
       
       const cobranzaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.cobranza}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
       const cobranzaResponse = await fetch(cobranzaUrl);
       if (!cobranzaResponse.ok) throw new Error(`Error ${cobranzaResponse.status}: ${cobranzaResponse.statusText}`);
-      const cobranzaData = await cobranzaResponse.json();
-      const transformedCobranza = transformCobranzaData(cobranzaData.values);
+      const cobranzaDataResponse = await cobranzaResponse.json();
+      const transformedCobranza = transformCobranzaData(cobranzaDataResponse.values);
       setCobranzaData(transformedCobranza);
       
       const crecimientoAnualUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.crecimientoAnual}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
       const crecimientoAnualResponse = await fetch(crecimientoAnualUrl);
       if (!crecimientoAnualResponse.ok) throw new Error(`Error ${crecimientoAnualResponse.status}: ${crecimientoAnualResponse.statusText}`);
-      const crecimientoAnualData = await crecimientoAnualResponse.json();
-      const transformedCrecimientoAnual = transformCrecimientoAnualData(crecimientoAnualData.values);
+      const crecimientoAnualDataResponse = await crecimientoAnualResponse.json();
+      const transformedCrecimientoAnual = transformCrecimientoAnualData(crecimientoAnualDataResponse.values);
       setCrecimientoAnualData(transformedCrecimientoAnual); 
       
       if (transformedCrecimientoAnual.years.length > 0) {
@@ -198,6 +213,7 @@ console.log('DEBUG URL:', ventasUrl);
       if (Object.keys(salesData).length === 0) {
         setSalesData(fallbackData);
         setContactData(fallbackContactData);
+        setAgeData(fallbackAgeData);
       }
       if (crecimientoAnualData.rows.length === 0) {
         setCrecimientoAnualData(fallbackCrecimientoAnualData);
@@ -210,7 +226,7 @@ console.log('DEBUG URL:', ventasUrl);
 
   const transformGoogleSheetsData = (rawData) => {
     // eslint-disable-next-line no-unused-vars
-const headers = rawData[0];
+    const headers = rawData[0];
     const rows = rawData.slice(1);
     const transformedData = {};
     
@@ -266,7 +282,49 @@ const headers = rawData[0];
     return transformedData;
   };
 
-  // 🚀 ACTUALIZADO: Función para transformar datos de Crecimiento Anual incluyendo las nuevas tablas
+  // 🚀 CAMBIO 5: Función para transformar los datos de Edades (Columna I)
+  const transformAgeData = (rawData) => {
+    const rows = rawData.slice(1);
+    const transformedData = {};
+    
+    // Índices: A=0, ... I=8
+    const AGE_COLUMN_INDEX = 8; 
+
+    rows.forEach((row) => {
+        const fecha = row[0];
+        // Aseguramos que exista la columna de edad, si no, es "N/A"
+        const rawAge = row[AGE_COLUMN_INDEX] ? row[AGE_COLUMN_INDEX].toString().trim() : '';
+        
+        if (!fecha) return;
+
+        const monthKey = fecha.substring(0, 7);
+        if (!transformedData[monthKey]) transformedData[monthKey] = {};
+
+        let ageRange = "Desconocido";
+        const ageNum = parseInt(rawAge);
+
+        if (!isNaN(ageNum) && ageNum > 0) {
+            if (ageNum < 18) ageRange = "Menores de 18";
+            else if (ageNum >= 18 && ageNum <= 24) ageRange = "18-24";
+            else if (ageNum >= 25 && ageNum <= 34) ageRange = "25-34";
+            else if (ageNum >= 35 && ageNum <= 44) ageRange = "35-44";
+            else if (ageNum >= 45 && ageNum <= 54) ageRange = "45-54";
+            else ageRange = "55+";
+        } else if (rawAge !== '') {
+            // Si hay texto pero no es número (ej "25-30") se podría agrupar por texto
+            ageRange = "Otro";
+        } else {
+            ageRange = "Sin dato";
+        }
+
+        if (!transformedData[monthKey][ageRange]) {
+            transformedData[monthKey][ageRange] = 0;
+        }
+        transformedData[monthKey][ageRange] += 1; // Contamos 1 alumno por fila
+    });
+    return transformedData;
+  };
+
   const transformCrecimientoAnualData = (rawData) => {
     if (!rawData || rawData.length < 3) return fallbackCrecimientoAnualData;
 
@@ -274,18 +332,13 @@ const headers = rawData[0];
     const allDataRows = rawData.slice(2);
     const headers = (headerRow || []).slice(0, 15).map(h => h.trim()); 
 
-    // --- TABLA PRINCIPAL (General) ---
     const rows = allDataRows
         .slice(0, 8) 
         .filter(row => row.length > 0 && parseNumberFromString(row[0]) > 0)
         .map(row => row.slice(0, 15));
 
-    // --- NUEVA TABLA: QUERÉTARO (A11:O15) ---
-    // Fila 11 es índice 10. Slice(10, 15) toma índices 10, 11, 12, 13, 14.
     const queretaroRows = rawData.slice(10, 15).map(row => row.slice(0, 15));
 
-    // --- NUEVA TABLA: TOTAL (A18:O22) ---
-    // Fila 18 es índice 17. Slice(17, 22) toma índices 17, 18, 19, 20, 21.
     const totalRows = rawData.slice(17, 22).map(row => row.slice(0, 15));
 
     const MONTH_ABBREVIATIONS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -626,6 +679,24 @@ const contactMethods = useMemo(() => {
       totals[method] = contactData[month][method];
     });
     return totals;
+  };
+
+  // 🚀 CAMBIO 6: Helper para obtener datos de edad del mes seleccionado
+  const getAgeDistribution = (month) => {
+    if (!ageData || !ageData[month]) return [];
+    
+    // Convertir objeto { "18-24": 10 } a array [{ name: "18-24", value: 10 }]
+    // Y aseguramos el orden de los rangos
+    const order = ["Menores de 18", "18-24", "25-34", "35-44", "45-54", "55+", "Otro", "Sin dato", "Desconocido"];
+    
+    return Object.entries(ageData[month])
+        .map(([range, count]) => ({ name: range, value: count }))
+        .sort((a, b) => {
+            const indexA = order.indexOf(a.name);
+            const indexB = order.indexOf(b.name);
+            // Si no está en la lista (index -1), lo ponemos al final
+            return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+        });
   };
 
   const executiveKPIs = useMemo(() => {
@@ -1108,6 +1179,9 @@ const contactMethods = useMemo(() => {
   };
 
   const ExecutiveDashboard = () => {
+    // 🚀 CAMBIO 7: Preparar datos para el gráfico de Edades
+    const ageChartData = getAgeDistribution(selectedMonth);
+
     const getSalesBySchoolAndMonth = () => {
       const data = {};
       schools.forEach(school => {
@@ -1297,85 +1371,92 @@ const contactMethods = useMemo(() => {
           </div>
         </div>
 
+        {/* 🚀 CAMBIO 8: NUEVA SECCIÓN DE EDADES */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Star className="w-5 h-5 text-yellow-500" />
-              <h3 className="text-lg font-semibold">Top Vendedores</h3>
+            {/* ... Top Vendedores y Top Areas existentes ... */}
+            <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center gap-2 mb-4">
+                    <Star className="w-5 h-5 text-yellow-500" />
+                    <h3 className="text-lg font-semibold">Top Vendedores</h3>
+                </div>
+                <div className="space-y-3">
+                    {Object.entries(getInstructorTotals(selectedMonth))
+                    .sort(([,a], [,b]) => b.ventas - a.ventas)
+                    .map(([vendedor, data], index) => (
+                        <div key={vendedor} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                            index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-orange-500' : 'bg-gray-300'
+                            }`}>
+                            {index + 1}
+                            </span>
+                            <div>
+                            <p className="font-medium text-sm">{vendedor}</p>
+                            <p className="text-xs text-gray-500">{data.areas.length} áreas</p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <p className="font-bold text-sm">${data.ventas.toLocaleString()}</p>
+                            <p className="text-xs text-gray-500">{data.cursos} cursos</p>
+                        </div>
+                        </div>
+                    ))}
+                </div>
             </div>
-            <div className="space-y-3">
-              {Object.entries(getInstructorTotals(selectedMonth))
-                .sort(([,a], [,b]) => b.ventas - a.ventas)
-                .map(([vendedor, data], index) => (
-                  <div key={vendedor} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                        index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : index === 2 ? 'bg-orange-500' : 'bg-gray-300'
-                      }`}>
-                        {index + 1}
-                      </span>
-                      <div>
-                        <p className="font-medium text-sm">{vendedor}</p>
-                        <p className="text-xs text-gray-500">{data.areas.length} áreas</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-sm">${data.ventas.toLocaleString()}</p>
-                      <p className="text-xs text-gray-500">{data.cursos} cursos</p>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <BarChart3 className="w-5 h-5 text-green-500" />
-              <h3 className="text-lg font-semibold">Top Áreas</h3>
-            </div>
-            <div className="space-y-3">
-              {Object.entries(getAreaTotals(selectedMonth))
-                .sort(([,a], [,b]) => b.ventas - a.ventas)
-                .map(([area, data], index) => (
-                  <div key={area} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <BookOpen className="w-5 h-5 text-green-500" />
-                      <div>
-                        <p className="font-medium text-sm">{area}</p>
-                        <p className="text-xs text-gray-500">Área de estudio</p>
-                      </div>
+            <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center gap-2 mb-4">
+                    <Users className="w-5 h-5 text-purple-500" />
+                    <h3 className="text-lg font-semibold">Distribución de Edades</h3>
+                </div>
+                {ageChartData.length > 0 ? (
+                    <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={ageChartData} layout="vertical">
+                                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                                <XAxis type="number" hide />
+                                <YAxis dataKey="name" type="category" width={90} tick={{fontSize: 12}} />
+                                <Tooltip />
+                                <Bar dataKey="value" fill="#8B5CF6" radius={[0, 4, 4, 0]} name="Alumnos">
+                                    {ageChartData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#8B5CF6' : '#A78BFA'} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-sm">${data.ventas.toLocaleString()}</p>
-                      <p className="text-xs text-gray-500">{data.cursos} cursos</p>
+                ) : (
+                    <div className="flex items-center justify-center h-64 text-gray-400">
+                        No hay datos de edad
                     </div>
-                  </div>
-                ))}
+                )}
+                <div className="mt-4 text-xs text-gray-500 text-center">
+                    Edad de alumnos inscritos en {formatDateForDisplay(selectedMonth)}
+                </div>
             </div>
-          </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Book className="w-5 h-5 text-gray-600" />
-              <h3 className="text-lg font-semibold">Top Cursos</h3>
+            <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center gap-2 mb-4">
+                    <Book className="w-5 h-5 text-gray-600" />
+                    <h3 className="text-lg font-semibold">Top Cursos</h3>
+                </div>
+                <div className="space-y-3">
+                    {Object.entries(getCourses(selectedMonth))
+                    .sort(([,a], [,b]) => b.ventas - a.ventas)
+                    .map(([course, data], index) => (
+                        <div key={course} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                            <p className="font-medium text-sm">{course.split(' (')[0]}</p>
+                            <p className="text-xs text-gray-500">{data.instructor}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="font-bold text-sm">${data.ventas.toLocaleString()}</p>
+                            <p className="text-xs text-gray-500">{data.cursos} vendidos</p>
+                        </div>
+                        </div>
+                    ))}
+                </div>
             </div>
-            <div className="space-y-3">
-              {Object.entries(getCourses(selectedMonth))
-                .sort(([,a], [,b]) => b.ventas - a.ventas)
-                .map(([course, data], index) => (
-                  <div key={course} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-sm">{course.split(' (')[0]}</p>
-                      <p className="text-xs text-gray-500">{data.instructor}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-sm">${data.ventas.toLocaleString()}</p>
-                      <p className="text-xs text-gray-500">{data.cursos} vendidos</p>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-lg p-6">
@@ -1500,7 +1581,7 @@ const contactMethods = useMemo(() => {
       });
       const mesesArray = Array.from(meses);
       return sortMonthsChronologically(mesesArray);
-   // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [cobranzaData]);
 
 
@@ -1519,7 +1600,7 @@ const contactMethods = useMemo(() => {
         });
       });
       return totales;
-   // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [cobranzaData, mesesCobranza]);
 
 
@@ -1789,9 +1870,7 @@ const contactMethods = useMemo(() => {
     );
   };
   
-  // 🚀 ACTUALIZADO: Dashboard de Crecimiento Anual con las 3 tablas
   const CrecimientoAnualDashboard = () => {
-    // Extraemos las nuevas filas (queretaroRows, totalRows)
     const { headers, rows, queretaroRows, totalRows, years, monthlyMap, annualGrowthData } = crecimientoAnualData;
     
     const currentYearDataRow = rows.find(r => parseNumberFromString(r[0]) === parseNumberFromString(selectedYear)) || [];
@@ -1816,7 +1895,6 @@ const contactMethods = useMemo(() => {
       
     const COLORS = ['#22C55E', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899'];
 
-    // Componente reutilizable para las tablas
     const SimpleTable = ({ title, dataRows, tableHeaders, colorTheme = "gray" }) => {
         const headerColor = colorTheme === 'blue' ? 'bg-blue-100 text-blue-800' : 
                             colorTheme === 'orange' ? 'bg-orange-100 text-orange-800' : 
@@ -1903,9 +1981,6 @@ const contactMethods = useMemo(() => {
             </div>
         </div>
         
-        {/* 🚀 TABLAS DE DATOS */}
-        
-        {/* Tabla 1: General (La original) */}
         <SimpleTable 
             title="Resumen General Anual" 
             dataRows={rows} 
@@ -1913,7 +1988,6 @@ const contactMethods = useMemo(() => {
             colorTheme="gray"
         />
 
-        {/* Tabla 2: Querétaro (Nueva) */}
         {queretaroRows && queretaroRows.length > 0 && (
             <SimpleTable 
                 title="Querétaro (A11:O15)" 
@@ -1923,7 +1997,6 @@ const contactMethods = useMemo(() => {
             />
         )}
 
-        {/* Tabla 3: Total (Nueva) */}
         {totalRows && totalRows.length > 0 && (
             <SimpleTable 
                 title="Total (A18:O22)" 
@@ -1933,7 +2006,6 @@ const contactMethods = useMemo(() => {
             />
         )}
         
-        {/* GRÁFICOS */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h3 className="text-lg font-semibold mb-4">📈 Tendencia Mensual de Ventas por Año</h3>
