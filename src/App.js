@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import DashboardConsejo from './DashboardConsejo';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { MapContainer, TileLayer, CircleMarker, Popup as MapPopup } from 'react-leaflet';
-import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Star, Target, AlertTriangle, Activity, Phone, Mail, Globe, MessageSquare, Users, MapPin } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Star, Target, AlertTriangle, Activity, Phone, Mail, Globe, MessageSquare, Users, MapPin, Layers, Calendar } from 'lucide-react';
 
 const SEDE = process.env.REACT_APP_SEDE || 'CDMX';
 const MODO = process.env.REACT_APP_MODO || 'ESCUELA';
@@ -105,10 +105,13 @@ const Dashboard = () => {
   const [cobranzaData, setCobranzaData] = useState({});
   const [contactData, setContactData] = useState(fallbackContactData);
   const [ageData, setAgeData] = useState(fallbackAgeData);
-  const [mapData, setMapData] = useState({}); // Nuevo estado para datos del mapa (CPs)
-  const [coordsCache, setCoordsCache] = useState({}); // Caché para coordenadas y no pedir siempre a la API
+  const [mapData, setMapData] = useState({}); 
+  const [coordsCache, setCoordsCache] = useState({}); 
   const [crecimientoAnualData, setCrecimientoAnualData] = useState(fallbackCrecimientoAnualData); 
   
+  // 🚀 NUEVO ESTADO: Controla si vemos el mapa mensual o histórico
+  const [showFullHistoryMap, setShowFullHistoryMap] = useState(false);
+
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
@@ -164,7 +167,6 @@ const Dashboard = () => {
     });
   };
 
-  // Función para obtener coordenadas de un CP (con caché simple)
   const fetchCoordinatesForCP = async (cp) => {
     if (!cp || cp.length < 4) return null;
     if (coordsCache[cp]) return coordsCache[cp];
@@ -202,7 +204,7 @@ const Dashboard = () => {
       const transformedVentas = transformGoogleSheetsData(ventasDataResponse.values);
       const transformedContact = transformContactData(ventasDataResponse.values); 
       const transformedAge = transformAgeData(ventasDataResponse.values);
-      const transformedMap = transformMapData(ventasDataResponse.values); // Nueva transformación
+      const transformedMap = transformMapData(ventasDataResponse.values);
 
       setSalesData(transformedVentas);
       setContactData(transformedContact);
@@ -340,15 +342,14 @@ const Dashboard = () => {
     return transformedData;
   };
 
-  // 🚀 Transformar datos para el Mapa (Agrupar por CP)
   const transformMapData = (rawData) => {
     const rows = rawData.slice(1);
-    const transformedData = {}; // Estructura: { "2024-07": { "06600": { count: 5, ventas: 50000 } } }
-    const CP_COLUMN_INDEX = 9; // Columna J es índice 9
+    const transformedData = {}; 
+    const CP_COLUMN_INDEX = 9; 
 
     rows.forEach((row) => {
         const fecha = row[0];
-        const ventas = row[4]; // Índice 4 es Ventas
+        const ventas = row[4]; 
         const cp = row[CP_COLUMN_INDEX] ? row[CP_COLUMN_INDEX].toString().trim() : '';
         
         if (!fecha || !cp || cp.length < 4) return;
@@ -462,24 +463,38 @@ const Dashboard = () => {
 // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
   
-  // 🚀 Effect para cargar coordenadas de los CPs del mes seleccionado
+  // 🚀 Effect para cargar coordenadas: Ahora soporta "Mes" y "Todo el Año"
   useEffect(() => {
     const loadCoordinates = async () => {
-        if (!mapData[selectedMonth]) return;
-        const cps = Object.keys(mapData[selectedMonth]);
+        let cpsToLoad = [];
+
+        if (showFullHistoryMap) {
+            // Si estamos viendo el histórico, necesitamos cargar TODOS los CPs
+            Object.values(mapData).forEach(monthData => {
+                cpsToLoad = [...cpsToLoad, ...Object.keys(monthData)];
+            });
+        } else {
+            // Solo los del mes seleccionado
+            if (mapData[selectedMonth]) {
+                cpsToLoad = Object.keys(mapData[selectedMonth]);
+            }
+        }
+
+        // Eliminar duplicados
+        cpsToLoad = [...new Set(cpsToLoad)];
+
         // Solo buscamos los que no tenemos en cache
-        const missingCPs = cps.filter(cp => !coordsCache[cp]);
+        const missingCPs = cpsToLoad.filter(cp => !coordsCache[cp]);
         
-        // Procesamos en lotes pequeños para no saturar la API
+        // Procesamos en lotes
         for (const cp of missingCPs) {
             await fetchCoordinatesForCP(cp);
-            // Pequeña pausa para ser amables con la API pública
-            await new Promise(r => setTimeout(r, 100)); 
+            await new Promise(r => setTimeout(r, 80)); 
         }
     };
     loadCoordinates();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMonth, mapData]);
+  }, [selectedMonth, mapData, showFullHistoryMap]);
 
   useEffect(() => {
     const generateAlerts = () => {
@@ -993,13 +1008,27 @@ const contactMethods = useMemo(() => {
     </div>
   );
   
-  // 🚀 Componente para el Mapa
+  // 🚀 Componente Mapa Actualizado (Con Switch)
   const MapDashboard = () => {
-    // Centro del mapa: Depende de la sede
     const mapCenter = SEDE === 'QRO' ? [20.5888, -100.3899] : [19.4326, -99.1332];
     const mapZoom = 11;
 
-    const dataForMap = mapData[selectedMonth] || {};
+    // Helper para juntar todo el historial
+    const getAllHistoryData = () => {
+        const aggregated = {};
+        Object.values(mapData).forEach(monthData => {
+            Object.entries(monthData).forEach(([cp, data]) => {
+                if (!aggregated[cp]) aggregated[cp] = { count: 0, ventas: 0 };
+                aggregated[cp].count += data.count;
+                aggregated[cp].ventas += data.ventas;
+            });
+        });
+        return aggregated;
+    };
+
+    // Decidir qué datos usar según el Switch
+    const dataForMap = showFullHistoryMap ? getAllHistoryData() : (mapData[selectedMonth] || {});
+
     const markers = Object.entries(dataForMap).map(([cp, info]) => {
         const coords = coordsCache[cp];
         if (!coords) return null;
@@ -1010,25 +1039,65 @@ const contactMethods = useMemo(() => {
         };
     }).filter(m => m !== null);
 
-    // Ajustar el tamaño del círculo según las ventas (simple escalado)
     const getRadius = (ventas) => {
-        if (ventas < 10000) return 10;
-        if (ventas < 50000) return 20;
+        // Ajustamos la escala si es histórico porque los números serán mayores
+        const factor = showFullHistoryMap ? 2 : 1; 
+        if (ventas < 10000 * factor) return 10;
+        if (ventas < 50000 * factor) return 20;
         return 30;
     };
 
     const getColor = (count) => {
-        if (count === 1) return '#3B82F6';
-        if (count < 5) return '#F59E0B';
+        const factor = showFullHistoryMap ? 2 : 1; 
+        if (count <= 1 * factor) return '#3B82F6';
+        if (count < 5 * factor) return '#F59E0B';
         return '#EF4444';
     };
 
     return (
         <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <MapPin className="w-6 h-6 text-red-500" />
-                Mapa de Alumnos - {formatDateForDisplay(selectedMonth)}
-            </h2>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
+                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                    <MapPin className="w-6 h-6 text-red-500" />
+                    Mapa de Alumnos
+                </h2>
+                
+                {/* 🚀 BOTONES PARA CAMBIAR VISTA */}
+                <div className="flex bg-gray-100 p-1 rounded-lg">
+                    <button
+                        onClick={() => setShowFullHistoryMap(false)}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                            !showFullHistoryMap 
+                            ? 'bg-white text-gray-800 shadow-sm' 
+                            : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                    >
+                        <Calendar className="w-4 h-4" />
+                        Vista Mensual
+                    </button>
+                    <button
+                        onClick={() => setShowFullHistoryMap(true)}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                            showFullHistoryMap 
+                            ? 'bg-white text-blue-600 shadow-sm' 
+                            : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                    >
+                        <Layers className="w-4 h-4" />
+                        Todo el Histórico
+                    </button>
+                </div>
+            </div>
+
+            {/* INFO BAR */}
+            <div className="mb-4 text-sm text-gray-600 flex items-center gap-2 bg-blue-50 p-2 rounded border border-blue-100">
+                <Globe className="w-4 h-4 text-blue-500" />
+                {showFullHistoryMap 
+                    ? <span>Mostrando <strong>todos los alumnos registrados</strong> en el historial.</span>
+                    : <span>Mostrando alumnos de <strong>{formatDateForDisplay(selectedMonth)}</strong>.</span>
+                }
+            </div>
+
             <div className="h-96 w-full rounded-lg overflow-hidden border border-gray-200 relative z-0">
                 <MapContainer center={mapCenter} zoom={mapZoom} style={{ height: '100%', width: '100%' }}>
                     <TileLayer
@@ -1059,10 +1128,11 @@ const contactMethods = useMemo(() => {
                     </div>
                 )}
             </div>
+            
             <div className="mt-4 flex gap-4 text-xs text-gray-500 justify-center">
-                <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-500 opacity-50"></span> 1 Alumno</div>
-                <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-yellow-500 opacity-50"></span> 2-4 Alumnos</div>
-                <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-500 opacity-50"></span> 5+ Alumnos</div>
+                <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-500 opacity-50"></span> Baja densidad</div>
+                <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-yellow-500 opacity-50"></span> Media densidad</div>
+                <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-500 opacity-50"></span> Alta densidad</div>
             </div>
         </div>
     );
