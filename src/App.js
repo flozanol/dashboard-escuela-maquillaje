@@ -1,11 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import DashboardConsejo from './DashboardConsejo';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
-import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Star, Target, AlertTriangle, Activity, Phone, Mail, Globe, MessageSquare, Users } from 'lucide-react';
+import { MapContainer, TileLayer, CircleMarker, Popup as MapPopup } from 'react-leaflet';
+import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Star, Target, AlertTriangle, Activity, Phone, Mail, Globe, MessageSquare, Users, MapPin } from 'lucide-react';
 
 const SEDE = process.env.REACT_APP_SEDE || 'CDMX';
 const MODO = process.env.REACT_APP_MODO || 'ESCUELA';
-
 
 const GOOGLE_SHEETS_CONFIG = {
   apiKey: process.env.REACT_APP_GSHEETS_API_KEY,
@@ -105,12 +105,13 @@ const Dashboard = () => {
   const [cobranzaData, setCobranzaData] = useState({});
   const [contactData, setContactData] = useState(fallbackContactData);
   const [ageData, setAgeData] = useState(fallbackAgeData);
+  const [mapData, setMapData] = useState({}); // Nuevo estado para datos del mapa (CPs)
+  const [coordsCache, setCoordsCache] = useState({}); // Caché para coordenadas y no pedir siempre a la API
   const [crecimientoAnualData, setCrecimientoAnualData] = useState(fallbackCrecimientoAnualData); 
   
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
-  // Se usa ahora en la interfaz para evitar error de linting
   const [errorMessage, setErrorMessage] = useState('');
   const [isManualRefresh, setIsManualRefresh] = useState(false);
   const [alerts, setAlerts] = useState([]);
@@ -163,6 +164,31 @@ const Dashboard = () => {
     });
   };
 
+  // Función para obtener coordenadas de un CP (con caché simple)
+  const fetchCoordinatesForCP = async (cp) => {
+    if (!cp || cp.length < 4) return null;
+    if (coordsCache[cp]) return coordsCache[cp];
+
+    try {
+        const response = await fetch(`https://api.zippopotam.us/mx/${cp}`);
+        if (!response.ok) return null;
+        const data = await response.json();
+        if (data.places && data.places.length > 0) {
+            const coords = {
+                lat: parseFloat(data.places[0].latitude),
+                lng: parseFloat(data.places[0].longitude),
+                placeName: data.places[0]['place name'],
+                state: data.places[0].state
+            };
+            setCoordsCache(prev => ({ ...prev, [cp]: coords }));
+            return coords;
+        }
+    } catch (e) {
+        console.warn(`No se pudo obtener coordenadas para CP ${cp}`, e);
+    }
+    return null;
+  };
+
   const fetchGoogleSheetsData = async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
     setIsManualRefresh(showLoading);
@@ -176,10 +202,12 @@ const Dashboard = () => {
       const transformedVentas = transformGoogleSheetsData(ventasDataResponse.values);
       const transformedContact = transformContactData(ventasDataResponse.values); 
       const transformedAge = transformAgeData(ventasDataResponse.values);
+      const transformedMap = transformMapData(ventasDataResponse.values); // Nueva transformación
 
       setSalesData(transformedVentas);
       setContactData(transformedContact);
       setAgeData(transformedAge);
+      setMapData(transformedMap);
       
       const cobranzaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.cobranza}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
       const cobranzaResponse = await fetch(cobranzaUrl);
@@ -282,22 +310,16 @@ const Dashboard = () => {
   const transformAgeData = (rawData) => {
     const rows = rawData.slice(1);
     const transformedData = {};
-    
-    // Índices: A=0, ... I=8
     const AGE_COLUMN_INDEX = 8; 
 
     rows.forEach((row) => {
         const fecha = row[0];
         const rawAge = row[AGE_COLUMN_INDEX] ? row[AGE_COLUMN_INDEX].toString().trim() : '';
-        
         if (!fecha) return;
-
         const monthKey = fecha.substring(0, 7);
         if (!transformedData[monthKey]) transformedData[monthKey] = {};
-
         let ageRange = "Desconocido";
         const ageNum = parseInt(rawAge);
-
         if (!isNaN(ageNum) && ageNum > 0) {
             if (ageNum < 18) ageRange = "Menores de 18";
             else if (ageNum >= 18 && ageNum <= 24) ageRange = "18-24";
@@ -310,11 +332,33 @@ const Dashboard = () => {
         } else {
             ageRange = "Sin dato";
         }
-
         if (!transformedData[monthKey][ageRange]) {
             transformedData[monthKey][ageRange] = 0;
         }
         transformedData[monthKey][ageRange] += 1; 
+    });
+    return transformedData;
+  };
+
+  // 🚀 Transformar datos para el Mapa (Agrupar por CP)
+  const transformMapData = (rawData) => {
+    const rows = rawData.slice(1);
+    const transformedData = {}; // Estructura: { "2024-07": { "06600": { count: 5, ventas: 50000 } } }
+    const CP_COLUMN_INDEX = 9; // Columna J es índice 9
+
+    rows.forEach((row) => {
+        const fecha = row[0];
+        const ventas = row[4]; // Índice 4 es Ventas
+        const cp = row[CP_COLUMN_INDEX] ? row[CP_COLUMN_INDEX].toString().trim() : '';
+        
+        if (!fecha || !cp || cp.length < 4) return;
+
+        const monthKey = fecha.substring(0, 7);
+        if (!transformedData[monthKey]) transformedData[monthKey] = {};
+        if (!transformedData[monthKey][cp]) transformedData[monthKey][cp] = { count: 0, ventas: 0 };
+
+        transformedData[monthKey][cp].count += 1;
+        transformedData[monthKey][cp].ventas += parseNumberFromString(ventas);
     });
     return transformedData;
   };
@@ -417,6 +461,26 @@ const Dashboard = () => {
   return () => clearInterval(interval);
 // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
+  
+  // 🚀 Effect para cargar coordenadas de los CPs del mes seleccionado
+  useEffect(() => {
+    const loadCoordinates = async () => {
+        if (!mapData[selectedMonth]) return;
+        const cps = Object.keys(mapData[selectedMonth]);
+        // Solo buscamos los que no tenemos en cache
+        const missingCPs = cps.filter(cp => !coordsCache[cp]);
+        
+        // Procesamos en lotes pequeños para no saturar la API
+        for (const cp of missingCPs) {
+            await fetchCoordinatesForCP(cp);
+            // Pequeña pausa para ser amables con la API pública
+            await new Promise(r => setTimeout(r, 100)); 
+        }
+    };
+    loadCoordinates();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMonth, mapData]);
+
   useEffect(() => {
     const generateAlerts = () => {
       const newAlerts = [];
@@ -839,6 +903,9 @@ const contactMethods = useMemo(() => {
         
       case "crecimientoAnual":
         return [];
+        
+      case "mapa":
+        return [];
 
       default:
         return [];
@@ -926,6 +993,81 @@ const contactMethods = useMemo(() => {
     </div>
   );
   
+  // 🚀 Componente para el Mapa
+  const MapDashboard = () => {
+    // Centro del mapa: Depende de la sede
+    const mapCenter = SEDE === 'QRO' ? [20.5888, -100.3899] : [19.4326, -99.1332];
+    const mapZoom = 11;
+
+    const dataForMap = mapData[selectedMonth] || {};
+    const markers = Object.entries(dataForMap).map(([cp, info]) => {
+        const coords = coordsCache[cp];
+        if (!coords) return null;
+        return {
+            cp,
+            ...coords,
+            ...info
+        };
+    }).filter(m => m !== null);
+
+    // Ajustar el tamaño del círculo según las ventas (simple escalado)
+    const getRadius = (ventas) => {
+        if (ventas < 10000) return 10;
+        if (ventas < 50000) return 20;
+        return 30;
+    };
+
+    const getColor = (count) => {
+        if (count === 1) return '#3B82F6';
+        if (count < 5) return '#F59E0B';
+        return '#EF4444';
+    };
+
+    return (
+        <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <MapPin className="w-6 h-6 text-red-500" />
+                Mapa de Alumnos - {formatDateForDisplay(selectedMonth)}
+            </h2>
+            <div className="h-96 w-full rounded-lg overflow-hidden border border-gray-200 relative z-0">
+                <MapContainer center={mapCenter} zoom={mapZoom} style={{ height: '100%', width: '100%' }}>
+                    <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    {markers.map((marker) => (
+                        <CircleMarker
+                            key={marker.cp}
+                            center={[marker.lat, marker.lng]}
+                            radius={getRadius(marker.ventas)}
+                            pathOptions={{ color: getColor(marker.count), fillColor: getColor(marker.count), fillOpacity: 0.5 }}
+                        >
+                            <MapPopup>
+                                <div className="text-sm">
+                                    <p className="font-bold">CP: {marker.cp}</p>
+                                    <p>{marker.placeName}, {marker.state}</p>
+                                    <p className="mt-1">Alumnos: <strong>{marker.count}</strong></p>
+                                    <p>Ventas: <strong>${marker.ventas.toLocaleString()}</strong></p>
+                                </div>
+                            </MapPopup>
+                        </CircleMarker>
+                    ))}
+                </MapContainer>
+                {markers.length === 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-50 bg-opacity-80 z-[1000]">
+                        <p className="text-gray-500">Cargando ubicaciones o sin datos...</p>
+                    </div>
+                )}
+            </div>
+            <div className="mt-4 flex gap-4 text-xs text-gray-500 justify-center">
+                <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-500 opacity-50"></span> 1 Alumno</div>
+                <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-yellow-500 opacity-50"></span> 2-4 Alumnos</div>
+                <div className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-red-500 opacity-50"></span> 5+ Alumnos</div>
+            </div>
+        </div>
+    );
+  };
+
   const ContactDashboard = () => {
     const COLORS = ['#22C55E', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899'];
     const contactTotals = getContactTotals(selectedMonth);
@@ -1278,7 +1420,6 @@ const contactMethods = useMemo(() => {
               <p className="text-sm text-yellow-800">
                 <strong>📊 Usando datos de respaldo.</strong> Verifica tu API Key y Spreadsheet ID.
               </p>
-              {/* Aquí se usa la variable para evitar el error de build */}
               {errorMessage && <p className="text-xs text-yellow-700 mt-1">Detalle: {errorMessage}</p>}
             </div>
           )}
@@ -2165,6 +2306,16 @@ if (MODO === 'CONSEJO') {
               Medio de Contacto
             </button>
             <button
+              onClick={() => setViewType("mapa")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "mapa" 
+                ? "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg" 
+                : "bg-gray-100 text-gray-700 hover:bg-red-50 hover:text-red-700"
+              }`}
+            >
+              <MapPin className="w-4 h-4" />
+              Mapa de Alumnos
+            </button>
+            <button
               onClick={() => setViewType("cobranza")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "cobranza" 
                 ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg" 
@@ -2192,7 +2343,7 @@ if (MODO === 'CONSEJO') {
             </button>
           </div>
 
-          {viewType !== "executive" && viewType !== "cobranza" && viewType !== "crecimientoAnual" && (
+          {viewType !== "executive" && viewType !== "cobranza" && viewType !== "crecimientoAnual" && viewType !== "mapa" && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Métrica</label>
@@ -2295,8 +2446,9 @@ if (MODO === 'CONSEJO') {
         {viewType === "cobranza" && <CobranzaDashboard />}
         {viewType === "contacto" && <ContactDashboard />}
         {viewType === "crecimientoAnual" && <CrecimientoAnualDashboard />}
+        {viewType === "mapa" && <MapDashboard />}
 
-        {(viewType === "escuela" || viewType === "area" || viewType === "instructor" || viewType === "curso" || viewType === "contacto") && !isLoading && viewType !== "contacto" && viewType !== "crecimientoAnual" && (
+        {(viewType === "escuela" || viewType === "area" || viewType === "instructor" || viewType === "curso" || viewType === "contacto") && !isLoading && viewType !== "contacto" && viewType !== "crecimientoAnual" && viewType !== "mapa" && (
           <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold text-gray-800">
