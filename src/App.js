@@ -8,7 +8,7 @@ import { MapContainer, TileLayer, CircleMarker, Popup as MapPopup } from 'react-
 import { 
   TrendingUp, TrendingDown, Minus, DollarSign, RefreshCw, 
   Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Target, 
-  MapPin, Calendar, Monitor, Layers 
+  MapPin, Calendar, Monitor, MessageSquare 
 } from 'lucide-react';
 
 const SEDE = process.env.REACT_APP_SEDE || 'CDMX';
@@ -536,7 +536,15 @@ const Dashboard = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewType, selectedMonth, selectedSchool, selectedArea, metricType, compareMonths]);
 
-  // --- SUB-VIEWS ---
+  // --- SUB COMPONENTS ---
+  const ConnectionStatus = () => (
+    <div className="flex items-center gap-2 text-sm">
+      {connectionStatus === 'connected' && <><Wifi className="w-4 h-4 text-green-500" /><span className="text-green-600">Conectado</span></>}
+      {connectionStatus === 'error' && <><WifiOff className="w-4 h-4 text-red-500" /><span className="text-red-600">Error</span></>}
+      <button onClick={() => fetchGoogleSheetsData(true)} disabled={isLoading} className="ml-2 text-gray-500 hover:text-blue-500"><RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /></button>
+    </div>
+  );
+
   const ExecutiveDashboard = () => {
     const currentMonthData = salesData[selectedMonth] || {};
     const currentTargets = objetivosData[selectedMonth] || { cdmx: { ventas: 0, cursos: 0 }, qro: { ventas: 0, cursos: 0 }, online: { ventas: 0, cursos: 0 } };
@@ -593,7 +601,6 @@ const Dashboard = () => {
         const actual = isSales ? metrics[dataKey].ventas : metrics[dataKey].cursos;
         const target = isSales ? currentTargets[dataKey]?.ventas || 0 : currentTargets[dataKey]?.cursos || 0;
         const progress = getProgress(actual, target);
-        
         const colorClass = color === 'purple' ? 'text-purple-600' : color === 'blue' ? 'text-blue-600' : 'text-green-600';
         const bgClass = color === 'purple' ? 'bg-purple-100' : color === 'blue' ? 'bg-blue-100' : 'bg-green-100';
         const barClass = color === 'purple' ? 'bg-purple-500' : color === 'blue' ? 'bg-blue-500' : 'bg-green-500';
@@ -826,6 +833,7 @@ const Dashboard = () => {
             <button onClick={() => setViewType("mapa")} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "mapa" ? "bg-red-600 text-white" : "bg-gray-100"}`}><MapPin className="w-4 h-4" /> Mapa</button>
             <button onClick={() => setViewType("cobranza")} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "cobranza" ? "bg-blue-600 text-white" : "bg-gray-100"}`}><DollarSign className="w-4 h-4" /> Cobranza</button>
             <button onClick={() => setViewType("crecimientoAnual")} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "crecimientoAnual" ? "bg-indigo-600 text-white" : "bg-gray-100"}`}><TrendingUp className="w-4 h-4" /> Crecimiento</button>
+            <button onClick={debugInstructors} className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-lg text-sm font-medium">Debug</button>
           </div>
         </div>
 
