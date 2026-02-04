@@ -1,15 +1,14 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import DashboardConsejo from './DashboardConsejo';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
-  LineChart, Line, PieChart, Pie, Cell 
+  LineChart, Line 
 } from 'recharts';
 import { MapContainer, TileLayer, CircleMarker, Popup as MapPopup } from 'react-leaflet';
 import { 
-  TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, 
-  Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Star, Target, 
-  AlertTriangle, Phone, Mail, Globe, MessageSquare, Users, MapPin, 
-  Calendar, Monitor, Layers 
+  TrendingUp, TrendingDown, Minus, DollarSign, RefreshCw, 
+  Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Target, 
+  MapPin, Calendar, Monitor, Layers 
 } from 'lucide-react';
 
 const SEDE = process.env.REACT_APP_SEDE || 'CDMX';
@@ -36,8 +35,7 @@ const fallbackCrecimientoAnualData = {
   years: [2024, 2025], monthlyMap: [], annualGrowthData: []
 };
 
-// --- HERRAMIENTAS GLOBALES (Fuera del componente para evitar errores de scope) ---
-
+// --- HERRAMIENTAS GLOBALES ---
 const parseNumberFromString = (value) => {
   if (value === undefined || value === null || value === '') return 0;
   if (typeof value === 'number') return isNaN(value) ? 0 : value;
@@ -68,7 +66,6 @@ const formatDateShort = (monthString) => {
 
 const sortMonthsChronologically = (months) => {
   const monthOrder = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-  
   const parseToStandardDate = (dateStr) => {
     if (!dateStr) return null;
     const str = dateStr.toString().trim();
@@ -82,7 +79,6 @@ const sortMonthsChronologically = (months) => {
     }
     return str; 
   };
-
   return months.sort((a, b) => {
     const dateA = parseToStandardDate(a);
     const dateB = parseToStandardDate(b);
@@ -110,14 +106,12 @@ const TrendIcon = ({ trend }) => {
   return <Minus className="w-4 h-4 text-gray-500" />;
 };
 
-// --- COMPONENTE PRINCIPAL ---
 const Dashboard = () => {
-  // Configuración Inicial
+  // --- ESTADOS ---
   const currentDate = new Date();
   const currentMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
   const currentYearStr = currentDate.getFullYear().toString();
 
-  // Estados
   const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
   const [selectedYear, setSelectedYear] = useState(currentYearStr);
   const [selectedSchool, setSelectedSchool] = useState("Polanco");
@@ -141,13 +135,10 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [errorMessage, setErrorMessage] = useState('');
-  const [isManualRefresh, setIsManualRefresh] = useState(false);
   const [alerts, setAlerts] = useState([]);
 
-  const debugInstructors = () => console.log('DEBUG: Verificando datos...');
-
-  // Helper interno que usa estado
-  const fetchCoordinatesForCP = async (cp) => {
+  // --- API FETCH HELPER ---
+  const fetchCoordinatesForCP = useCallback(async (cp) => {
     if (!cp || cp.length < 4) return null;
     if (coordsCache[cp]) return coordsCache[cp];
     try {
@@ -166,9 +157,9 @@ const Dashboard = () => {
         }
     } catch (e) { console.warn(`Error CP ${cp}`, e); }
     return null;
-  };
+  }, [coordsCache]);
 
-  // --- TRANSFORMACIONES ---
+  // --- DATA TRANSFORMS ---
   const transformGoogleSheetsData = (rawData) => {
     const rows = rawData.slice(1);
     const transformedData = {};
@@ -195,6 +186,7 @@ const Dashboard = () => {
   const transformContactData = (rawData) => {
     const rows = rawData.slice(1);
     const transformedData = {};
+    const MEDIO_INDEX = 7; 
     rows.forEach((row) => {
       const [fecha, , , , ventas, cursosVendidos, , medioContacto] = row;
       if (!fecha || !medioContacto) return;
@@ -228,11 +220,8 @@ const Dashboard = () => {
             else if (ageNum >= 35 && ageNum <= 44) ageRange = "35-44";
             else if (ageNum >= 45 && ageNum <= 54) ageRange = "45-54";
             else ageRange = "55+";
-        } else if (rawAge !== '') {
-            ageRange = "Otro";
-        } else {
-            ageRange = "Sin dato";
-        }
+        } else if (rawAge !== '') { ageRange = "Otro"; } else { ageRange = "Sin dato"; }
+        
         if (!transformedData[monthKey][ageRange]) transformedData[monthKey][ageRange] = 0;
         transformedData[monthKey][ageRange] += 1; 
     });
@@ -266,20 +255,13 @@ const Dashboard = () => {
         const sedeRaw = row[1];
         if (!mes || !sedeRaw) return;
         if (!result[mes]) {
-            result[mes] = {
-                cdmx: { ventas: 0, cursos: 0 },
-                qro: { ventas: 0, cursos: 0 },
-                online: { ventas: 0, cursos: 0 }
-            };
+            result[mes] = { cdmx: { ventas: 0, cursos: 0 }, qro: { ventas: 0, cursos: 0 }, online: { ventas: 0, cursos: 0 } };
         }
         const sedeLower = sedeRaw.toLowerCase().trim();
         let key = 'cdmx';
         if (sedeLower.includes('quer') || sedeLower.includes('qro')) key = 'qro';
         else if (sedeLower.includes('online')) key = 'online';
-        result[mes][key] = {
-            ventas: parseNumberFromString(row[2]),
-            cursos: parseNumberFromString(row[3])
-        };
+        result[mes][key] = { ventas: parseNumberFromString(row[2]), cursos: parseNumberFromString(row[3]) };
     });
     return result;
   };
@@ -296,8 +278,7 @@ const Dashboard = () => {
       const escuelaClean = escuela.trim();
       result[escuelaClean] = {};
       meses.forEach((mes, i) => {
-        const cellValue = row[i + 1]; 
-        result[escuelaClean][mes.trim()] = parseNumberFromString(cellValue);
+        result[escuelaClean][mes.trim()] = parseNumberFromString(row[i + 1]);
       });
     });
     return result;
@@ -333,66 +314,67 @@ const Dashboard = () => {
         });
         monthlyMap.push(monthData);
     });
-    return {
-        headers, rows, queretaroRows, totalRows,
-        years: years.sort((a, b) => a - b),
-        monthlyMap,
-        annualGrowthData: annualGrowthData.sort((a, b) => a.year - b.year)
-    };
+    return { headers, rows, queretaroRows, totalRows, years: years.sort((a, b) => a - b), monthlyMap, annualGrowthData: annualGrowthData.sort((a, b) => a.year - b.year) };
   };
 
-  // --- FETCHING ---
-  const fetchGoogleSheetsData = async (showLoading = true) => {
+  // --- FETCHING FUNCTION ---
+  const fetchGoogleSheetsData = useCallback(async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
-    setIsManualRefresh(showLoading);
     try {
+      // 1. Ventas
       const ventasRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.ventas}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`);
       if (!ventasRes.ok) throw new Error(`Error Ventas: ${ventasRes.status}`);
       const ventasData = await ventasRes.json();
-      
       setSalesData(transformGoogleSheetsData(ventasData.values));
       setContactData(transformContactData(ventasData.values)); 
       setAgeData(transformAgeData(ventasData.values));
       setMapData(transformMapData(ventasData.values));
       
+      // 2. Cobranza
       try {
         const cobRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.cobranza}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`);
         if (cobRes.ok) {
             const cobData = await cobRes.json();
             setCobranzaData(transformCobranzaData(cobData.values));
         }
-      } catch (e) { console.warn("Cobranza error", e); }
+      } catch (e) { console.warn(e); }
       
+      // 3. Crecimiento
       try {
         const crecRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.crecimientoAnual}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`);
         if (crecRes.ok) {
             const crecData = await crecRes.json();
             setCrecimientoAnualData(transformCrecimientoAnualData(crecData.values));
         }
-      } catch (e) { console.warn("Crecimiento error", e); }
+      } catch (e) { console.warn(e); }
 
+      // 4. Objetivos
       try {
         const objRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.objetivos}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`);
         if (objRes.ok) {
             const objData = await objRes.json();
             setObjetivosData(transformObjetivosData(objData.values));
         }
-      } catch (e) { console.warn("Objetivos error", e); }
+      } catch (e) { console.warn(e); }
 
       setConnectionStatus('connected');
       setErrorMessage('');
     } catch (error) {
-      console.error('Critical Fetch Error:', error);
+      console.error(error);
       setConnectionStatus('error');
       setErrorMessage(error.message);
     } finally {
       setIsLoading(false);
-      setIsManualRefresh(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { fetchGoogleSheetsData(); }, []);
-  useEffect(() => { const i = setInterval(() => fetchGoogleSheetsData(false), 3600000); return () => clearInterval(i); }, []);
+  // --- EFFECTS ---
+  useEffect(() => { fetchGoogleSheetsData(); }, [fetchGoogleSheetsData]);
+  
+  useEffect(() => {
+    const i = setInterval(() => fetchGoogleSheetsData(false), 3600000); 
+    return () => clearInterval(i); 
+  }, [fetchGoogleSheetsData]);
 
   useEffect(() => {
     const loadCoordinates = async () => {
@@ -410,7 +392,8 @@ const Dashboard = () => {
         }
     };
     loadCoordinates();
-  }, [selectedMonth, mapData, showFullHistoryMap, coordsCache]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMonth, mapData, showFullHistoryMap]);
 
   useEffect(() => {
     const newAlerts = [];
@@ -446,7 +429,7 @@ const Dashboard = () => {
     return Array.from(set);
   }, [salesData]);
 
-  // --- AGGREGATION HELPERS ---
+  // --- AGGREGATION ---
   const getSchoolTotals = (month) => {
     const totals = {};
     if (!salesData[month]) return totals;
@@ -553,13 +536,12 @@ const Dashboard = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewType, selectedMonth, selectedSchool, selectedArea, metricType, compareMonths]);
 
-  // --- SUB DASHBOARDS ---
+  // --- SUB-VIEWS ---
   const ExecutiveDashboard = () => {
     const currentMonthData = salesData[selectedMonth] || {};
     const currentTargets = objetivosData[selectedMonth] || { cdmx: { ventas: 0, cursos: 0 }, qro: { ventas: 0, cursos: 0 }, online: { ventas: 0, cursos: 0 } };
 
     let metrics = { cdmx: { ventas: 0, cursos: 0 }, qro: { ventas: 0, cursos: 0 }, online: { ventas: 0, cursos: 0 }, total: { ventas: 0, cursos: 0 } };
-    
     Object.keys(currentMonthData).forEach(schoolName => {
         Object.keys(currentMonthData[schoolName]).forEach(areaName => {
             Object.values(currentMonthData[schoolName][areaName]).forEach(curso => {
@@ -569,11 +551,9 @@ const Dashboard = () => {
                 const lowerArea = areaName.toLowerCase();
                 const isOnline = lowerSchool.includes('online') || lowerArea.includes('online');
                 const isQro = lowerSchool.includes('queretaro') || lowerSchool.includes('querétaro') || lowerSchool.includes('qro');
-                
                 let targetKey = 'cdmx';
                 if (isOnline) targetKey = 'online';
                 else if (isQro) targetKey = 'qro';
-                
                 metrics[targetKey].ventas += monto;
                 metrics[targetKey].cursos += qty;
                 metrics.total.ventas += monto;
@@ -595,11 +575,9 @@ const Dashboard = () => {
                         const lowerArea = areaName.toLowerCase();
                         const isOnline = lowerSchool.includes('online') || lowerArea.includes('online');
                         const isQro = lowerSchool.includes('queretaro') || lowerSchool.includes('querétaro') || lowerSchool.includes('qro');
-                        
                         if (isOnline) annualMetrics.online += monto;
                         else if (isQro) annualMetrics.qro += monto;
                         else annualMetrics.cdmx += monto;
-                        
                         annualMetrics.total += monto;
                         annualMetrics.totalCursos += qty;
                     });
@@ -649,16 +627,6 @@ const Dashboard = () => {
 
     return (
       <div className="space-y-8">
-        <div className="bg-white rounded-lg shadow p-4 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-                {connectionStatus === 'connected' ? <span className="text-green-600 text-sm">● Conectado</span> : <span className="text-red-600 text-sm">● Desconectado</span>}
-                {errorMessage && <span className="text-xs text-red-500 ml-2">({errorMessage})</span>}
-            </div>
-            <button onClick={() => fetchGoogleSheetsData(true)} disabled={isLoading} className="text-sm bg-gray-100 px-3 py-1 rounded hover:bg-gray-200">
-                {isLoading ? 'Cargando...' : 'Actualizar'}
-            </button>
-        </div>
-
         <div>
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><Target className="w-6 h-6 text-red-500" /> Objetivos Mensuales</h2>
@@ -840,9 +808,10 @@ const Dashboard = () => {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8 flex justify-between items-center">
             <h1 className="text-3xl font-bold text-gray-900">Dashboard IDIP</h1>
-            <div className="flex gap-2 text-sm">
-                {connectionStatus === 'connected' ? <span className="text-green-600 font-medium">● Conectado</span> : <span className="text-red-600">● {connectionStatus}</span>}
-                <button onClick={() => fetchGoogleSheetsData(true)} disabled={isLoading} className="text-gray-500 hover:text-blue-500 underline">{isLoading ? '...' : 'Recargar'}</button>
+            <div className="flex gap-2 text-sm items-center">
+                {connectionStatus === 'connected' ? <span className="text-green-600 font-medium flex items-center gap-1"><Wifi className="w-3 h-3"/> Conectado</span> : <span className="text-red-600 flex items-center gap-1"><WifiOff className="w-3 h-3"/> {connectionStatus}</span>}
+                {errorMessage && <span className="text-xs text-red-500">({errorMessage})</span>}
+                <button onClick={() => window.location.reload()} className="ml-2 text-gray-500 hover:text-blue-500"><RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /></button>
             </div>
         </div>
 
@@ -857,7 +826,6 @@ const Dashboard = () => {
             <button onClick={() => setViewType("mapa")} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "mapa" ? "bg-red-600 text-white" : "bg-gray-100"}`}><MapPin className="w-4 h-4" /> Mapa</button>
             <button onClick={() => setViewType("cobranza")} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "cobranza" ? "bg-blue-600 text-white" : "bg-gray-100"}`}><DollarSign className="w-4 h-4" /> Cobranza</button>
             <button onClick={() => setViewType("crecimientoAnual")} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "crecimientoAnual" ? "bg-indigo-600 text-white" : "bg-gray-100"}`}><TrendingUp className="w-4 h-4" /> Crecimiento</button>
-            <button onClick={debugInstructors} className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-lg text-sm font-medium">Debug</button>
           </div>
         </div>
 
@@ -883,6 +851,15 @@ const Dashboard = () => {
                         <select value={selectedSchool} onChange={(e) => setSelectedSchool(e.target.value)} className="border rounded p-2">
                             <option value="">Todas</option>
                             {schools.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
+                )}
+                {viewType === 'curso' && (
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase">Área</label>
+                        <select value={selectedArea} onChange={(e) => setSelectedArea(e.target.value)} className="border rounded p-2">
+                            <option value="">Todas</option>
+                            {areas.map(a => <option key={a} value={a}>{a}</option>)}
                         </select>
                     </div>
                 )}
