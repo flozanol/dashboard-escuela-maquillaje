@@ -2,14 +2,14 @@ import React, { useState, useMemo, useEffect } from 'react';
 import DashboardConsejo from './DashboardConsejo';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
-  LineChart, Line 
+  LineChart, Line, PieChart, Pie, Cell 
 } from 'recharts';
 import { MapContainer, TileLayer, CircleMarker, Popup as MapPopup } from 'react-leaflet';
 import { 
   TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, 
   Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Star, Target, 
   AlertTriangle, Phone, Mail, Globe, MessageSquare, Users, MapPin, 
-  Calendar, Monitor
+  Calendar, Monitor, Layers 
 } from 'lucide-react';
 
 const SEDE = process.env.REACT_APP_SEDE || 'CDMX';
@@ -26,16 +26,8 @@ const GOOGLE_SHEETS_CONFIG = {
   }
 };
 
-// --- DATOS DE RESPALDO (Fallback) ---
-const fallbackData = {
-  "2024-01": {
-    "Polanco": {
-      "Maquillaje": {
-        "Curso Demo": { ventas: 0, cursos: 0, instructor: "N/A" }
-      }
-    }
-  }
-};
+// --- FALLBACKS ---
+const fallbackData = { "2024-01": { "Polanco": { "Maquillaje": { "Curso Demo": { ventas: 0, cursos: 0 } } } } };
 const fallbackContactData = { "2024-01": { "WhatsApp": { ventas: 0, cursos: 0 } } };
 const fallbackAgeData = { "2024-01": { "Desconocido": 0 } };
 const fallbackObjetivosData = {};
@@ -44,13 +36,88 @@ const fallbackCrecimientoAnualData = {
   years: [2024, 2025], monthlyMap: [], annualGrowthData: []
 };
 
+// --- HERRAMIENTAS GLOBALES (Fuera del componente para evitar errores de scope) ---
+
+const parseNumberFromString = (value) => {
+  if (value === undefined || value === null || value === '') return 0;
+  if (typeof value === 'number') return isNaN(value) ? 0 : value;
+  const str = value.toString().trim();
+  if (str === '' || str.toLowerCase() === 'null') return 0;
+  const cleaned = str.replace(/[$,\s%]/g, '').replace(/[^\d.-]/g, '');
+  const number = parseFloat(cleaned);
+  return isNaN(number) ? 0 : number;
+};
+
+const formatDateForDisplay = (monthString) => {
+  try {
+    const [year, month] = monthString.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+    if (isNaN(date.getTime())) return monthString;
+    return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' });
+  } catch (error) { return monthString; }
+};
+
+const formatDateShort = (monthString) => {
+  try {
+    const [year, month] = monthString.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+    if (isNaN(date.getTime())) return monthString;
+    return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'short' });
+  } catch (error) { return monthString; }
+};
+
+const sortMonthsChronologically = (months) => {
+  const monthOrder = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  
+  const parseToStandardDate = (dateStr) => {
+    if (!dateStr) return null;
+    const str = dateStr.toString().trim();
+    if (str.match(/^\d{4}-\d{2}$/)) return str;
+    const monthNames = { 'ene': '01', 'feb': '02', 'mar': '03', 'abr': '04', 'may': '05', 'jun': '06', 'jul': '07', 'ago': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dic': '12' };
+    const parts = str.toLowerCase().split(/[\s-]+/);
+    if (str.match(/^\d{4}$/)) return str + '-13'; 
+    if (parts.length >= 1) {
+        const monthKey = parts.find(p => monthNames[p]);
+        if (monthKey) return monthNames[monthKey]; 
+    }
+    return str; 
+  };
+
+  return months.sort((a, b) => {
+    const dateA = parseToStandardDate(a);
+    const dateB = parseToStandardDate(b);
+    if (dateA && dateB && dateA.match(/^\d{4}-\d{2}$/) && dateB.match(/^\d{4}-\d{2}$/)) {
+      return dateA.localeCompare(dateB);
+    } else if (monthOrder.includes(a) && monthOrder.includes(b)) {
+      return monthOrder.indexOf(a) - monthOrder.indexOf(b);
+    }
+    return a.localeCompare(b); 
+  });
+};
+
+const calculateTrend = (values) => {
+  if (values.length < 2) return "stable";
+  const lastTwo = values.slice(-2);
+  const change = lastTwo[0] === 0 ? 0 : ((lastTwo[1] - lastTwo[0]) / lastTwo[0]) * 100;
+  if (change > 5) return "up";
+  if (change < -5) return "down";
+  return "stable";
+};
+
+const TrendIcon = ({ trend }) => {
+  if (trend === "up") return <TrendingUp className="w-4 h-4 text-green-500" />;
+  if (trend === "down") return <TrendingDown className="w-4 h-4 text-red-500" />;
+  return <Minus className="w-4 h-4 text-gray-500" />;
+};
+
+// --- COMPONENTE PRINCIPAL ---
 const Dashboard = () => {
-  // --- CONFIGURACIÓN INICIAL ---
+  // Configuración Inicial
   const currentDate = new Date();
   const currentMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
   const currentYearStr = currentDate.getFullYear().toString();
 
-  // --- ESTADOS ---
+  // Estados
   const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
   const [selectedYear, setSelectedYear] = useState(currentYearStr);
   const [selectedSchool, setSelectedSchool] = useState("Polanco");
@@ -72,59 +139,14 @@ const Dashboard = () => {
   const [showFullHistoryMap, setShowFullHistoryMap] = useState(true);
   
   const [isLoading, setIsLoading] = useState(true);
-  // Eliminada variable lastUpdated que causaba error por no usarse
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [errorMessage, setErrorMessage] = useState('');
   const [isManualRefresh, setIsManualRefresh] = useState(false);
   const [alerts, setAlerts] = useState([]);
 
-  // --- HELPERS DE PARSEO ---
   const debugInstructors = () => console.log('DEBUG: Verificando datos...');
 
-  const parseNumberFromString = (value) => {
-    if (value === undefined || value === null || value === '') return 0;
-    if (typeof value === 'number') return isNaN(value) ? 0 : value;
-    const str = value.toString().trim();
-    if (str === '' || str.toLowerCase() === 'null') return 0;
-    const cleaned = str.replace(/[$,\s%]/g, '').replace(/[^\d.-]/g, '');
-    const number = parseFloat(cleaned);
-    return isNaN(number) ? 0 : number;
-  };
-
-  const formatDateForDisplay = (monthString) => {
-    try {
-      const [year, month] = monthString.split('-');
-      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-      if (isNaN(date.getTime())) return monthString;
-      return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long' });
-    } catch (error) { return monthString; }
-  };
-
-  const formatDateShort = (monthString) => {
-    try {
-      const [year, month] = monthString.split('-');
-      const date = new Date(parseInt(year), parseInt(month) - 1, 1);
-      if (isNaN(date.getTime())) return monthString;
-      return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'short' });
-    } catch (error) { return monthString; }
-  };
-
-  const calculateTrend = (values) => {
-    if (values.length < 2) return "stable";
-    const lastTwo = values.slice(-2);
-    const change = lastTwo[0] === 0 ? 0 : ((lastTwo[1] - lastTwo[0]) / lastTwo[0]) * 100;
-    if (change > 5) return "up";
-    if (change < -5) return "down";
-    return "stable";
-  };
-
-  const TrendIcon = ({ trend }) => {
-    if (trend === "up") return <TrendingUp className="w-4 h-4 text-green-500" />;
-    if (trend === "down") return <TrendingDown className="w-4 h-4 text-red-500" />;
-    return <Minus className="w-4 h-4 text-gray-500" />;
-  };
-
-  // --- CARGA DE COORDENADAS (API) ---
+  // Helper interno que usa estado
   const fetchCoordinatesForCP = async (cp) => {
     if (!cp || cp.length < 4) return null;
     if (coordsCache[cp]) return coordsCache[cp];
@@ -146,7 +168,7 @@ const Dashboard = () => {
     return null;
   };
 
-  // --- TRANSFORMACIÓN DE DATOS ---
+  // --- TRANSFORMACIONES ---
   const transformGoogleSheetsData = (rawData) => {
     const rows = rawData.slice(1);
     const transformedData = {};
@@ -173,12 +195,8 @@ const Dashboard = () => {
   const transformContactData = (rawData) => {
     const rows = rawData.slice(1);
     const transformedData = {};
-    const MEDIO_INDEX = 7; 
     rows.forEach((row) => {
-      const fecha = row[0];
-      const ventas = row[4];
-      const cursosVendidos = row[5];
-      const medioContacto = row[MEDIO_INDEX];
+      const [fecha, , , , ventas, cursosVendidos, , medioContacto] = row;
       if (!fecha || !medioContacto) return;
       const monthKey = fecha.substring(0, 7);
       const medio = medioContacto.trim();
@@ -200,6 +218,7 @@ const Dashboard = () => {
         if (!fecha) return;
         const monthKey = fecha.substring(0, 7);
         if (!transformedData[monthKey]) transformedData[monthKey] = {};
+        
         let ageRange = "Desconocido";
         const ageNum = parseInt(rawAge);
         if (!isNaN(ageNum) && ageNum > 0) {
@@ -277,7 +296,8 @@ const Dashboard = () => {
       const escuelaClean = escuela.trim();
       result[escuelaClean] = {};
       meses.forEach((mes, i) => {
-        result[escuelaClean][mes.trim()] = parseNumberFromString(row[i + 1]);
+        const cellValue = row[i + 1]; 
+        result[escuelaClean][mes.trim()] = parseNumberFromString(cellValue);
       });
     });
     return result;
@@ -321,7 +341,7 @@ const Dashboard = () => {
     };
   };
 
-  // --- FETCHING PRINCIPAL ---
+  // --- FETCHING ---
   const fetchGoogleSheetsData = async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
     setIsManualRefresh(showLoading);
@@ -329,6 +349,7 @@ const Dashboard = () => {
       const ventasRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.ventas}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`);
       if (!ventasRes.ok) throw new Error(`Error Ventas: ${ventasRes.status}`);
       const ventasData = await ventasRes.json();
+      
       setSalesData(transformGoogleSheetsData(ventasData.values));
       setContactData(transformContactData(ventasData.values)); 
       setAgeData(transformAgeData(ventasData.values));
@@ -412,7 +433,7 @@ const Dashboard = () => {
     setAlerts(newAlerts.slice(0, 15));
   }, [salesData]);
 
-  // --- MEMOS DE FILTROS ---
+  // --- MEMOS ---
   const months = useMemo(() => Object.keys(salesData).sort(), [salesData]);
   const schools = useMemo(() => {
     const set = new Set();
@@ -532,15 +553,7 @@ const Dashboard = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewType, selectedMonth, selectedSchool, selectedArea, metricType, compareMonths]);
 
-  // --- SUB COMPONENTS ---
-  const ConnectionStatus = () => (
-    <div className="flex items-center gap-2 text-sm">
-      {connectionStatus === 'connected' && <><Wifi className="w-4 h-4 text-green-500" /><span className="text-green-600">Conectado</span></>}
-      {connectionStatus === 'error' && <><WifiOff className="w-4 h-4 text-red-500" /><span className="text-red-600">Error</span></>}
-      <button onClick={() => fetchGoogleSheetsData(true)} disabled={isLoading} className="ml-2 text-gray-500 hover:text-blue-500"><RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /></button>
-    </div>
-  );
-
+  // --- SUB DASHBOARDS ---
   const ExecutiveDashboard = () => {
     const currentMonthData = salesData[selectedMonth] || {};
     const currentTargets = objetivosData[selectedMonth] || { cdmx: { ventas: 0, cursos: 0 }, qro: { ventas: 0, cursos: 0 }, online: { ventas: 0, cursos: 0 } };
@@ -637,9 +650,13 @@ const Dashboard = () => {
     return (
       <div className="space-y-8">
         <div className="bg-white rounded-lg shadow p-4 flex justify-between items-center">
-            <ConnectionStatus />
-            {errorMessage && <span className="text-xs text-red-500">{errorMessage}</span>}
-            <button onClick={() => fetchGoogleSheetsData(true)} disabled={isLoading} className="text-sm bg-gray-100 px-3 py-1 rounded">{isLoading ? '...' : 'Actualizar'}</button>
+            <div className="flex items-center gap-2">
+                {connectionStatus === 'connected' ? <span className="text-green-600 text-sm">● Conectado</span> : <span className="text-red-600 text-sm">● Desconectado</span>}
+                {errorMessage && <span className="text-xs text-red-500 ml-2">({errorMessage})</span>}
+            </div>
+            <button onClick={() => fetchGoogleSheetsData(true)} disabled={isLoading} className="text-sm bg-gray-100 px-3 py-1 rounded hover:bg-gray-200">
+                {isLoading ? 'Cargando...' : 'Actualizar'}
+            </button>
         </div>
 
         <div>
@@ -823,12 +840,15 @@ const Dashboard = () => {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8 flex justify-between items-center">
             <h1 className="text-3xl font-bold text-gray-900">Dashboard IDIP</h1>
-            <ConnectionStatus />
+            <div className="flex gap-2 text-sm">
+                {connectionStatus === 'connected' ? <span className="text-green-600 font-medium">● Conectado</span> : <span className="text-red-600">● {connectionStatus}</span>}
+                <button onClick={() => fetchGoogleSheetsData(true)} disabled={isLoading} className="text-gray-500 hover:text-blue-500 underline">{isLoading ? '...' : 'Recargar'}</button>
+            </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-lg p-6 mb-8 overflow-x-auto">
           <div className="flex gap-4 min-w-max">
-            <button onClick={() => setViewType("executive")} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "executive" ? "bg-green-600 text-white" : "bg-gray-100"}`}><BarChart3 className="w-4 h-4" /> Ejecutivo</button>
+            <button onClick={() => setViewType("executive")} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "executive" ? "bg-green-600 text-white" : "bg-gray-100 hover:bg-gray-200"}`}><BarChart3 className="w-4 h-4" /> Ejecutivo</button>
             <button onClick={() => setViewType("escuela")} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "escuela" ? "bg-green-600 text-white" : "bg-gray-100"}`}><Building className="w-4 h-4" /> Por Escuela</button>
             <button onClick={() => setViewType("area")} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "area" ? "bg-green-600 text-white" : "bg-gray-100"}`}><BookOpen className="w-4 h-4" /> Por Área</button>
             <button onClick={() => setViewType("instructor")} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "instructor" ? "bg-green-600 text-white" : "bg-gray-100"}`}><User className="w-4 h-4" /> Por Vendedor</button>
