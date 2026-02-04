@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 
 const SEDE = process.env.REACT_APP_SEDE || 'CDMX';
-const MODO = process.env.REACT_APP_MODO || 'ESCUELA';
+// Aquí detectamos si es el dashboard de dirección o de una escuela normal
+const MODO = process.env.REACT_APP_MODO || 'ESCUELA'; 
 
 const GOOGLE_SHEETS_CONFIG = {
   apiKey: process.env.REACT_APP_GSHEETS_API_KEY,
@@ -46,7 +47,6 @@ const parseNumberFromString = (value) => {
   return isNaN(number) ? 0 : number;
 };
 
-// Función utilizada en Dropdowns y Títulos de Gráficos
 const formatDateForDisplay = (monthString) => {
   try {
     const [year, month] = monthString.split('-');
@@ -56,7 +56,6 @@ const formatDateForDisplay = (monthString) => {
   } catch (error) { return monthString; }
 };
 
-// Función utilizada en Ejes X de Gráficos
 const formatDateShort = (monthString) => {
   try {
     const [year, month] = monthString.split('-');
@@ -93,7 +92,6 @@ const sortMonthsChronologically = (months) => {
   });
 };
 
-// Función utilizada en getViewData para Tablas
 const calculateTrend = (values) => {
   if (values.length < 2) return "stable";
   const lastTwo = values.slice(-2);
@@ -110,7 +108,6 @@ const TrendIcon = ({ trend }) => {
 };
 
 const Dashboard = () => {
-  // --- ESTADOS ---
   const currentDate = new Date();
   const currentMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
   const currentYearStr = currentDate.getFullYear().toString();
@@ -134,13 +131,12 @@ const Dashboard = () => {
   
   const [coordsCache, setCoordsCache] = useState({}); 
   const [showFullHistoryMap, setShowFullHistoryMap] = useState(true);
-  
   const [isLoading, setIsLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [errorMessage, setErrorMessage] = useState('');
   const [alerts, setAlerts] = useState([]);
 
-  // --- API FETCH HELPER ---
+  // --- API HELPER ---
   const fetchCoordinatesForCP = useCallback(async (cp) => {
     if (!cp || cp.length < 4) return null;
     if (coordsCache[cp]) return coordsCache[cp];
@@ -162,25 +158,24 @@ const Dashboard = () => {
     return null;
   }, [coordsCache]);
 
-  // --- DATA TRANSFORMS ---
+  // --- TRANSFORMS ---
   const transformGoogleSheetsData = (rawData) => {
     const rows = rawData.slice(1);
     const transformedData = {};
     rows.forEach((row) => {
       const [fecha, escuela, area, curso, ventas, cursosVendidos, instructor] = row;
-      if (!fecha || !escuela || !area || !curso) return;
-      const instructorNormalizado = instructor ? instructor.toString().trim().replace(/\s+/g, ' ') : 'Sin asignar';
+      if (!fecha || !escuela) return;
       const monthKey = fecha.substring(0, 7);
       if (!transformedData[monthKey]) transformedData[monthKey] = {};
       if (!transformedData[monthKey][escuela]) transformedData[monthKey][escuela] = {};
       if (!transformedData[monthKey][escuela][area]) transformedData[monthKey][escuela][area] = {};
-      const ventasNum = parseNumberFromString(ventas);
-      const cursosNum = parseNumberFromString(cursosVendidos) || 1;
+      const v = parseNumberFromString(ventas);
+      const c = parseNumberFromString(cursosVendidos) || 1;
       if (transformedData[monthKey][escuela][area][curso]) {
-        transformedData[monthKey][escuela][area][curso].ventas += ventasNum;
-        transformedData[monthKey][escuela][area][curso].cursos += cursosNum;
+        transformedData[monthKey][escuela][area][curso].ventas += v;
+        transformedData[monthKey][escuela][area][curso].cursos += c;
       } else {
-        transformedData[monthKey][escuela][area][curso] = { ventas: ventasNum, cursos: cursosNum, instructor: instructorNormalizado };
+        transformedData[monthKey][escuela][area][curso] = { ventas: v, cursos: c, instructor: instructor ? instructor.trim() : 'Sin asignar' };
       }
     });
     return transformedData;
@@ -189,7 +184,7 @@ const Dashboard = () => {
   const transformContactData = (rawData) => {
     const rows = rawData.slice(1);
     const transformedData = {};
-    // Columna H es 7
+    const MEDIO_INDEX = 7;
     rows.forEach((row) => {
       const [fecha, , , , ventas, cursosVendidos, , medioContacto] = row;
       if (!fecha || !medioContacto) return;
@@ -206,14 +201,13 @@ const Dashboard = () => {
   const transformAgeData = (rawData) => {
     const rows = rawData.slice(1);
     const transformedData = {};
-    const AGE_COLUMN_INDEX = 8; 
+    const AGE_INDEX = 8;
     rows.forEach((row) => {
         const fecha = row[0];
-        const rawAge = row[AGE_COLUMN_INDEX] ? row[AGE_COLUMN_INDEX].toString().trim() : '';
+        const rawAge = row[AGE_INDEX] ? row[AGE_INDEX].toString().trim() : '';
         if (!fecha) return;
         const monthKey = fecha.substring(0, 7);
         if (!transformedData[monthKey]) transformedData[monthKey] = {};
-        
         let ageRange = "Desconocido";
         const ageNum = parseInt(rawAge);
         if (!isNaN(ageNum) && ageNum > 0) {
@@ -224,7 +218,6 @@ const Dashboard = () => {
             else if (ageNum >= 45 && ageNum <= 54) ageRange = "45-54";
             else ageRange = "55+";
         } else if (rawAge !== '') { ageRange = "Otro"; } else { ageRange = "Sin dato"; }
-        
         if (!transformedData[monthKey][ageRange]) transformedData[monthKey][ageRange] = 0;
         transformedData[monthKey][ageRange] += 1; 
     });
@@ -234,11 +227,11 @@ const Dashboard = () => {
   const transformMapData = (rawData) => {
     const rows = rawData.slice(1);
     const transformedData = {}; 
-    const CP_COLUMN_INDEX = 9; 
+    const CP_INDEX = 9;
     rows.forEach((row) => {
         const fecha = row[0];
         const ventas = row[4]; 
-        const cp = row[CP_COLUMN_INDEX] ? row[CP_COLUMN_INDEX].toString().trim() : '';
+        const cp = row[CP_INDEX] ? row[CP_INDEX].toString().trim() : '';
         if (!fecha || !cp || cp.length < 4) return;
         const monthKey = fecha.substring(0, 7);
         if (!transformedData[monthKey]) transformedData[monthKey] = {};
@@ -257,9 +250,7 @@ const Dashboard = () => {
         const mes = row[0]; 
         const sedeRaw = row[1];
         if (!mes || !sedeRaw) return;
-        if (!result[mes]) {
-            result[mes] = { cdmx: { ventas: 0, cursos: 0 }, qro: { ventas: 0, cursos: 0 }, online: { ventas: 0, cursos: 0 } };
-        }
+        if (!result[mes]) result[mes] = { cdmx: { ventas: 0, cursos: 0 }, qro: { ventas: 0, cursos: 0 }, online: { ventas: 0, cursos: 0 } };
         const sedeLower = sedeRaw.toLowerCase().trim();
         let key = 'cdmx';
         if (sedeLower.includes('quer') || sedeLower.includes('qro')) key = 'qro';
@@ -274,7 +265,7 @@ const Dashboard = () => {
     const headers = rawData[0];
     const rows = rawData.slice(1);
     const result = {};
-    const meses = headers.slice(1).filter(header => header && header.trim() !== '');
+    const meses = headers.slice(1).filter(h => h && h.trim() !== '');
     rows.forEach((row) => {
       const escuela = row[0];
       if (!escuela) return;
@@ -292,7 +283,7 @@ const Dashboard = () => {
     const headerRow = rawData[1]; 
     const allDataRows = rawData.slice(2);
     const headers = (headerRow || []).slice(0, 15).map(h => h.trim()); 
-    const rows = allDataRows.slice(0, 8).filter(row => row.length > 0 && parseNumberFromString(row[0]) > 0).map(r => r.slice(0, 15));
+    const rows = allDataRows.slice(0, 8).filter(r => r.length > 0 && parseNumberFromString(r[0]) > 0).map(r => r.slice(0, 15));
     const queretaroRows = rawData.slice(10, 15).map(r => r.slice(0, 15));
     const totalRows = rawData.slice(17, 22).map(r => r.slice(0, 15));
     const MONTH_ABBREVIATIONS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -311,16 +302,14 @@ const Dashboard = () => {
         const monthData = { name: monthName };
         rows.forEach(row => {
             const year = parseNumberFromString(row[yearIndex]);
-            if (year > 0) {
-                monthData[year] = parseNumberFromString(row[i + 1]);
-            }
+            if (year > 0) monthData[year] = parseNumberFromString(row[i + 1]);
         });
         monthlyMap.push(monthData);
     });
     return { headers, rows, queretaroRows, totalRows, years: years.sort((a, b) => a - b), monthlyMap, annualGrowthData: annualGrowthData.sort((a, b) => a.year - b.year) };
   };
 
-  // --- FETCHING FUNCTION ---
+  // --- FETCHING ---
   const fetchGoogleSheetsData = useCallback(async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
     try {
@@ -351,14 +340,16 @@ const Dashboard = () => {
         }
       } catch (e) { console.warn(e); }
 
-      // 4. Objetivos
-      try {
-        const objRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.objetivos}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`);
-        if (objRes.ok) {
-            const objData = await objRes.json();
-            setObjetivosData(transformObjetivosData(objData.values));
-        }
-      } catch (e) { console.warn(e); }
+      // 4. Objetivos (Solo si es Dirección)
+      if (MODO === 'DIRECCION') {
+          try {
+            const objRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.objetivos}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`);
+            if (objRes.ok) {
+                const objData = await objRes.json();
+                setObjetivosData(transformObjetivosData(objData.values));
+            }
+          } catch (e) { console.warn(e); }
+      }
 
       setConnectionStatus('connected');
       setErrorMessage('');
@@ -373,11 +364,7 @@ const Dashboard = () => {
 
   // --- EFFECTS ---
   useEffect(() => { fetchGoogleSheetsData(); }, [fetchGoogleSheetsData]);
-  
-  useEffect(() => {
-    const i = setInterval(() => fetchGoogleSheetsData(false), 3600000); 
-    return () => clearInterval(i); 
-  }, [fetchGoogleSheetsData]);
+  useEffect(() => { const i = setInterval(() => fetchGoogleSheetsData(false), 3600000); return () => clearInterval(i); }, [fetchGoogleSheetsData]);
 
   useEffect(() => {
     const loadCoordinates = async () => {
@@ -395,8 +382,7 @@ const Dashboard = () => {
         }
     };
     loadCoordinates();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMonth, mapData, showFullHistoryMap]);
+  }, [selectedMonth, mapData, showFullHistoryMap, coordsCache, fetchCoordinatesForCP]);
 
   useEffect(() => {
     const newAlerts = [];
@@ -432,7 +418,7 @@ const Dashboard = () => {
     return Array.from(set);
   }, [salesData]);
 
-  // --- AGGREGATION ---
+  // --- HELPERS PARA VISTAS ---
   const getSchoolTotals = (month) => {
     const totals = {};
     if (!salesData[month]) return totals;
@@ -512,8 +498,7 @@ const Dashboard = () => {
         case "escuela":
             return schools.map(s => {
                 const t = getSchoolTotals(selectedMonth)[s] || { ventas: 0, cursos: 0 };
-                // Usando calculateTrend aquí
-                const trendVal = calculateTrend([t[metricType]]); // Placeholder simple
+                const trendVal = calculateTrend([t[metricType]]);
                 return { nombre: s, valor: t[metricType], promedio: t[metricType], tendencia: trendVal, icono: Building };
             });
         case "area":
@@ -542,8 +527,8 @@ const Dashboard = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewType, selectedMonth, selectedSchool, selectedArea, metricType, compareMonths]);
 
-  // --- RENDER FUNCTIONS ---
-  const renderExecutiveDashboard = () => {
+  // --- RENDER FUNCTIONS (Vistas) ---
+  const renderExecutiveDirection = () => {
     const currentMonthData = salesData[selectedMonth] || {};
     const currentTargets = objetivosData[selectedMonth] || { cdmx: { ventas: 0, cursos: 0 }, qro: { ventas: 0, cursos: 0 }, online: { ventas: 0, cursos: 0 } };
 
@@ -577,10 +562,8 @@ const Dashboard = () => {
                     Object.values(monthData[schoolName][areaName]).forEach(curso => {
                         const monto = curso.ventas;
                         const qty = curso.cursos;
-                        const lowerSchool = schoolName.toLowerCase();
-                        const lowerArea = areaName.toLowerCase();
-                        const isOnline = lowerSchool.includes('online') || lowerArea.includes('online');
-                        const isQro = lowerSchool.includes('queretaro') || lowerSchool.includes('querétaro') || lowerSchool.includes('qro');
+                        const isOnline = schoolName.toLowerCase().includes('online') || areaName.toLowerCase().includes('online');
+                        const isQro = schoolName.toLowerCase().includes('qro');
                         if (isOnline) annualMetrics.online += monto;
                         else if (isQro) annualMetrics.qro += monto;
                         else annualMetrics.cdmx += monto;
@@ -632,8 +615,7 @@ const Dashboard = () => {
     );
 
     return (
-      <div className="space-y-8">
-        <div>
+        <div className="space-y-8">
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><Target className="w-6 h-6 text-red-500" /> Objetivos Mensuales</h2>
                 <div className="flex items-center gap-4">
@@ -654,9 +636,6 @@ const Dashboard = () => {
                 <ObjectiveCard title="Querétaro" dataKey="qro" color="blue" icon={MapPin} />
                 <ObjectiveCard title="Online" dataKey="online" color="purple" icon={Monitor} />
             </div>
-        </div>
-
-        <div>
             <div className="flex items-center justify-between mb-4 mt-8">
                 <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><BarChart3 className="w-6 h-6 text-indigo-500" /> Resumen Anual {selectedYear}</h2>
                 <div className="flex items-center gap-2">
@@ -678,56 +657,55 @@ const Dashboard = () => {
                 </div>
             </div>
         </div>
+    );
+  };
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Alertas</h3>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-                {alerts.length === 0 ? <p className="text-gray-400 text-sm">No hay alertas</p> : alerts.map((a, i) => (
-                    <div key={i} className="p-2 bg-yellow-50 text-yellow-800 rounded text-sm border-l-4 border-yellow-500">
-                        <strong>{a.message}</strong> - {a.details}
-                    </div>
-                ))}
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Tendencia de Ventas ({selectedYear})</h3>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={Object.keys(salesData).filter(m => m.startsWith(selectedYear)).sort().map(month => {
-                    const mData = salesData[month];
-                    let mTotal = 0;
-                    Object.values(mData).forEach(s => Object.values(s).forEach(a => Object.values(a).forEach(c => mTotal += c.ventas)));
-                    return { month: formatDateShort(month), ventas: mTotal };
-                })}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(v) => `$${v.toLocaleString()}`} />
-                  <Line type="monotone" dataKey="ventas" stroke="#4F46E5" strokeWidth={3} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 gap-6 mt-6">
-             <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-4">Distribución de Edades ({formatDateForDisplay(selectedMonth)})</h3>
-                <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={Object.entries(ageData[selectedMonth] || {}).map(([name, value]) => ({ name, value }))}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" />
-                            <YAxis />
-                            <Tooltip />
-                            <Bar dataKey="value" fill="#8884d8" />
-                        </BarChart>
-                    </ResponsiveContainer>
+  const renderExecutiveEscuela = () => {
+    const currentMonthData = salesData[selectedMonth] || {};
+    let totalVentas = 0;
+    let totalCursos = 0;
+    let schoolsInView = 0;
+
+    Object.keys(currentMonthData).forEach(schoolName => {
+        // En modo ESCUELA, la API ya filtra (Ventas Qro vs Ventas CDMX)
+        // Así que sumamos todo lo que llega
+        schoolsInView++;
+        Object.keys(currentMonthData[schoolName]).forEach(areaName => {
+            Object.values(currentMonthData[schoolName][areaName]).forEach(curso => {
+                totalVentas += curso.ventas;
+                totalCursos += curso.cursos;
+            });
+        });
+    });
+
+    const ticketPromedio = totalCursos > 0 ? totalVentas / totalCursos : 0;
+
+    return (
+        <div className="space-y-8">
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><BarChart3 className="w-6 h-6 text-green-600" /> Resumen Ejecutivo ({SEDE})</h2>
+                <div className="flex items-center gap-2 bg-white px-3 py-1 rounded shadow-sm border">
+                    <Calendar className="w-4 h-4 text-gray-500" />
+                    <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="font-bold text-gray-800 bg-transparent outline-none cursor-pointer">
+                        {months.map(m => <option key={m} value={m}>{formatDateForDisplay(m)}</option>)}
+                    </select>
                 </div>
-             </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow p-6 text-white flex justify-between items-center">
+                    <div><p className="text-green-100 text-sm">Ventas del Mes</p><p className="text-3xl font-bold">${totalVentas.toLocaleString()}</p></div>
+                    <DollarSign className="w-10 h-10 text-green-200 opacity-50" />
+                </div>
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow p-6 text-white flex justify-between items-center">
+                    <div><p className="text-blue-100 text-sm">Cursos Vendidos</p><p className="text-3xl font-bold">{totalCursos}</p></div>
+                    <Book className="w-10 h-10 text-blue-200 opacity-50" />
+                </div>
+                <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow p-6 text-white flex justify-between items-center">
+                    <div><p className="text-purple-100 text-sm">Ticket Promedio</p><p className="text-3xl font-bold">${ticketPromedio.toLocaleString(undefined, {maximumFractionDigits: 0})}</p></div>
+                    <Target className="w-10 h-10 text-purple-200 opacity-50" />
+                </div>
+            </div>
         </div>
-      </div>
     );
   };
 
@@ -813,7 +791,7 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8 flex justify-between items-center">
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard IDIP</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Dashboard IDIP {MODO === 'DIRECCION' ? 'Dirección' : SEDE}</h1>
             <div className="flex gap-2 text-sm items-center">
                 {connectionStatus === 'connected' ? <span className="text-green-600 font-medium flex items-center gap-1"><Wifi className="w-3 h-3"/> Conectado</span> : <span className="text-red-600 flex items-center gap-1"><WifiOff className="w-3 h-3"/> {connectionStatus}</span>}
                 {errorMessage && <span className="text-xs text-red-500">({errorMessage})</span>}
@@ -878,8 +856,8 @@ const Dashboard = () => {
             </div>
         )}
 
-        {/* Renderizado de Vistas */}
-        {viewType === "executive" && renderExecutiveDashboard()}
+        {/* Renderizado Condicional */}
+        {viewType === "executive" && (MODO === 'DIRECCION' ? renderExecutiveDirection() : renderExecutiveEscuela())}
         {viewType === "cobranza" && renderCobranzaDashboard()}
         {viewType === "mapa" && renderMapDashboard()}
         {viewType === "crecimientoAnual" && renderCrecimientoAnualDashboard()}
@@ -892,7 +870,7 @@ const Dashboard = () => {
                     <ResponsiveContainer>
                         <BarChart data={getViewData}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey={viewType === 'escuela' || viewType === 'comparacion' ? 'escuela' : 'nombre'} angle={-45} textAnchor="end" height={100} />
+                            <XAxis dataKey={viewType === 'escuela' || viewType === 'comparacion' ? 'nombre' : 'nombre'} angle={-45} textAnchor="end" height={100} />
                             <YAxis />
                             <Tooltip />
                             {viewType === 'comparacion' ? (
@@ -923,6 +901,36 @@ const Dashboard = () => {
                         </table>
                     </div>
                 )}
+            </div>
+        )}
+        
+        {/* Distribución de Edades y Alertas (Común) */}
+        {viewType === "executive" && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                <div className="bg-white rounded-lg shadow p-6">
+                    <h3 className="text-lg font-semibold mb-4">Distribución de Edades ({formatDateForDisplay(selectedMonth)})</h3>
+                    <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={Object.entries(ageData[selectedMonth] || {}).map(([name, value]) => ({ name, value }))}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="name" />
+                                <YAxis />
+                                <Tooltip />
+                                <Bar dataKey="value" fill="#8884d8" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+                <div className="bg-white rounded-lg shadow p-6">
+                    <h3 className="text-lg font-semibold mb-4">Alertas</h3>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {alerts.length === 0 ? <p className="text-gray-400 text-sm">No hay alertas</p> : alerts.map((a, i) => (
+                            <div key={i} className="p-2 bg-yellow-50 text-yellow-800 rounded text-sm border-l-4 border-yellow-500">
+                                <strong>{a.message}</strong> - {a.details}
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
         )}
       </div>
