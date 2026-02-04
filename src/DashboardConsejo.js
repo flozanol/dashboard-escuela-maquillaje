@@ -20,7 +20,11 @@ async function fetchAllData() {
 }
 
 function processVentas(rows) {
-  if (!rows || rows.length < 2) return { cdmx: { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} }, qro: { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} }, online: { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} } };
+  if (!rows || rows.length < 2) return { 
+    cdmx: { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} }, 
+    qro: { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} }, 
+    online: { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} } 
+  };
 
   const initializeData = () => ({ ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} });
   const data = { CDMX: initializeData(), QRO: initializeData(), ONLINE: initializeData() };
@@ -76,13 +80,15 @@ export default function DashboardConsejo() {
     fetchAllData().then(res => {
       setData(processVentas(res.ventas));
       const objs = {};
-      res.objetivos?.forEach(r => objs[`${r[0]}-${r[1]?.toUpperCase()}`] = { ventas: parseNumber(r[2]), cursos: parseNumber(r[3]) });
+      res.objetivos?.forEach(r => {
+        if (r[0] && r[1]) objs[`${r[0]}-${r[1].toUpperCase()}`] = { ventas: parseNumber(r[2]), cursos: parseNumber(r[3]) };
+      });
       setObjetivos(objs);
       setLoading(false);
     });
   }, []);
 
-  if (loading) return <div className="p-8 text-center">Cargando...</div>;
+  if (loading) return <div className="p-8 text-center text-gray-600 font-medium">Cargando datos estratégicos...</div>;
 
   const mesesDisponibles = [...new Set([...Object.keys(data.cdmx.porMes), ...Object.keys(data.qro.porMes), ...Object.keys(data.online.porMes)])].sort().reverse();
   
@@ -121,35 +127,47 @@ export default function DashboardConsejo() {
     Online_C: data.online.porMes[m]?.cursos || 0
   }));
 
-  const rankingEscuelas = [...Object.entries(data.cdmx.escuelas).map(([n, d]) => ({ n: n + ' (CDMX)', v: d.ventas })), ...Object.entries(data.qro.escuelas).map(([n, d]) => ({ n: n + ' (QRO)', v: d.ventas })), ...Object.entries(data.online.escuelas).map(([n, d]) => ({ n: n + ' (Online)', v: d.ventas }))].sort((a, b) => b.v - a.v).slice(0, 10);
+  const rankingEscuelas = [
+    ...Object.entries(data.cdmx.escuelas).map(([n, d]) => ({ n: n + ' (CDMX)', v: d.ventas })), 
+    ...Object.entries(data.qro.escuelas).map(([n, d]) => ({ n: n + ' (QRO)', v: d.ventas })), 
+    ...Object.entries(data.online.escuelas).map(([n, d]) => ({ n: n + ' (Online)', v: d.ventas }))
+  ].sort((a, b) => b.v - a.v).slice(0, 10);
 
-  const CardSede = ({ titulo, info, color, icon: Icon }) => (
-    <div className="bg-white rounded-xl shadow-md p-5 border-t-4" style={{ borderColor: color }}>
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-2">
-          <Icon size={20} className="text-gray-500" />
-          <h3 className="font-bold text-gray-700">{titulo}</h3>
-        </div>
-        <span className={`text-sm font-bold ${info.crecimiento >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-          {info.crecimiento >= 0 ? '+' : ''}{info.crecimiento.toFixed(1)}%
-        </span>
-      </div>
-      <div className="space-y-3">
-        <div>
-          <div className="flex justify-between text-xs mb-1"><span>Progreso Ventas</span><span>${info.actual.ventas.toLocaleString()} / ${info.obj.ventas.toLocaleString()}</span></div>
-          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-            <div className="h-full bg-green-500" style={{ width: `${Math.min((info.actual.ventas / (info.obj.ventas || 1)) * 100, 100)}%` }}></div>
+  const CardSede = ({ titulo, info, color, icon: IconComponent }) => {
+    const avanceV = info.obj.ventas > 0 ? (info.actual.ventas / info.obj.ventas * 100) : 0;
+    const avanceC = info.obj.cursos > 0 ? (info.actual.cursos / info.obj.cursos * 100) : 0;
+    
+    return (
+      <div className="bg-white rounded-xl shadow-md p-5 border-t-4" style={{ borderColor: color }}>
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-2">
+            <IconComponent size={20} className="text-gray-500" />
+            <h3 className="font-bold text-gray-700">{titulo}</h3>
+          </div>
+          <div className="flex items-center gap-1">
+            {info.crecimiento >= 0 ? <TrendingUp size={16} className="text-green-500" /> : <TrendingDown size={16} className="text-red-500" />}
+            <span className={`text-sm font-bold ${info.crecimiento >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              {info.crecimiento >= 0 ? '+' : ''}{info.crecimiento.toFixed(1)}%
+            </span>
           </div>
         </div>
-        <div>
-          <div className="flex justify-between text-xs mb-1"><span>Progreso Cursos</span><span>{info.actual.cursos} / {info.obj.cursos}</span></div>
-          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-            <div className="h-full bg-blue-500" style={{ width: `${Math.min((info.actual.cursos / (info.obj.cursos || 1)) * 100, 100)}%` }}></div>
+        <div className="space-y-3">
+          <div>
+            <div className="flex justify-between text-xs mb-1"><span>Ventas</span><span>${info.actual.ventas.toLocaleString()} / ${info.obj.ventas.toLocaleString()}</span></div>
+            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+              <div className="h-full bg-green-500" style={{ width: `${Math.min(avanceV, 100)}%` }}></div>
+            </div>
+          </div>
+          <div>
+            <div className="flex justify-between text-xs mb-1"><span>Alumnos</span><span>{info.actual.cursos} / {info.obj.cursos}</span></div>
+            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+              <div className="h-full bg-blue-500" style={{ width: `${Math.min(avanceC, 100)}%` }}></div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
@@ -157,11 +175,11 @@ export default function DashboardConsejo() {
         <header className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-sm gap-4">
           <div>
             <h1 className="text-2xl font-extrabold text-gray-800">Dirección IDIP</h1>
-            <p className="text-gray-500">Análisis Estratégico Multisede</p>
+            <p className="text-gray-500">Consolidado Estratégico Mensual</p>
           </div>
           <div className="flex items-center gap-3 bg-gray-50 p-2 rounded-xl border">
-            <span className="text-sm font-medium text-gray-600">Ver mes:</span>
-            <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="bg-transparent font-bold text-blue-600 outline-none">
+            <span className="text-sm font-medium text-gray-600">Periodo:</span>
+            <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="bg-transparent font-bold text-blue-600 outline-none cursor-pointer">
               {mesesDisponibles.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
@@ -174,9 +192,9 @@ export default function DashboardConsejo() {
         </div>
 
         <section className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="font-bold text-gray-700 flex items-center gap-2"><DollarSign size={20}/> Acumulados</h2>
-            <select value={rangeMonths} onChange={e => setRangeMonths(e.target.value)} className="text-sm border rounded-lg px-2 py-1 outline-none">
+          <div className="flex justify-between items-center px-1">
+            <h2 className="font-bold text-gray-700 flex items-center gap-2 text-lg"><DollarSign size={22} className="text-green-600"/> Acumulados de Ventas</h2>
+            <select value={rangeMonths} onChange={e => setRangeMonths(e.target.value)} className="text-sm border rounded-lg px-3 py-1.5 outline-none bg-white shadow-sm cursor-pointer">
               <option value="all">Todo el Histórico</option>
               <option value="3">Últimos 3 meses</option>
               <option value="6">Últimos 6 meses</option>
@@ -184,36 +202,67 @@ export default function DashboardConsejo() {
             </select>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[ 
-              { label: 'Ventas Totales', val: rangeData.total, color: 'from-blue-600 to-blue-700' },
-              { label: 'Ventas CDMX', val: rangeData.cdmx, color: 'from-blue-400 to-blue-500' },
-              { label: 'Ventas QRO', val: rangeData.qro, color: 'from-purple-500 to-purple-600' },
-              { label: 'Ventas Online', val: rangeData.online, color: 'from-pink-500 to-pink-600' }
-            ].map((k, i) => (
-              <div key={i} className={`bg-gradient-to-br ${k.color} p-6 rounded-2xl text-white shadow-lg`}>
-                <p className="text-xs opacity-80 uppercase font-bold tracking-wider">{k.label}</p>
-                <p className="text-2xl font-black mt-1">${k.val.toLocaleString()}</p>
-              </div>
-            ))}
+            <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-6 rounded-2xl text-white shadow-lg">
+              <p className="text-xs opacity-80 uppercase font-bold tracking-wider">Ventas Totales</p>
+              <p className="text-2xl font-black mt-1">${rangeData.total.toLocaleString()}</p>
+            </div>
+            <div className="bg-gradient-to-br from-blue-400 to-blue-500 p-6 rounded-2xl text-white shadow-lg">
+              <p className="text-xs opacity-80 uppercase font-bold tracking-wider">Ventas CDMX</p>
+              <p className="text-2xl font-black mt-1">${rangeData.cdmx.toLocaleString()}</p>
+            </div>
+            <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-2xl text-white shadow-lg">
+              <p className="text-xs opacity-80 uppercase font-bold tracking-wider">Ventas QRO</p>
+              <p className="text-2xl font-black mt-1">${rangeData.qro.toLocaleString()}</p>
+            </div>
+            <div className="bg-gradient-to-br from-pink-500 to-pink-600 p-6 rounded-2xl text-white shadow-lg">
+              <p className="text-xs opacity-80 uppercase font-bold tracking-wider">Ventas Online</p>
+              <p className="text-2xl font-black mt-1">${rangeData.online.toLocaleString()}</p>
+            </div>
           </div>
         </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="bg-white p-6 rounded-2xl shadow-sm">
-            <h3 className="font-bold mb-6 text-gray-700">Tendencia de Ventas ($)</h3>
-            <div className="h-72"><ResponsiveContainer width="100%" height="100%"><LineChart data={dataGraficas}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="mes" /><YAxis tickFormatter={v => `$${v/1000}k`} /><Tooltip /><Legend /><Line type="monotone" dataKey="CDMX" stroke="#3B82F6" strokeWidth={3} dot={false}/><Line type="monotone" dataKey="QRO" stroke="#A855F7" strokeWidth={3} dot={false}/><Line type="monotone" dataKey="Online" stroke="#EC4899" strokeWidth={3} dot={false}/></LineChart></ResponsiveContainer></div>
+            <h3 className="font-bold mb-6 text-gray-700">Tendencia de Ingresos ($)</h3>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={dataGraficas}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="mes" />
+                  <YAxis tickFormatter={v => `$${v/1000}k`} />
+                  <Tooltip formatter={v => `$${v.toLocaleString()}`} />
+                  <Legend />
+                  <Line type="monotone" dataKey="CDMX" stroke="#3B82F6" strokeWidth={3} dot={false}/>
+                  <Line type="monotone" dataKey="QRO" stroke="#A855F7" strokeWidth={3} dot={false}/>
+                  <Line type="monotone" dataKey="Online" stroke="#EC4899" strokeWidth={3} dot={false}/>
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
           <div className="bg-white p-6 rounded-2xl shadow-sm">
-            <h3 className="font-bold mb-6 text-gray-700">Tendencia de Alumnos (Cursos)</h3>
-            <div className="h-72"><ResponsiveContainer width="100%" height="100%"><BarChart data={dataGraficas}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="mes" /><YAxis /><Tooltip /><Legend /><Bar dataKey="CDMX_C" fill="#3B82F6" name="CDMX" /><Bar dataKey="QRO_C" fill="#A855F7" name="QRO" /><Bar dataKey="Online_C" fill="#EC4899" name="Online" /></BarChart></ResponsiveContainer></div>
+            <h3 className="font-bold mb-6 text-gray-700">Tendencia de Alumnos (Inscritos)</h3>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dataGraficas}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="mes" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="CDMX_C" fill="#3B82F6" name="CDMX" />
+                  <Bar dataKey="QRO_C" fill="#A855F7" name="QRO" />
+                  <Bar dataKey="Online_C" fill="#EC4899" name="Online" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm">
-          <h3 className="font-bold mb-6 text-gray-700 flex items-center gap-2"><Award className="text-yellow-500"/> Ranking Top 10 Escuelas (Histórico)</h3>
+          <h3 className="font-bold mb-6 text-gray-700 flex items-center gap-2"><Award className="text-yellow-500"/> Ranking Global: Top 10 Escuelas</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {rankingEscuelas.map((e, i) => (
-              <div key={i} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+              <div key={i} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
                 <span className="text-sm font-medium text-gray-600"><span className="font-bold text-blue-600 mr-2">#{i+1}</span> {e.n}</span>
                 <span className="font-bold text-gray-800">${e.v.toLocaleString()}</span>
               </div>
