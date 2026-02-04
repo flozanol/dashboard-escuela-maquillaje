@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { DollarSign, Building, Target, TrendingUp, TrendingDown, Globe } from 'lucide-react';
+import { XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 
 function parseNumber(value) {
   if (!value) return 0;
@@ -125,21 +125,18 @@ export default function DashboardConsejo() {
   const mesNumStr = (new Date().getMonth() + 1).toString().padStart(2, '0');
   const anoAnterior = (parseInt(anoActual) - 1).toString();
 
-  // KPIs CDMX
   const ventasCDMXActual = cdmx?.porAno[anoActual]?.[mesNumStr]?.ventas || 0;
   const cursosCDMXActual = cdmx?.porAno[anoActual]?.[mesNumStr]?.cursos || 0;
   const ventasCDMXAnterior = cdmx?.porAno[anoAnterior]?.[mesNumStr]?.ventas || 0;
   const crecimientoCDMX = ventasCDMXAnterior > 0 ? ((ventasCDMXActual - ventasCDMXAnterior) / ventasCDMXAnterior * 100) : 0;
   const objCDMX = objetivos[`${mesActual}-CDMX`] || { ventas: 0, cursos: 0 };
 
-  // KPIs QRO
   const ventasQROActual = qro?.porAno[anoActual]?.[mesNumStr]?.ventas || 0;
   const cursosQROActual = qro?.porAno[anoActual]?.[mesNumStr]?.cursos || 0;
   const ventasQROAnterior = qro?.porAno[anoAnterior]?.[mesNumStr]?.ventas || 0;
   const crecimientoQRO = ventasQROAnterior > 0 ? ((ventasQROActual - ventasQROAnterior) / ventasQROAnterior * 100) : 0;
   const objQRO = objetivos[`${mesActual}-QUERÉTARO`] || objetivos[`${mesActual}-QRO`] || { ventas: 0, cursos: 0 };
 
-  // KPIs ONLINE
   const ventasOnlineActual = online?.porAno[anoActual]?.[mesNumStr]?.ventas || 0;
   const cursosOnlineActual = online?.porAno[anoActual]?.[mesNumStr]?.cursos || 0;
   const ventasOnlineAnterior = online?.porAno[anoAnterior]?.[mesNumStr]?.ventas || 0;
