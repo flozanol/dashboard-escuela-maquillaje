@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { DollarSign, Building, Target, TrendingUp, TrendingDown, Globe, Award } from 'lucide-react';
 
 function parseNumber(value) {
   if (!value) return 0;
@@ -20,231 +20,204 @@ async function fetchAllData() {
 }
 
 function processVentas(rows) {
-  if (!rows || rows.length < 2) return { 
-    cdmx: { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} }, 
-    qro: { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} },
-    online: { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} } 
-  };
+  if (!rows || rows.length < 2) return { cdmx: { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} }, qro: { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} }, online: { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} } };
 
-  const dataCDMX = { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} };
-  const dataQRO = { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} };
-  const dataOnline = { ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} };
+  const initializeData = () => ({ ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} });
+  const data = { CDMX: initializeData(), QRO: initializeData(), ONLINE: initializeData() };
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
     if (!row[0] || !row[1]) continue;
     
-    const fechaRaw = row[0].toString();
-    let fecha = fechaRaw;
-    if (!isNaN(fechaRaw) && fechaRaw.length < 10) {
-      const dateNum = parseFloat(fechaRaw);
+    let fecha = row[0].toString();
+    if (!isNaN(fecha) && fecha.length < 10) {
       const excelEpoch = new Date(1899, 11, 30);
-      const jsDate = new Date(excelEpoch.getTime() + dateNum * 86400000);
-      fecha = jsDate.toISOString().substring(0, 10);
+      fecha = new Date(excelEpoch.getTime() + parseFloat(fecha) * 86400000).toISOString().substring(0, 10);
     } else {
-      fecha = fechaRaw.replace(/\//g, '-');
+      fecha = fecha.replace(/\//g, '-');
     }
 
     const mes = fecha.substring(0, 7);
     const ano = fecha.substring(0, 4);
     const mesNum = fecha.substring(5, 7);
-    const escuela = row[1];
-    const ventasNum = parseNumber(row[4]);
-    const cursosNum = parseNumber(row[5]) || 1;
-    const sede = (row[8] || '').toString().trim().toUpperCase();
-    
-    const isCDMX = sede === 'CDMX' || sede === 'POLANCO';
-    const isQRO = sede === 'QUERÉTARO' || sede === 'QRO';
-    const isOnline = sede === 'ONLINE';
+    const sedeRaw = (row[8] || '').toString().trim().toUpperCase();
+    const sede = (sedeRaw === 'POLANCO' || sedeRaw === 'CDMX') ? 'CDMX' : (sedeRaw === 'QUERÉTARO' || sedeRaw === 'QRO') ? 'QRO' : (sedeRaw === 'ONLINE') ? 'ONLINE' : null;
 
-    const target = isCDMX ? dataCDMX : isQRO ? dataQRO : isOnline ? dataOnline : null;
+    if (sede) {
+      const v = parseNumber(row[4]);
+      const c = parseNumber(row[5]) || 1;
+      const esc = row[1];
 
-    if (target) {
-      target.ventas += ventasNum;
-      target.cursos += cursosNum;
-      if (!target.escuelas[escuela]) target.escuelas[escuela] = { ventas: 0, cursos: 0 };
-      target.escuelas[escuela].ventas += ventasNum;
-      target.escuelas[escuela].cursos += cursosNum;
-      if (!target.porMes[mes]) target.porMes[mes] = { ventas: 0, cursos: 0 };
-      target.porMes[mes].ventas += ventasNum;
-      target.porMes[mes].cursos += cursosNum;
-      if (!target.porAno[ano]) target.porAno[ano] = {};
-      if (!target.porAno[ano][mesNum]) target.porAno[ano][mesNum] = { ventas: 0, cursos: 0 };
-      target.porAno[ano][mesNum].ventas += ventasNum;
-      target.porAno[ano][mesNum].cursos += cursosNum;
+      data[sede].ventas += v;
+      data[sede].cursos += c;
+      if (!data[sede].escuelas[esc]) data[sede].escuelas[esc] = { ventas: 0, cursos: 0 };
+      data[sede].escuelas[esc].ventas += v;
+      data[sede].escuelas[esc].cursos += c;
+      if (!data[sede].porMes[mes]) data[sede].porMes[mes] = { ventas: 0, cursos: 0 };
+      data[sede].porMes[mes].ventas += v;
+      data[sede].porMes[mes].cursos += c;
+      if (!data[sede].porAno[ano]) data[sede].porAno[ano] = {};
+      if (!data[sede].porAno[ano][mesNum]) data[sede].porAno[ano][mesNum] = { ventas: 0, cursos: 0 };
+      data[sede].porAno[ano][mesNum].ventas += v;
+      data[sede].porAno[ano][mesNum].cursos += c;
     }
   }
-  return { cdmx: dataCDMX, qro: dataQRO, online: dataOnline };
-}
-
-function processObjetivos(rows) {
-  if (!rows || rows.length < 2) return {};
-  const objetivos = {};
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-    if (!row[0] || !row[1]) continue;
-    const mes = row[0];
-    const sede = row[1].toString().trim().toUpperCase();
-    const key = `${mes}-${sede}`;
-    objetivos[key] = { ventas: parseNumber(row[2]), cursos: parseNumber(row[3]) };
-  }
-  return objetivos;
+  return { cdmx: data.CDMX, qro: data.QRO, online: data.ONLINE };
 }
 
 export default function DashboardConsejo() {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [cdmx, setCdmx] = useState(null);
-  const [qro, setQro] = useState(null);
-  const [online, setOnline] = useState(null);
+  const [data, setData] = useState(null);
   const [objetivos, setObjetivos] = useState({});
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7));
+  const [rangeMonths, setRangeMonths] = useState('all');
 
   useEffect(() => {
-    async function load() {
-      try {
-        const data = await fetchAllData();
-        const processed = processVentas(data.ventas);
-        setCdmx(processed.cdmx);
-        setQro(processed.qro);
-        setOnline(processed.online);
-        setObjetivos(processObjetivos(data.objetivos));
-      } catch (e) {
-        setError('Error cargando datos');
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
+    fetchAllData().then(res => {
+      setData(processVentas(res.ventas));
+      const objs = {};
+      res.objetivos?.forEach(r => objs[`${r[0]}-${r[1]?.toUpperCase()}`] = { ventas: parseNumber(r[2]), cursos: parseNumber(r[3]) });
+      setObjetivos(objs);
+      setLoading(false);
+    });
   }, []);
 
   if (loading) return <div className="p-8 text-center">Cargando...</div>;
-  if (error) return <div className="p-8 text-center text-red-600">{error}</div>;
 
-  const mesActual = new Date().toISOString().substring(0, 7);
-  const anoActual = new Date().getFullYear().toString();
-  const mesNumStr = (new Date().getMonth() + 1).toString().padStart(2, '0');
-  const anoAnterior = (parseInt(anoActual) - 1).toString();
-
-  const ventasCDMXActual = cdmx?.porAno[anoActual]?.[mesNumStr]?.ventas || 0;
-  const cursosCDMXActual = cdmx?.porAno[anoActual]?.[mesNumStr]?.cursos || 0;
-  const ventasCDMXAnterior = cdmx?.porAno[anoAnterior]?.[mesNumStr]?.ventas || 0;
-  const crecimientoCDMX = ventasCDMXAnterior > 0 ? ((ventasCDMXActual - ventasCDMXAnterior) / ventasCDMXAnterior * 100) : 0;
-  const objCDMX = objetivos[`${mesActual}-CDMX`] || { ventas: 0, cursos: 0 };
-
-  const ventasQROActual = qro?.porAno[anoActual]?.[mesNumStr]?.ventas || 0;
-  const cursosQROActual = qro?.porAno[anoActual]?.[mesNumStr]?.cursos || 0;
-  const ventasQROAnterior = qro?.porAno[anoAnterior]?.[mesNumStr]?.ventas || 0;
-  const crecimientoQRO = ventasQROAnterior > 0 ? ((ventasQROActual - ventasQROAnterior) / ventasQROAnterior * 100) : 0;
-  const objQRO = objetivos[`${mesActual}-QUERÉTARO`] || objetivos[`${mesActual}-QRO`] || { ventas: 0, cursos: 0 };
-
-  const ventasOnlineActual = online?.porAno[anoActual]?.[mesNumStr]?.ventas || 0;
-  const cursosOnlineActual = online?.porAno[anoActual]?.[mesNumStr]?.cursos || 0;
-  const ventasOnlineAnterior = online?.porAno[anoAnterior]?.[mesNumStr]?.ventas || 0;
-  const crecimientoOnline = ventasOnlineAnterior > 0 ? ((ventasOnlineActual - ventasOnlineAnterior) / ventasOnlineAnterior * 100) : 0;
-  const objOnline = objetivos[`${mesActual}-ONLINE`] || { ventas: 0, cursos: 0 };
-
-  const totalVentas = (cdmx?.ventas || 0) + (qro?.ventas || 0) + (online?.ventas || 0);
-  const totalCursos = (cdmx?.cursos || 0) + (qro?.cursos || 0) + (online?.cursos || 0);
-  const ticketGral = totalCursos > 0 ? totalVentas / totalCursos : 0;
-
-  const todosMeses = [...new Set([...Object.keys(cdmx?.porMes || {}), ...Object.keys(qro?.porMes || {}), ...Object.keys(online?.porMes || {})])].sort();
-  const dataMensual = todosMeses.map(mes => ({
-    mes: mes.substring(5),
-    cdmxVentas: cdmx?.porMes[mes]?.ventas || 0,
-    qroVentas: qro?.porMes[mes]?.ventas || 0,
-    onlineVentas: online?.porMes[mes]?.ventas || 0,
-    totalVentas: (cdmx?.porMes[mes]?.ventas || 0) + (qro?.porMes[mes]?.ventas || 0) + (online?.porMes[mes]?.ventas || 0)
-  }));
-
-  const CardSede = ({ titulo, actual, objetivo, cursos, cursosObj, crecimiento, color }) => {
-    const avanceV = objetivo > 0 ? (actual / objetivo * 100) : 0;
-    const avanceC = cursosObj > 0 ? (cursos / cursosObj * 100) : 0;
-    return (
-      <div className="bg-white rounded-lg shadow-lg p-6 border-t-4" style={{ borderColor: color }}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">{titulo}</h3>
-          {crecimiento >= 0 ? <TrendingUp className="text-green-500" /> : <TrendingDown className="text-red-500" />}
-        </div>
-        <div className="space-y-4">
-          <div>
-            <div className="flex justify-between text-sm mb-1">
-              <span>Ventas</span>
-              <span className="font-medium">${actual.toLocaleString()} / ${objetivo.toLocaleString()}</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div className="h-2 rounded-full bg-green-500" style={{ width: `${Math.min(avanceV, 100)}%` }}></div>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">{avanceV.toFixed(1)}% del objetivo</p>
-          </div>
-          <div>
-            <div className="flex justify-between text-sm mb-1">
-              <span>Cursos</span>
-              <span className="font-medium">{cursos} / {cursosObj}</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div className="h-2 rounded-full bg-blue-500" style={{ width: `${Math.min(avanceC, 100)}%` }}></div>
-            </div>
-          </div>
-          {crecimiento !== 0 && (
-            <div className="pt-2 border-t">
-              <p className="text-xs text-gray-500">vs Año Anterior</p>
-              <p className={`text-sm font-bold ${crecimiento >= 0 ? 'text-green-600' : 'text-red-600'}`}>{crecimiento >= 0 ? '+' : ''}{crecimiento.toFixed(1)}%</p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
+  const mesesDisponibles = [...new Set([...Object.keys(data.cdmx.porMes), ...Object.keys(data.qro.porMes), ...Object.keys(data.online.porMes)])].sort().reverse();
+  
+  const getSedeData = (sedeObj, sedeName, month) => {
+    const actual = sedeObj.porMes[month] || { ventas: 0, cursos: 0 };
+    const anoAnt = (parseInt(month.substring(0, 4)) - 1).toString() + month.substring(4);
+    const ventasAnt = sedeObj.porMes[anoAnt]?.ventas || 0;
+    const obj = objetivos[`${month}-${sedeName}`] || objetivos[`${month}-${sedeName === 'QRO' ? 'QUERÉTARO' : sedeName}`] || { ventas: 0, cursos: 0 };
+    return { actual, obj, crecimiento: ventasAnt > 0 ? ((actual.ventas - ventasAnt) / ventasAnt * 100) : 0 };
   };
 
+  const getRangeTotals = (range) => {
+    const targetMonths = range === 'all' ? mesesDisponibles : mesesDisponibles.slice(0, parseInt(range));
+    const totals = { total: 0, cdmx: 0, qro: 0, online: 0 };
+    targetMonths.forEach(m => {
+      totals.cdmx += data.cdmx.porMes[m]?.ventas || 0;
+      totals.qro += data.qro.porMes[m]?.ventas || 0;
+      totals.online += data.online.porMes[m]?.ventas || 0;
+    });
+    totals.total = totals.cdmx + totals.qro + totals.online;
+    return totals;
+  };
+
+  const currentCDMX = getSedeData(data.cdmx, 'CDMX', selectedMonth);
+  const currentQRO = getSedeData(data.qro, 'QRO', selectedMonth);
+  const currentOnline = getSedeData(data.online, 'ONLINE', selectedMonth);
+  const rangeData = getRangeTotals(rangeMonths);
+
+  const dataGraficas = mesesDisponibles.slice().reverse().map(m => ({
+    mes: m.substring(5),
+    CDMX: data.cdmx.porMes[m]?.ventas || 0,
+    QRO: data.qro.porMes[m]?.ventas || 0,
+    Online: data.online.porMes[m]?.ventas || 0,
+    CDMX_C: data.cdmx.porMes[m]?.cursos || 0,
+    QRO_C: data.qro.porMes[m]?.cursos || 0,
+    Online_C: data.online.porMes[m]?.cursos || 0
+  }));
+
+  const rankingEscuelas = [...Object.entries(data.cdmx.escuelas).map(([n, d]) => ({ n: n + ' (CDMX)', v: d.ventas })), ...Object.entries(data.qro.escuelas).map(([n, d]) => ({ n: n + ' (QRO)', v: d.ventas })), ...Object.entries(data.online.escuelas).map(([n, d]) => ({ n: n + ' (Online)', v: d.ventas }))].sort((a, b) => b.v - a.v).slice(0, 10);
+
+  const CardSede = ({ titulo, info, color, icon: Icon }) => (
+    <div className="bg-white rounded-xl shadow-md p-5 border-t-4" style={{ borderColor: color }}>
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2">
+          <Icon size={20} className="text-gray-500" />
+          <h3 className="font-bold text-gray-700">{titulo}</h3>
+        </div>
+        <span className={`text-sm font-bold ${info.crecimiento >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+          {info.crecimiento >= 0 ? '+' : ''}{info.crecimiento.toFixed(1)}%
+        </span>
+      </div>
+      <div className="space-y-3">
+        <div>
+          <div className="flex justify-between text-xs mb-1"><span>Progreso Ventas</span><span>${info.actual.ventas.toLocaleString()} / ${info.obj.ventas.toLocaleString()}</span></div>
+          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+            <div className="h-full bg-green-500" style={{ width: `${Math.min((info.actual.ventas / (info.obj.ventas || 1)) * 100, 100)}%` }}></div>
+          </div>
+        </div>
+        <div>
+          <div className="flex justify-between text-xs mb-1"><span>Progreso Cursos</span><span>{info.actual.cursos} / {info.obj.cursos}</span></div>
+          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+            <div className="h-full bg-blue-500" style={{ width: `${Math.min((info.actual.cursos / (info.obj.cursos || 1)) * 100, 100)}%` }}></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard Dirección IDIP</h1>
-          <p className="text-gray-600">Consolidado: CDMX, Querétaro y Online</p>
+    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <header className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-2xl shadow-sm gap-4">
+          <div>
+            <h1 className="text-2xl font-extrabold text-gray-800">Dirección IDIP</h1>
+            <p className="text-gray-500">Análisis Estratégico Multisede</p>
+          </div>
+          <div className="flex items-center gap-3 bg-gray-50 p-2 rounded-xl border">
+            <span className="text-sm font-medium text-gray-600">Ver mes:</span>
+            <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="bg-transparent font-bold text-blue-600 outline-none">
+              {mesesDisponibles.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+        </header>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <CardSede titulo="CDMX" info={currentCDMX} color="#3B82F6" icon={Building} />
+          <CardSede titulo="QUERÉTARO" info={currentQRO} color="#A855F7" icon={Target} />
+          <CardSede titulo="ONLINE" info={currentOnline} color="#EC4899" icon={Globe} />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <CardSede titulo="CDMX" actual={ventasCDMXActual} objetivo={objCDMX.ventas} cursos={cursosCDMXActual} cursosObj={objCDMX.cursos} crecimiento={crecimientoCDMX} color="#3B82F6" />
-          <CardSede titulo="Querétaro" actual={ventasQROActual} objetivo={objQRO.ventas} cursos={cursosQROActual} cursosObj={objQRO.cursos} crecimiento={crecimientoQRO} color="#A855F7" />
-          <CardSede titulo="Online" actual={ventasOnlineActual} objetivo={objOnline.ventas} cursos={cursosOnlineActual} cursosObj={objOnline.cursos} crecimiento={crecimientoOnline} color="#EC4899" />
+        <section className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="font-bold text-gray-700 flex items-center gap-2"><DollarSign size={20}/> Acumulados</h2>
+            <select value={rangeMonths} onChange={e => setRangeMonths(e.target.value)} className="text-sm border rounded-lg px-2 py-1 outline-none">
+              <option value="all">Todo el Histórico</option>
+              <option value="3">Últimos 3 meses</option>
+              <option value="6">Últimos 6 meses</option>
+              <option value="12">Últimos 12 meses</option>
+            </select>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[ 
+              { label: 'Ventas Totales', val: rangeData.total, color: 'from-blue-600 to-blue-700' },
+              { label: 'Ventas CDMX', val: rangeData.cdmx, color: 'from-blue-400 to-blue-500' },
+              { label: 'Ventas QRO', val: rangeData.qro, color: 'from-purple-500 to-purple-600' },
+              { label: 'Ventas Online', val: rangeData.online, color: 'from-pink-500 to-pink-600' }
+            ].map((k, i) => (
+              <div key={i} className={`bg-gradient-to-br ${k.color} p-6 rounded-2xl text-white shadow-lg`}>
+                <p className="text-xs opacity-80 uppercase font-bold tracking-wider">{k.label}</p>
+                <p className="text-2xl font-black mt-1">${k.val.toLocaleString()}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="bg-white p-6 rounded-2xl shadow-sm">
+            <h3 className="font-bold mb-6 text-gray-700">Tendencia de Ventas ($)</h3>
+            <div className="h-72"><ResponsiveContainer width="100%" height="100%"><LineChart data={dataGraficas}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="mes" /><YAxis tickFormatter={v => `$${v/1000}k`} /><Tooltip /><Legend /><Line type="monotone" dataKey="CDMX" stroke="#3B82F6" strokeWidth={3} dot={false}/><Line type="monotone" dataKey="QRO" stroke="#A855F7" strokeWidth={3} dot={false}/><Line type="monotone" dataKey="Online" stroke="#EC4899" strokeWidth={3} dot={false}/></LineChart></ResponsiveContainer></div>
+          </div>
+          <div className="bg-white p-6 rounded-2xl shadow-sm">
+            <h3 className="font-bold mb-6 text-gray-700">Tendencia de Alumnos (Cursos)</h3>
+            <div className="h-72"><ResponsiveContainer width="100%" height="100%"><BarChart data={dataGraficas}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="mes" /><YAxis /><Tooltip /><Legend /><Bar dataKey="CDMX_C" fill="#3B82F6" name="CDMX" /><Bar dataKey="QRO_C" fill="#A855F7" name="QRO" /><Bar dataKey="Online_C" fill="#EC4899" name="Online" /></BarChart></ResponsiveContainer></div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <p className="text-sm text-gray-500">Ventas Totales Hist.</p>
-            <p className="text-2xl font-bold text-blue-600">${totalVentas.toLocaleString()}</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <p className="text-sm text-gray-500">Cursos Totales Hist.</p>
-            <p className="text-2xl font-bold text-purple-600">{totalCursos.toLocaleString()}</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <p className="text-sm text-gray-500">Ticket Promedio Hist.</p>
-            <p className="text-2xl font-bold text-green-600">${Math.round(ticketGral).toLocaleString()}</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <p className="text-sm text-gray-500">Sedes Activas</p>
-            <p className="text-2xl font-bold text-orange-600">3</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h3 className="text-lg font-semibold mb-4">Tendencia Mensual de Ventas</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dataMensual}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="mes" />
-                <YAxis tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
-                <Tooltip formatter={(v) => `$${v.toLocaleString()}`} />
-                <Legend />
-                <Line type="monotone" dataKey="cdmxVentas" stroke="#3B82F6" name="CDMX" strokeWidth={2} />
-                <Line type="monotone" dataKey="qroVentas" stroke="#A855F7" name="Querétaro" strokeWidth={2} />
-                <Line type="monotone" dataKey="onlineVentas" stroke="#EC4899" name="Online" strokeWidth={2} />
-                <Line type="monotone" dataKey="totalVentas" stroke="#22C55E" name="Total" strokeDasharray="5 5" />
-              </LineChart>
-            </ResponsiveContainer>
+        <div className="bg-white p-6 rounded-2xl shadow-sm">
+          <h3 className="font-bold mb-6 text-gray-700 flex items-center gap-2"><Award className="text-yellow-500"/> Ranking Top 10 Escuelas (Histórico)</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {rankingEscuelas.map((e, i) => (
+              <div key={i} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                <span className="text-sm font-medium text-gray-600"><span className="font-bold text-blue-600 mr-2">#{i+1}</span> {e.n}</span>
+                <span className="font-bold text-gray-800">${e.v.toLocaleString()}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
