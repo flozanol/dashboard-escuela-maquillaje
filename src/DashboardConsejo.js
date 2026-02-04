@@ -96,18 +96,18 @@ export default function DashboardConsejo() {
     });
   }, []);
 
-  if (loading) return <div className="p-8 text-center text-gray-500 font-medium italic">Sincronizando métricas de IDIP...</div>;
+  if (loading) return <div className="p-8 text-center text-gray-500 font-medium italic">Actualizando información de IDIP...</div>;
 
   const mesesDisponibles = [...new Set([...Object.keys(data.cdmx.porMes), ...Object.keys(data.qro.porMes), ...Object.keys(data.online.porMes)])].sort().reverse();
   
   const getSedeData = (sedeObj, sedeName, month) => {
     const actual = sedeObj.porMes[month] || { ventas: 0, cursos: 0 };
     const dateParts = month.split('-');
-    const prevYear = (parseInt(dateParts[0]) - 1).toString();
-    const anoAnt = `${prevYear}-${dateParts[1]}`;
+    const prevYearNum = parseInt(dateParts[0]) - 1;
+    const anoAnt = `${prevYearNum}-${dateParts[1]}`;
     const ventasAnt = sedeObj.porMes[anoAnt]?.ventas || 0;
     const obj = objetivos[`${month}-${sedeName}`] || objetivos[`${month}-${sedeName === 'QRO' ? 'QUERÉTARO' : sedeName}`] || { ventas: 0, cursos: 0 };
-    return { actual, obj, crecimiento: ventasAnt > 0 ? ((actual.ventas - ventasAnt) / ventasAnt * 100) : 0, ventasAnt };
+    return { actual, obj, crecimiento: ventasAnt > 0 ? ((actual.ventas - ventasAnt) / ventasAnt * 100) : 0, ventasAnt, anoAnteriorLabel: prevYearNum };
   };
 
   const getRangeTotals = (range) => {
@@ -143,7 +143,6 @@ export default function DashboardConsejo() {
     ...Object.entries(data.online.escuelas).map(([n, d]) => ({ n: n + ' (Online)', v: d.ventas }))
   ].sort((a, b) => b.v - a.v).slice(0, 10);
 
-  // Función para determinar el color del semáforo
   const getProgressColor = (percent) => {
     if (percent >= 100) return IDIP_GREEN;
     if (percent >= 80) return COLOR_YELLOW;
@@ -160,7 +159,7 @@ export default function DashboardConsejo() {
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-2">
             <IconComponent size={20} style={{ color: IDIP_GRAY }} />
-            <h3 className="font-extrabold" style={{ color: IDIP_GRAY }}>{titulo}</h3>
+            <h3 className="font-extrabold uppercase tracking-tight" style={{ color: IDIP_GRAY }}>{titulo}</h3>
           </div>
           <div className="flex items-center gap-1">
             {info.crecimiento >= 0 ? <TrendingUp size={18} color={IDIP_GREEN} /> : <TrendingDown size={18} color={COLOR_RED} />}
@@ -171,7 +170,7 @@ export default function DashboardConsejo() {
         </div>
         <div className="space-y-4">
           <div>
-            <div className="flex justify-between text-[10px] mb-1 font-bold text-gray-500 uppercase tracking-tighter">
+            <div className="flex justify-between text-[10px] mb-1 font-bold text-gray-500 uppercase">
               <span>Objetivo Ventas</span>
               <span>${info.actual.ventas.toLocaleString()} / ${info.obj.ventas.toLocaleString()}</span>
             </div>
@@ -183,7 +182,7 @@ export default function DashboardConsejo() {
             </div>
           </div>
           <div>
-            <div className="flex justify-between text-[10px] mb-1 font-bold text-gray-500 uppercase tracking-tighter">
+            <div className="flex justify-between text-[10px] mb-1 font-bold text-gray-500 uppercase">
               <span>Objetivo Alumnos</span>
               <span>{info.actual.cursos} / {info.obj.cursos}</span>
             </div>
@@ -195,12 +194,12 @@ export default function DashboardConsejo() {
             </div>
           </div>
           <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">Comparativo Histórico</span>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">vs {info.anoAnteriorLabel}</span>
             <div className="text-right">
                 <p className="text-xs font-black text-gray-600">${info.ventasAnt.toLocaleString()}</p>
                 {info.ventasAnt > 0 && (
                   <p className="text-[9px] font-bold" style={{ color: alcanceAnual >= 100 ? IDIP_GREEN : IDIP_GRAY }}>
-                    Alcance: {alcanceAnual.toFixed(1)}% vs 2024
+                    Alcance: {alcanceAnual.toFixed(1)}%
                   </p>
                 )}
             </div>
@@ -220,7 +219,7 @@ export default function DashboardConsejo() {
             <div className="h-10 w-[1px] bg-gray-200 hidden md:block"></div>
             <div>
               <h1 className="text-xl md:text-2xl font-black tracking-tight" style={{ color: IDIP_GRAY }}>DIRECCIÓN ESTRATÉGICA</h1>
-              <p className="text-xs font-bold uppercase tracking-widest" style={{ color: IDIP_GREEN }}>IDIP • Maquillaje e Imagen</p>
+              <p className="text-xs font-bold uppercase tracking-widest" style={{ color: IDIP_GREEN }}>IDIP • Análisis Consolidado</p>
             </div>
           </div>
           <div className="flex items-center gap-3 bg-gray-50 p-2 px-4 rounded-xl border border-gray-100">
@@ -256,7 +255,7 @@ export default function DashboardConsejo() {
               { label: 'Ventas QRO', val: rangeData.qro, bg: IDIP_GRAY },
               { label: 'Ventas Online', val: rangeData.online, bg: IDIP_GREEN }
             ].map((k, i) => (
-              <div key={i} className="p-6 rounded-2xl text-white shadow-lg transition-all hover:scale-[1.03] active:scale-95" style={{ backgroundColor: k.bg }}>
+              <div key={i} className="p-6 rounded-2xl text-white shadow-lg transition-all hover:scale-[1.03]" style={{ backgroundColor: k.bg }}>
                 <p className="text-[10px] opacity-80 uppercase font-black tracking-widest">{k.label}</p>
                 <p className="text-2xl font-black mt-1">${k.val.toLocaleString()}</p>
               </div>
@@ -304,7 +303,7 @@ export default function DashboardConsejo() {
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex items-center gap-2 mb-6">
             <Award size={24} color={IDIP_GREEN} />
-            <h3 className="font-black uppercase text-sm tracking-widest" style={{ color: IDIP_GRAY }}>Ranking Global: Top 10 Escuelas</h3>
+            <h3 className="font-black uppercase text-sm tracking-widest" style={{ color: IDIP_GRAY }}>Top 10: Ranking Global Escuelas</h3>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {rankingEscuelas.map((e, i) => (
