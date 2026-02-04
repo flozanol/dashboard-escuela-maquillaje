@@ -2,14 +2,14 @@ import React, { useState, useMemo, useEffect } from 'react';
 import DashboardConsejo from './DashboardConsejo';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
-  LineChart, Line, PieChart, Pie, Cell 
+  LineChart, Line 
 } from 'recharts';
 import { MapContainer, TileLayer, CircleMarker, Popup as MapPopup } from 'react-leaflet';
 import { 
   TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, 
   Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Star, Target, 
   AlertTriangle, Phone, Mail, Globe, MessageSquare, Users, MapPin, 
-  Calendar, Monitor, Layers 
+  Calendar, Monitor
 } from 'lucide-react';
 
 const SEDE = process.env.REACT_APP_SEDE || 'CDMX';
@@ -72,13 +72,15 @@ const Dashboard = () => {
   const [showFullHistoryMap, setShowFullHistoryMap] = useState(true);
   
   const [isLoading, setIsLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState(null);
+  // Eliminada variable lastUpdated que causaba error por no usarse
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [errorMessage, setErrorMessage] = useState('');
   const [isManualRefresh, setIsManualRefresh] = useState(false);
   const [alerts, setAlerts] = useState([]);
 
   // --- HELPERS DE PARSEO ---
+  const debugInstructors = () => console.log('DEBUG: Verificando datos...');
+
   const parseNumberFromString = (value) => {
     if (value === undefined || value === null || value === '') return 0;
     if (typeof value === 'number') return isNaN(value) ? 0 : value;
@@ -144,36 +146,25 @@ const Dashboard = () => {
     return null;
   };
 
-  // --- TRANSFORMACIÓN DE DATOS (Lógica Robusta Original) ---
+  // --- TRANSFORMACIÓN DE DATOS ---
   const transformGoogleSheetsData = (rawData) => {
     const rows = rawData.slice(1);
     const transformedData = {};
-    
     rows.forEach((row) => {
-      // Estructura: A=Fecha, B=Escuela, C=Area, D=Curso, E=Ventas, F=Cursos, G=Instructor
       const [fecha, escuela, area, curso, ventas, cursosVendidos, instructor] = row;
-      
       if (!fecha || !escuela || !area || !curso) return;
-      
       const instructorNormalizado = instructor ? instructor.toString().trim().replace(/\s+/g, ' ') : 'Sin asignar';
       const monthKey = fecha.substring(0, 7);
-      
       if (!transformedData[monthKey]) transformedData[monthKey] = {};
       if (!transformedData[monthKey][escuela]) transformedData[monthKey][escuela] = {};
       if (!transformedData[monthKey][escuela][area]) transformedData[monthKey][escuela][area] = {};
-      
       const ventasNum = parseNumberFromString(ventas);
       const cursosNum = parseNumberFromString(cursosVendidos) || 1;
-      
       if (transformedData[monthKey][escuela][area][curso]) {
         transformedData[monthKey][escuela][area][curso].ventas += ventasNum;
         transformedData[monthKey][escuela][area][curso].cursos += cursosNum;
       } else {
-        transformedData[monthKey][escuela][area][curso] = {
-          ventas: ventasNum,
-          cursos: cursosNum,
-          instructor: instructorNormalizado
-        };
+        transformedData[monthKey][escuela][area][curso] = { ventas: ventasNum, cursos: cursosNum, instructor: instructorNormalizado };
       }
     });
     return transformedData;
@@ -182,23 +173,17 @@ const Dashboard = () => {
   const transformContactData = (rawData) => {
     const rows = rawData.slice(1);
     const transformedData = {};
-    // Columna H (index 7) es Medio de Contacto
     const MEDIO_INDEX = 7; 
-    
     rows.forEach((row) => {
       const fecha = row[0];
       const ventas = row[4];
       const cursosVendidos = row[5];
       const medioContacto = row[MEDIO_INDEX];
-
       if (!fecha || !medioContacto) return;
-      
       const monthKey = fecha.substring(0, 7);
       const medio = medioContacto.trim();
-      
       if (!transformedData[monthKey]) transformedData[monthKey] = {};
       if (!transformedData[monthKey][medio]) transformedData[monthKey][medio] = { ventas: 0, cursos: 0 };
-      
       transformedData[monthKey][medio].ventas += parseNumberFromString(ventas);
       transformedData[monthKey][medio].cursos += (parseNumberFromString(cursosVendidos) || 1);
     });
@@ -208,19 +193,15 @@ const Dashboard = () => {
   const transformAgeData = (rawData) => {
     const rows = rawData.slice(1);
     const transformedData = {};
-    const AGE_COLUMN_INDEX = 8; // Columna I
-    
+    const AGE_COLUMN_INDEX = 8; 
     rows.forEach((row) => {
         const fecha = row[0];
         const rawAge = row[AGE_COLUMN_INDEX] ? row[AGE_COLUMN_INDEX].toString().trim() : '';
-        
         if (!fecha) return;
         const monthKey = fecha.substring(0, 7);
         if (!transformedData[monthKey]) transformedData[monthKey] = {};
-        
         let ageRange = "Desconocido";
         const ageNum = parseInt(rawAge);
-        
         if (!isNaN(ageNum) && ageNum > 0) {
             if (ageNum < 18) ageRange = "Menores de 18";
             else if (ageNum >= 18 && ageNum <= 24) ageRange = "18-24";
@@ -233,7 +214,6 @@ const Dashboard = () => {
         } else {
             ageRange = "Sin dato";
         }
-        
         if (!transformedData[monthKey][ageRange]) transformedData[monthKey][ageRange] = 0;
         transformedData[monthKey][ageRange] += 1; 
     });
@@ -243,19 +223,15 @@ const Dashboard = () => {
   const transformMapData = (rawData) => {
     const rows = rawData.slice(1);
     const transformedData = {}; 
-    const CP_COLUMN_INDEX = 9; // Columna J
-    
+    const CP_COLUMN_INDEX = 9; 
     rows.forEach((row) => {
         const fecha = row[0];
         const ventas = row[4]; 
         const cp = row[CP_COLUMN_INDEX] ? row[CP_COLUMN_INDEX].toString().trim() : '';
-        
         if (!fecha || !cp || cp.length < 4) return;
-        
         const monthKey = fecha.substring(0, 7);
         if (!transformedData[monthKey]) transformedData[monthKey] = {};
         if (!transformedData[monthKey][cp]) transformedData[monthKey][cp] = { count: 0, ventas: 0 };
-        
         transformedData[monthKey][cp].count += 1;
         transformedData[monthKey][cp].ventas += parseNumberFromString(ventas);
     });
@@ -266,13 +242,10 @@ const Dashboard = () => {
     if (!rawData || rawData.length < 2) return {};
     const rows = rawData.slice(1);
     const result = {};
-    
     rows.forEach(row => {
-        // Estructura: [Mes, Sede, Obj Ventas, Obj Cursos]
         const mes = row[0]; 
         const sedeRaw = row[1];
         if (!mes || !sedeRaw) return;
-        
         if (!result[mes]) {
             result[mes] = {
                 cdmx: { ventas: 0, cursos: 0 },
@@ -280,12 +253,10 @@ const Dashboard = () => {
                 online: { ventas: 0, cursos: 0 }
             };
         }
-
         const sedeLower = sedeRaw.toLowerCase().trim();
         let key = 'cdmx';
         if (sedeLower.includes('quer') || sedeLower.includes('qro')) key = 'qro';
         else if (sedeLower.includes('online')) key = 'online';
-        
         result[mes][key] = {
             ventas: parseNumberFromString(row[2]),
             cursos: parseNumberFromString(row[3])
@@ -300,15 +271,13 @@ const Dashboard = () => {
     const rows = rawData.slice(1);
     const result = {};
     const meses = headers.slice(1).filter(header => header && header.trim() !== '');
-    
     rows.forEach((row) => {
       const escuela = row[0];
       if (!escuela) return;
       const escuelaClean = escuela.trim();
       result[escuelaClean] = {};
       meses.forEach((mes, i) => {
-        const cellValue = row[i + 1]; 
-        result[escuelaClean][mes.trim()] = parseNumberFromString(cellValue);
+        result[escuelaClean][mes.trim()] = parseNumberFromString(row[i + 1]);
       });
     });
     return result;
@@ -322,14 +291,11 @@ const Dashboard = () => {
     const rows = allDataRows.slice(0, 8).filter(row => row.length > 0 && parseNumberFromString(row[0]) > 0).map(r => r.slice(0, 15));
     const queretaroRows = rawData.slice(10, 15).map(r => r.slice(0, 15));
     const totalRows = rawData.slice(17, 22).map(r => r.slice(0, 15));
-    
     const MONTH_ABBREVIATIONS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     const monthlyMap = [];
     const annualGrowthData = [];
     const years = [];
-    
     const yearIndex = headers.findIndex(h => h.toLowerCase().includes('año'));
-    
     rows.forEach(row => {
         const year = parseNumberFromString(row[yearIndex]);
         if (year > 0) {
@@ -337,7 +303,6 @@ const Dashboard = () => {
             annualGrowthData.push({ year: year, crecimiento: parseNumberFromString(row[headers.length - 1] || '0') });
         }
     });
-
     MONTH_ABBREVIATIONS.forEach((monthName, i) => {
         const monthData = { name: monthName };
         rows.forEach(row => {
@@ -348,7 +313,6 @@ const Dashboard = () => {
         });
         monthlyMap.push(monthData);
     });
-
     return {
         headers, rows, queretaroRows, totalRows,
         years: years.sort((a, b) => a - b),
@@ -361,19 +325,15 @@ const Dashboard = () => {
   const fetchGoogleSheetsData = async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
     setIsManualRefresh(showLoading);
-    
     try {
-      // 1. VENTAS
       const ventasRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.ventas}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`);
       if (!ventasRes.ok) throw new Error(`Error Ventas: ${ventasRes.status}`);
       const ventasData = await ventasRes.json();
-      
       setSalesData(transformGoogleSheetsData(ventasData.values));
       setContactData(transformContactData(ventasData.values)); 
       setAgeData(transformAgeData(ventasData.values));
       setMapData(transformMapData(ventasData.values));
       
-      // 2. COBRANZA (Safe Fetch)
       try {
         const cobRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.cobranza}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`);
         if (cobRes.ok) {
@@ -382,7 +342,6 @@ const Dashboard = () => {
         }
       } catch (e) { console.warn("Cobranza error", e); }
       
-      // 3. CRECIMIENTO (Safe Fetch)
       try {
         const crecRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.crecimientoAnual}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`);
         if (crecRes.ok) {
@@ -391,7 +350,6 @@ const Dashboard = () => {
         }
       } catch (e) { console.warn("Crecimiento error", e); }
 
-      // 4. OBJETIVOS (Safe Fetch)
       try {
         const objRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.objetivos}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`);
         if (objRes.ok) {
@@ -401,7 +359,6 @@ const Dashboard = () => {
       } catch (e) { console.warn("Objetivos error", e); }
 
       setConnectionStatus('connected');
-      setLastUpdated(new Date());
       setErrorMessage('');
     } catch (error) {
       console.error('Critical Fetch Error:', error);
@@ -435,25 +392,18 @@ const Dashboard = () => {
   }, [selectedMonth, mapData, showFullHistoryMap, coordsCache]);
 
   useEffect(() => {
-    // Generador de Alertas
     const newAlerts = [];
     const months = Object.keys(salesData).sort();
     if (months.length > 1) {
         const curr = months[months.length - 1];
         const prev = months[months.length - 2];
-        // Lógica simplificada de alertas para ahorrar espacio pero mantener funcionalidad
         Object.keys(salesData[curr]).forEach(s => {
             Object.keys(salesData[curr][s]).forEach(a => {
                 Object.keys(salesData[curr][s][a]).forEach(c => {
                     const currentVal = salesData[curr][s][a][c].ventas;
                     const prevVal = salesData[prev]?.[s]?.[a]?.[c]?.ventas;
                     if(prevVal && currentVal < prevVal * 0.8) {
-                        newAlerts.push({ 
-                            type: 'warning', 
-                            message: `${c} bajó ventas`, 
-                            details: `${s} - ${a}`, 
-                            escuela: s, area: a, priority: 'high' 
-                        });
+                        newAlerts.push({ type: 'warning', message: `${c} bajó ventas`, details: `${s} - ${a}`, escuela: s, area: a, priority: 'high' });
                     }
                 });
             });
@@ -475,7 +425,7 @@ const Dashboard = () => {
     return Array.from(set);
   }, [salesData]);
 
-  // --- AGGREGATION FUNCTIONS PARA VISTAS DETALLADAS ---
+  // --- AGGREGATION HELPERS ---
   const getSchoolTotals = (month) => {
     const totals = {};
     if (!salesData[month]) return totals;
@@ -582,7 +532,15 @@ const Dashboard = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewType, selectedMonth, selectedSchool, selectedArea, metricType, compareMonths]);
 
-  // --- SUB DASHBOARDS ---
+  // --- SUB COMPONENTS ---
+  const ConnectionStatus = () => (
+    <div className="flex items-center gap-2 text-sm">
+      {connectionStatus === 'connected' && <><Wifi className="w-4 h-4 text-green-500" /><span className="text-green-600">Conectado</span></>}
+      {connectionStatus === 'error' && <><WifiOff className="w-4 h-4 text-red-500" /><span className="text-red-600">Error</span></>}
+      <button onClick={() => fetchGoogleSheetsData(true)} disabled={isLoading} className="ml-2 text-gray-500 hover:text-blue-500"><RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /></button>
+    </div>
+  );
+
   const ExecutiveDashboard = () => {
     const currentMonthData = salesData[selectedMonth] || {};
     const currentTargets = objetivosData[selectedMonth] || { cdmx: { ventas: 0, cursos: 0 }, qro: { ventas: 0, cursos: 0 }, online: { ventas: 0, cursos: 0 } };
@@ -762,7 +720,6 @@ const Dashboard = () => {
           </div>
         </div>
         
-        {/* Distribución de Edades */}
         <div className="grid grid-cols-1 gap-6 mt-6">
              <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold mb-4">Distribución de Edades ({selectedMonth})</h3>
@@ -884,7 +841,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Filtros Generales para Vistas Detalladas */}
+        {/* Filtros Generales */}
         {viewType !== 'executive' && viewType !== 'cobranza' && viewType !== 'crecimientoAnual' && viewType !== 'mapa' && (
             <div className="bg-white rounded-lg shadow p-4 mb-6 flex gap-4 flex-wrap">
                 <div>
@@ -925,7 +882,6 @@ const Dashboard = () => {
         {viewType === "crecimientoAnual" && <CrecimientoAnualDashboard />}
         {viewType === "contacto" && <ContactDashboard />}
         
-        {/* Vistas Detalladas Genéricas */}
         {(viewType === "escuela" || viewType === "area" || viewType === "instructor" || viewType === "curso" || viewType === "comparacion") && (
             <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-xl font-bold mb-4 capitalize">Análisis por {viewType}</h3>
