@@ -1,8 +1,10 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import DashboardConsejo from './DashboardConsejo';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
-  LineChart, Line 
+  Cell 
 } from 'recharts';
 import { MapContainer, TileLayer, CircleMarker, Popup as MapPopup } from 'react-leaflet';
 import { 
@@ -12,8 +14,7 @@ import {
 } from 'lucide-react';
 
 const SEDE = process.env.REACT_APP_SEDE || 'CDMX';
-// Aquí detectamos si es el dashboard de dirección o de una escuela normal
-const MODO = process.env.REACT_APP_MODO || 'ESCUELA'; 
+const MODO = process.env.REACT_APP_MODO || 'ESCUELA';
 
 const GOOGLE_SHEETS_CONFIG = {
   apiKey: process.env.REACT_APP_GSHEETS_API_KEY,
@@ -108,6 +109,7 @@ const TrendIcon = ({ trend }) => {
 };
 
 const Dashboard = () => {
+  // --- ESTADOS ---
   const currentDate = new Date();
   const currentMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
   const currentYearStr = currentDate.getFullYear().toString();
@@ -131,6 +133,7 @@ const Dashboard = () => {
   
   const [coordsCache, setCoordsCache] = useState({}); 
   const [showFullHistoryMap, setShowFullHistoryMap] = useState(true);
+  
   const [isLoading, setIsLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [errorMessage, setErrorMessage] = useState('');
@@ -158,24 +161,25 @@ const Dashboard = () => {
     return null;
   }, [coordsCache]);
 
-  // --- TRANSFORMS ---
+  // --- DATA TRANSFORMS ---
   const transformGoogleSheetsData = (rawData) => {
     const rows = rawData.slice(1);
     const transformedData = {};
     rows.forEach((row) => {
       const [fecha, escuela, area, curso, ventas, cursosVendidos, instructor] = row;
-      if (!fecha || !escuela) return;
+      if (!fecha || !escuela || !area || !curso) return;
+      const instructorNormalizado = instructor ? instructor.toString().trim().replace(/\s+/g, ' ') : 'Sin asignar';
       const monthKey = fecha.substring(0, 7);
       if (!transformedData[monthKey]) transformedData[monthKey] = {};
       if (!transformedData[monthKey][escuela]) transformedData[monthKey][escuela] = {};
       if (!transformedData[monthKey][escuela][area]) transformedData[monthKey][escuela][area] = {};
-      const v = parseNumberFromString(ventas);
-      const c = parseNumberFromString(cursosVendidos) || 1;
+      const ventasNum = parseNumberFromString(ventas);
+      const cursosNum = parseNumberFromString(cursosVendidos) || 1;
       if (transformedData[monthKey][escuela][area][curso]) {
-        transformedData[monthKey][escuela][area][curso].ventas += v;
-        transformedData[monthKey][escuela][area][curso].cursos += c;
+        transformedData[monthKey][escuela][area][curso].ventas += ventasNum;
+        transformedData[monthKey][escuela][area][curso].cursos += cursosNum;
       } else {
-        transformedData[monthKey][escuela][area][curso] = { ventas: v, cursos: c, instructor: instructor ? instructor.trim() : 'Sin asignar' };
+        transformedData[monthKey][escuela][area][curso] = { ventas: ventasNum, cursos: cursosNum, instructor: instructorNormalizado };
       }
     });
     return transformedData;
@@ -184,7 +188,6 @@ const Dashboard = () => {
   const transformContactData = (rawData) => {
     const rows = rawData.slice(1);
     const transformedData = {};
-    const MEDIO_INDEX = 7;
     rows.forEach((row) => {
       const [fecha, , , , ventas, cursosVendidos, , medioContacto] = row;
       if (!fecha || !medioContacto) return;
@@ -201,13 +204,14 @@ const Dashboard = () => {
   const transformAgeData = (rawData) => {
     const rows = rawData.slice(1);
     const transformedData = {};
-    const AGE_INDEX = 8;
+    const AGE_COLUMN_INDEX = 8; 
     rows.forEach((row) => {
         const fecha = row[0];
-        const rawAge = row[AGE_INDEX] ? row[AGE_INDEX].toString().trim() : '';
+        const rawAge = row[AGE_COLUMN_INDEX] ? row[AGE_COLUMN_INDEX].toString().trim() : '';
         if (!fecha) return;
         const monthKey = fecha.substring(0, 7);
         if (!transformedData[monthKey]) transformedData[monthKey] = {};
+        
         let ageRange = "Desconocido";
         const ageNum = parseInt(rawAge);
         if (!isNaN(ageNum) && ageNum > 0) {
@@ -218,6 +222,7 @@ const Dashboard = () => {
             else if (ageNum >= 45 && ageNum <= 54) ageRange = "45-54";
             else ageRange = "55+";
         } else if (rawAge !== '') { ageRange = "Otro"; } else { ageRange = "Sin dato"; }
+        
         if (!transformedData[monthKey][ageRange]) transformedData[monthKey][ageRange] = 0;
         transformedData[monthKey][ageRange] += 1; 
     });
@@ -227,11 +232,11 @@ const Dashboard = () => {
   const transformMapData = (rawData) => {
     const rows = rawData.slice(1);
     const transformedData = {}; 
-    const CP_INDEX = 9;
+    const CP_COLUMN_INDEX = 9; 
     rows.forEach((row) => {
         const fecha = row[0];
         const ventas = row[4]; 
-        const cp = row[CP_INDEX] ? row[CP_INDEX].toString().trim() : '';
+        const cp = row[CP_COLUMN_INDEX] ? row[CP_COLUMN_INDEX].toString().trim() : '';
         if (!fecha || !cp || cp.length < 4) return;
         const monthKey = fecha.substring(0, 7);
         if (!transformedData[monthKey]) transformedData[monthKey] = {};
@@ -250,7 +255,9 @@ const Dashboard = () => {
         const mes = row[0]; 
         const sedeRaw = row[1];
         if (!mes || !sedeRaw) return;
-        if (!result[mes]) result[mes] = { cdmx: { ventas: 0, cursos: 0 }, qro: { ventas: 0, cursos: 0 }, online: { ventas: 0, cursos: 0 } };
+        if (!result[mes]) {
+            result[mes] = { cdmx: { ventas: 0, cursos: 0 }, qro: { ventas: 0, cursos: 0 }, online: { ventas: 0, cursos: 0 } };
+        }
         const sedeLower = sedeRaw.toLowerCase().trim();
         let key = 'cdmx';
         if (sedeLower.includes('quer') || sedeLower.includes('qro')) key = 'qro';
@@ -265,7 +272,7 @@ const Dashboard = () => {
     const headers = rawData[0];
     const rows = rawData.slice(1);
     const result = {};
-    const meses = headers.slice(1).filter(h => h && h.trim() !== '');
+    const meses = headers.slice(1).filter(header => header && header.trim() !== '');
     rows.forEach((row) => {
       const escuela = row[0];
       if (!escuela) return;
@@ -283,7 +290,7 @@ const Dashboard = () => {
     const headerRow = rawData[1]; 
     const allDataRows = rawData.slice(2);
     const headers = (headerRow || []).slice(0, 15).map(h => h.trim()); 
-    const rows = allDataRows.slice(0, 8).filter(r => r.length > 0 && parseNumberFromString(r[0]) > 0).map(r => r.slice(0, 15));
+    const rows = allDataRows.slice(0, 8).filter(row => row.length > 0 && parseNumberFromString(row[0]) > 0).map(r => r.slice(0, 15));
     const queretaroRows = rawData.slice(10, 15).map(r => r.slice(0, 15));
     const totalRows = rawData.slice(17, 22).map(r => r.slice(0, 15));
     const MONTH_ABBREVIATIONS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -302,14 +309,16 @@ const Dashboard = () => {
         const monthData = { name: monthName };
         rows.forEach(row => {
             const year = parseNumberFromString(row[yearIndex]);
-            if (year > 0) monthData[year] = parseNumberFromString(row[i + 1]);
+            if (year > 0) {
+                monthData[year] = parseNumberFromString(row[i + 1]);
+            }
         });
         monthlyMap.push(monthData);
     });
     return { headers, rows, queretaroRows, totalRows, years: years.sort((a, b) => a - b), monthlyMap, annualGrowthData: annualGrowthData.sort((a, b) => a.year - b.year) };
   };
 
-  // --- FETCHING ---
+  // --- FETCHING FUNCTION ---
   const fetchGoogleSheetsData = useCallback(async (showLoading = true) => {
     if (showLoading) setIsLoading(true);
     try {
@@ -340,16 +349,14 @@ const Dashboard = () => {
         }
       } catch (e) { console.warn(e); }
 
-      // 4. Objetivos (Solo si es Dirección)
-      if (MODO === 'DIRECCION') {
-          try {
-            const objRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.objetivos}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`);
-            if (objRes.ok) {
-                const objData = await objRes.json();
-                setObjetivosData(transformObjetivosData(objData.values));
-            }
-          } catch (e) { console.warn(e); }
-      }
+      // 4. Objetivos
+      try {
+        const objRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${GOOGLE_SHEETS_CONFIG.ranges.objetivos}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`);
+        if (objRes.ok) {
+            const objData = await objRes.json();
+            setObjetivosData(transformObjetivosData(objData.values));
+        }
+      } catch (e) { console.warn(e); }
 
       setConnectionStatus('connected');
       setErrorMessage('');
@@ -364,7 +371,11 @@ const Dashboard = () => {
 
   // --- EFFECTS ---
   useEffect(() => { fetchGoogleSheetsData(); }, [fetchGoogleSheetsData]);
-  useEffect(() => { const i = setInterval(() => fetchGoogleSheetsData(false), 3600000); return () => clearInterval(i); }, [fetchGoogleSheetsData]);
+  
+  useEffect(() => {
+    const i = setInterval(() => fetchGoogleSheetsData(false), 3600000); 
+    return () => clearInterval(i); 
+  }, [fetchGoogleSheetsData]);
 
   useEffect(() => {
     const loadCoordinates = async () => {
@@ -382,7 +393,7 @@ const Dashboard = () => {
         }
     };
     loadCoordinates();
-  }, [selectedMonth, mapData, showFullHistoryMap, coordsCache, fetchCoordinatesForCP]);
+  }, [selectedMonth, mapData, showFullHistoryMap]);
 
   useEffect(() => {
     const newAlerts = [];
@@ -418,7 +429,7 @@ const Dashboard = () => {
     return Array.from(set);
   }, [salesData]);
 
-  // --- HELPERS PARA VISTAS ---
+  // --- AGGREGATION ---
   const getSchoolTotals = (month) => {
     const totals = {};
     if (!salesData[month]) return totals;
@@ -527,7 +538,7 @@ const Dashboard = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewType, selectedMonth, selectedSchool, selectedArea, metricType, compareMonths]);
 
-  // --- RENDER FUNCTIONS (Vistas) ---
+  // --- RENDER FUNCTIONS ---
   const renderExecutiveDirection = () => {
     const currentMonthData = salesData[selectedMonth] || {};
     const currentTargets = objetivosData[selectedMonth] || { cdmx: { ventas: 0, cursos: 0 }, qro: { ventas: 0, cursos: 0 }, online: { ventas: 0, cursos: 0 } };
@@ -562,8 +573,10 @@ const Dashboard = () => {
                     Object.values(monthData[schoolName][areaName]).forEach(curso => {
                         const monto = curso.ventas;
                         const qty = curso.cursos;
-                        const isOnline = schoolName.toLowerCase().includes('online') || areaName.toLowerCase().includes('online');
-                        const isQro = schoolName.toLowerCase().includes('qro');
+                        const lowerSchool = schoolName.toLowerCase();
+                        const lowerArea = areaName.toLowerCase();
+                        const isOnline = lowerSchool.includes('online') || lowerArea.includes('online');
+                        const isQro = lowerSchool.includes('queretaro') || lowerSchool.includes('querétaro') || lowerSchool.includes('qro');
                         if (isOnline) annualMetrics.online += monto;
                         else if (isQro) annualMetrics.qro += monto;
                         else annualMetrics.cdmx += monto;
@@ -664,12 +677,8 @@ const Dashboard = () => {
     const currentMonthData = salesData[selectedMonth] || {};
     let totalVentas = 0;
     let totalCursos = 0;
-    let schoolsInView = 0;
 
     Object.keys(currentMonthData).forEach(schoolName => {
-        // En modo ESCUELA, la API ya filtra (Ventas Qro vs Ventas CDMX)
-        // Así que sumamos todo lo que llega
-        schoolsInView++;
         Object.keys(currentMonthData[schoolName]).forEach(areaName => {
             Object.values(currentMonthData[schoolName][areaName]).forEach(curso => {
                 totalVentas += curso.ventas;
@@ -929,6 +938,31 @@ const Dashboard = () => {
                                 <strong>{a.message}</strong> - {a.details}
                             </div>
                         ))}
+                    </div>
+                </div>
+            </div>
+        )}
+        
+        {/* Gráfico de Tendencia (Separado para que sea visible siempre en ejecutivo) */}
+        {viewType === "executive" && (
+            <div className="grid grid-cols-1 gap-6 mt-6">
+                <div className="bg-white rounded-lg shadow p-6">
+                    <h3 className="text-lg font-semibold mb-4">Tendencia de Ventas ({selectedYear})</h3>
+                    <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={Object.keys(salesData).filter(m => m.startsWith(selectedYear)).sort().map(month => {
+                                const mData = salesData[month];
+                                let mTotal = 0;
+                                Object.values(mData).forEach(s => Object.values(s).forEach(a => Object.values(a).forEach(c => mTotal += c.ventas)));
+                                return { month: formatDateShort(month), ventas: mTotal };
+                            })}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="month" />
+                                <YAxis tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
+                                <Tooltip formatter={(v) => `$${v.toLocaleString()}`} />
+                                <Line type="monotone" dataKey="ventas" stroke="#4F46E5" strokeWidth={3} />
+                            </LineChart>
+                        </ResponsiveContainer>
                     </div>
                 </div>
             </div>
