@@ -601,6 +601,7 @@ const Dashboard = () => {
         const actual = isSales ? metrics[dataKey].ventas : metrics[dataKey].cursos;
         const target = isSales ? currentTargets[dataKey]?.ventas || 0 : currentTargets[dataKey]?.cursos || 0;
         const progress = getProgress(actual, target);
+        
         const colorClass = color === 'purple' ? 'text-purple-600' : color === 'blue' ? 'text-blue-600' : 'text-green-600';
         const bgClass = color === 'purple' ? 'bg-purple-100' : color === 'blue' ? 'bg-blue-100' : 'bg-green-100';
         const barClass = color === 'purple' ? 'bg-purple-500' : color === 'blue' ? 'bg-blue-500' : 'bg-green-500';
@@ -634,6 +635,14 @@ const Dashboard = () => {
 
     return (
       <div className="space-y-8">
+        <div className="bg-white rounded-lg shadow p-4 flex justify-between items-center">
+            <ConnectionStatus />
+            {errorMessage && <span className="text-xs text-red-500">{errorMessage}</span>}
+            <button onClick={() => fetchGoogleSheetsData(true)} disabled={isLoading} className="text-sm bg-gray-100 px-3 py-1 rounded hover:bg-gray-200">
+                {isLoading ? '...' : 'Actualizar'}
+            </button>
+        </div>
+
         <div>
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><Target className="w-6 h-6 text-red-500" /> Objetivos Mensuales</h2>
@@ -833,7 +842,6 @@ const Dashboard = () => {
             <button onClick={() => setViewType("mapa")} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "mapa" ? "bg-red-600 text-white" : "bg-gray-100"}`}><MapPin className="w-4 h-4" /> Mapa</button>
             <button onClick={() => setViewType("cobranza")} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "cobranza" ? "bg-blue-600 text-white" : "bg-gray-100"}`}><DollarSign className="w-4 h-4" /> Cobranza</button>
             <button onClick={() => setViewType("crecimientoAnual")} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "crecimientoAnual" ? "bg-indigo-600 text-white" : "bg-gray-100"}`}><TrendingUp className="w-4 h-4" /> Crecimiento</button>
-            <button onClick={debugInstructors} className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-lg text-sm font-medium">Debug</button>
           </div>
         </div>
 
