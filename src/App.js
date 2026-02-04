@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import DashboardConsejo from './DashboardConsejo';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
-  LineChart, Line 
+  LineChart, Line, PieChart, Pie, Cell 
 } from 'recharts';
 import { MapContainer, TileLayer, CircleMarker, Popup as MapPopup } from 'react-leaflet';
 import { 
@@ -186,7 +186,6 @@ const Dashboard = () => {
   const transformContactData = (rawData) => {
     const rows = rawData.slice(1);
     const transformedData = {};
-    const MEDIO_INDEX = 7; 
     rows.forEach((row) => {
       const [fecha, , , , ventas, cursosVendidos, , medioContacto] = row;
       if (!fecha || !medioContacto) return;
@@ -536,16 +535,8 @@ const Dashboard = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewType, selectedMonth, selectedSchool, selectedArea, metricType, compareMonths]);
 
-  // --- SUB COMPONENTS ---
-  const ConnectionStatus = () => (
-    <div className="flex items-center gap-2 text-sm">
-      {connectionStatus === 'connected' && <><Wifi className="w-4 h-4 text-green-500" /><span className="text-green-600">Conectado</span></>}
-      {connectionStatus === 'error' && <><WifiOff className="w-4 h-4 text-red-500" /><span className="text-red-600">Error</span></>}
-      <button onClick={() => fetchGoogleSheetsData(true)} disabled={isLoading} className="ml-2 text-gray-500 hover:text-blue-500"><RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /></button>
-    </div>
-  );
-
-  const ExecutiveDashboard = () => {
+  // --- RENDER FUNCTIONS (LIMPITAS) ---
+  const renderExecutiveDashboard = () => {
     const currentMonthData = salesData[selectedMonth] || {};
     const currentTargets = objetivosData[selectedMonth] || { cdmx: { ventas: 0, cursos: 0 }, qro: { ventas: 0, cursos: 0 }, online: { ventas: 0, cursos: 0 } };
 
@@ -635,14 +626,6 @@ const Dashboard = () => {
 
     return (
       <div className="space-y-8">
-        <div className="bg-white rounded-lg shadow p-4 flex justify-between items-center">
-            <ConnectionStatus />
-            {errorMessage && <span className="text-xs text-red-500">{errorMessage}</span>}
-            <button onClick={() => fetchGoogleSheetsData(true)} disabled={isLoading} className="text-sm bg-gray-100 px-3 py-1 rounded hover:bg-gray-200">
-                {isLoading ? '...' : 'Actualizar'}
-            </button>
-        </div>
-
         <div>
             <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><Target className="w-6 h-6 text-red-500" /> Objetivos Mensuales</h2>
@@ -741,8 +724,10 @@ const Dashboard = () => {
     );
   };
 
-  const CobranzaDashboard = () => {
-    const meses = useMemo(() => sortMonthsChronologically([...new Set(Object.values(cobranzaData).flatMap(s => Object.keys(s)))]), [cobranzaData]);
+  const renderCobranzaDashboard = () => {
+    // Calculamos meses y escuelas dentro de la función para evitar dependencias de hooks
+    const mesesDisponibles = [...new Set(Object.values(cobranzaData).flatMap(s => Object.keys(s)))];
+    const meses = sortMonthsChronologically(mesesDisponibles);
     const escuelas = Object.keys(cobranzaData);
     return (
         <div className="space-y-6">
@@ -757,7 +742,7 @@ const Dashboard = () => {
     );
   };
 
-  const MapDashboard = () => {
+  const renderMapDashboard = () => {
     const mapCenter = SEDE === 'QRO' ? [20.5888, -100.3899] : [19.4326, -99.1332];
     const dataForMap = showFullHistoryMap ? Object.values(mapData).reduce((acc, m) => {
         Object.entries(m).forEach(([cp, d]) => { if (!acc[cp]) acc[cp] = { count: 0, ventas: 0 }; acc[cp].count += d.count; acc[cp].ventas += d.ventas; });
@@ -792,7 +777,7 @@ const Dashboard = () => {
     );
   };
 
-  const ContactDashboard = () => {
+  const renderContactDashboard = () => {
       const totals = contactData[selectedMonth] || {};
       const data = Object.entries(totals).map(([name, val]) => ({ name, value: val.ventas }));
       return (
@@ -805,7 +790,7 @@ const Dashboard = () => {
       );
   };
 
-  const CrecimientoAnualDashboard = () => {
+  const renderCrecimientoAnualDashboard = () => {
       const { annualGrowthData } = crecimientoAnualData;
       return (
           <div className="bg-white rounded-lg shadow p-6">
@@ -888,12 +873,12 @@ const Dashboard = () => {
             </div>
         )}
 
-        {/* Renderizado de Vistas */}
-        {viewType === "executive" && <ExecutiveDashboard />}
-        {viewType === "cobranza" && <CobranzaDashboard />}
-        {viewType === "mapa" && <MapDashboard />}
-        {viewType === "crecimientoAnual" && <CrecimientoAnualDashboard />}
-        {viewType === "contacto" && <ContactDashboard />}
+        {/* Renderizado de Vistas con Render Functions */}
+        {viewType === "executive" && renderExecutiveDashboard()}
+        {viewType === "cobranza" && renderCobranzaDashboard()}
+        {viewType === "mapa" && renderMapDashboard()}
+        {viewType === "crecimientoAnual" && renderCrecimientoAnualDashboard()}
+        {viewType === "contacto" && renderContactDashboard()}
         
         {(viewType === "escuela" || viewType === "area" || viewType === "instructor" || viewType === "curso" || viewType === "comparacion") && (
             <div className="bg-white rounded-lg shadow p-6">
