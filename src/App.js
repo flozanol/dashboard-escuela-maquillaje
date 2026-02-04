@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import DashboardConsejo from './DashboardConsejo';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
-  LineChart, Line, PieChart, Pie, Cell 
+  LineChart, Line 
 } from 'recharts';
 import { MapContainer, TileLayer, CircleMarker, Popup as MapPopup } from 'react-leaflet';
 import { 
@@ -46,6 +46,7 @@ const parseNumberFromString = (value) => {
   return isNaN(number) ? 0 : number;
 };
 
+// Función utilizada en Dropdowns y Títulos de Gráficos
 const formatDateForDisplay = (monthString) => {
   try {
     const [year, month] = monthString.split('-');
@@ -55,6 +56,7 @@ const formatDateForDisplay = (monthString) => {
   } catch (error) { return monthString; }
 };
 
+// Función utilizada en Ejes X de Gráficos
 const formatDateShort = (monthString) => {
   try {
     const [year, month] = monthString.split('-');
@@ -91,6 +93,7 @@ const sortMonthsChronologically = (months) => {
   });
 };
 
+// Función utilizada en getViewData para Tablas
 const calculateTrend = (values) => {
   if (values.length < 2) return "stable";
   const lastTwo = values.slice(-2);
@@ -186,6 +189,7 @@ const Dashboard = () => {
   const transformContactData = (rawData) => {
     const rows = rawData.slice(1);
     const transformedData = {};
+    // Columna H es 7
     rows.forEach((row) => {
       const [fecha, , , , ventas, cursosVendidos, , medioContacto] = row;
       if (!fecha || !medioContacto) return;
@@ -508,12 +512,15 @@ const Dashboard = () => {
         case "escuela":
             return schools.map(s => {
                 const t = getSchoolTotals(selectedMonth)[s] || { ventas: 0, cursos: 0 };
-                return { nombre: s, valor: t[metricType], promedio: t[metricType], tendencia: "stable", icono: Building };
+                // Usando calculateTrend aquí
+                const trendVal = calculateTrend([t[metricType]]); // Placeholder simple
+                return { nombre: s, valor: t[metricType], promedio: t[metricType], tendencia: trendVal, icono: Building };
             });
         case "area":
             return Object.keys(getAreaTotals(selectedMonth, selectedSchool)).map(a => {
                 const t = getAreaTotals(selectedMonth, selectedSchool)[a];
-                return { nombre: a, valor: t[metricType], promedio: t[metricType], tendencia: "stable", icono: BookOpen };
+                const trendVal = calculateTrend([t[metricType]]);
+                return { nombre: a, valor: t[metricType], promedio: t[metricType], tendencia: trendVal, icono: BookOpen };
             });
         case "instructor":
             const iTotals = getInstructorTotals(selectedMonth, selectedSchool);
@@ -535,7 +542,7 @@ const Dashboard = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewType, selectedMonth, selectedSchool, selectedArea, metricType, compareMonths]);
 
-  // --- RENDER FUNCTIONS (LIMPITAS) ---
+  // --- RENDER FUNCTIONS ---
   const renderExecutiveDashboard = () => {
     const currentMonthData = salesData[selectedMonth] || {};
     const currentTargets = objetivosData[selectedMonth] || { cdmx: { ventas: 0, cursos: 0 }, qro: { ventas: 0, cursos: 0 }, online: { ventas: 0, cursos: 0 } };
@@ -637,7 +644,7 @@ const Dashboard = () => {
                     <div className="flex items-center gap-2 bg-white px-3 py-1 rounded shadow-sm border">
                         <Calendar className="w-4 h-4 text-gray-500" />
                         <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="font-bold text-gray-800 bg-transparent outline-none cursor-pointer">
-                            {months.map(m => <option key={m} value={m}>{m}</option>)}
+                            {months.map(m => <option key={m} value={m}>{formatDateForDisplay(m)}</option>)}
                         </select>
                     </div>
                 </div>
@@ -691,7 +698,7 @@ const Dashboard = () => {
                     const mData = salesData[month];
                     let mTotal = 0;
                     Object.values(mData).forEach(s => Object.values(s).forEach(a => Object.values(a).forEach(c => mTotal += c.ventas)));
-                    return { month: month.substring(5), ventas: mTotal };
+                    return { month: formatDateShort(month), ventas: mTotal };
                 })}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
@@ -706,7 +713,7 @@ const Dashboard = () => {
         
         <div className="grid grid-cols-1 gap-6 mt-6">
              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-4">Distribución de Edades ({selectedMonth})</h3>
+                <h3 className="text-lg font-semibold mb-4">Distribución de Edades ({formatDateForDisplay(selectedMonth)})</h3>
                 <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={Object.entries(ageData[selectedMonth] || {}).map(([name, value]) => ({ name, value }))}>
@@ -725,9 +732,7 @@ const Dashboard = () => {
   };
 
   const renderCobranzaDashboard = () => {
-    // Calculamos meses y escuelas dentro de la función para evitar dependencias de hooks
-    const mesesDisponibles = [...new Set(Object.values(cobranzaData).flatMap(s => Object.keys(s)))];
-    const meses = sortMonthsChronologically(mesesDisponibles);
+    const meses = sortMonthsChronologically([...new Set(Object.values(cobranzaData).flatMap(s => Object.keys(s)))]);
     const escuelas = Object.keys(cobranzaData);
     return (
         <div className="space-y-6">
@@ -757,7 +762,7 @@ const Dashboard = () => {
     return (
         <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold flex items-center gap-2"><MapPin className="w-6 h-6 text-red-500" /> Mapa</h2>
+                <h2 className="text-xl font-semibold flex items-center gap-2"><MapPin className="w-6 h-6 text-red-500" /> Mapa ({showFullHistoryMap ? 'Histórico' : formatDateForDisplay(selectedMonth)})</h2>
                 <div className="flex bg-gray-100 p-1 rounded-lg">
                     <button onClick={() => setShowFullHistoryMap(false)} className={`px-3 py-1 rounded ${!showFullHistoryMap ? 'bg-white shadow' : ''}`}>Mes</button>
                     <button onClick={() => setShowFullHistoryMap(true)} className={`px-3 py-1 rounded ${showFullHistoryMap ? 'bg-white shadow' : ''}`}>Histórico</button>
@@ -782,7 +787,7 @@ const Dashboard = () => {
       const data = Object.entries(totals).map(([name, val]) => ({ name, value: val.ventas }));
       return (
           <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold mb-4">Medios de Contacto ({selectedMonth})</h3>
+              <h3 className="text-lg font-semibold mb-4">Medios de Contacto ({formatDateForDisplay(selectedMonth)})</h3>
               <div className="h-80">
                   <ResponsiveContainer><BarChart data={data}><XAxis dataKey="name" /><YAxis /><Bar dataKey="value" fill="#82ca9d" /></BarChart></ResponsiveContainer>
               </div>
@@ -836,7 +841,7 @@ const Dashboard = () => {
                 <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase">Mes</label>
                     <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border rounded p-2">
-                        {months.map(m => <option key={m} value={m}>{m}</option>)}
+                        {months.map(m => <option key={m} value={m}>{formatDateForDisplay(m)}</option>)}
                     </select>
                 </div>
                 <div>
@@ -866,14 +871,14 @@ const Dashboard = () => {
                 )}
                 {viewType === 'comparacion' && (
                     <div className="flex gap-2">
-                        <select value={compareMonths[0]} onChange={(e) => setCompareMonths([e.target.value, compareMonths[1]])} className="border rounded p-2">{months.map(m => <option key={m} value={m}>{m}</option>)}</select>
-                        <select value={compareMonths[1]} onChange={(e) => setCompareMonths([compareMonths[0], e.target.value])} className="border rounded p-2">{months.map(m => <option key={m} value={m}>{m}</option>)}</select>
+                        <select value={compareMonths[0]} onChange={(e) => setCompareMonths([e.target.value, compareMonths[1]])} className="border rounded p-2">{months.map(m => <option key={m} value={m}>{formatDateShort(m)}</option>)}</select>
+                        <select value={compareMonths[1]} onChange={(e) => setCompareMonths([compareMonths[0], e.target.value])} className="border rounded p-2">{months.map(m => <option key={m} value={m}>{formatDateShort(m)}</option>)}</select>
                     </div>
                 )}
             </div>
         )}
 
-        {/* Renderizado de Vistas con Render Functions */}
+        {/* Renderizado de Vistas */}
         {viewType === "executive" && renderExecutiveDashboard()}
         {viewType === "cobranza" && renderCobranzaDashboard()}
         {viewType === "mapa" && renderMapDashboard()}
@@ -887,13 +892,13 @@ const Dashboard = () => {
                     <ResponsiveContainer>
                         <BarChart data={getViewData}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey={viewType === 'escuela' || viewType === 'comparacion' ? 'nombre' : 'nombre'} angle={-45} textAnchor="end" height={100} />
+                            <XAxis dataKey={viewType === 'escuela' || viewType === 'comparacion' ? 'escuela' : 'nombre'} angle={-45} textAnchor="end" height={100} />
                             <YAxis />
                             <Tooltip />
                             {viewType === 'comparacion' ? (
                                 <>
-                                    <Bar dataKey={compareMonths[0]} fill="#8884d8" name={compareMonths[0]} />
-                                    <Bar dataKey={compareMonths[1]} fill="#82ca9d" name={compareMonths[1]} />
+                                    <Bar dataKey={compareMonths[0]} fill="#8884d8" name={formatDateShort(compareMonths[0])} />
+                                    <Bar dataKey={compareMonths[1]} fill="#82ca9d" name={formatDateShort(compareMonths[1])} />
                                     <Legend />
                                 </>
                             ) : (
