@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { DollarSign, Building, Target, TrendingUp, TrendingDown, Globe, Award, Calendar, CheckSquare, Square } from 'lucide-react';
+import { Building, Target, TrendingUp, TrendingDown, Globe, Award, Calendar, CheckSquare, Square } from 'lucide-react';
 
 // Colores institucionales IDIP
 const IDIP_GREEN = "#86C332";
@@ -93,7 +93,6 @@ export default function DashboardConsejo() {
       });
       setObjetivos(objs);
 
-      // Por defecto, seleccionar los últimos 3 meses en el acumulado
       const available = [...new Set([...Object.keys(processedVentas.cdmx.porMes), ...Object.keys(processedVentas.qro.porMes), ...Object.keys(processedVentas.online.porMes)])].sort().reverse();
       setSelectedRangeMonths(available.slice(0, 3));
       
@@ -101,7 +100,7 @@ export default function DashboardConsejo() {
     });
   }, []);
 
-  if (loading) return <div className="p-8 text-center text-gray-500 font-medium italic">Configurando selectores personalizados...</div>;
+  if (loading) return <div className="p-8 text-center text-gray-500 font-medium italic">Sincronizando Dashboard IDIP...</div>;
 
   const mesesDisponibles = [...new Set([...Object.keys(data.cdmx.porMes), ...Object.keys(data.qro.porMes), ...Object.keys(data.online.porMes)])].sort().reverse();
   
@@ -229,12 +228,12 @@ export default function DashboardConsejo() {
             <div className="h-10 w-[1px] bg-gray-200 hidden md:block"></div>
             <div>
               <h1 className="text-xl md:text-2xl font-black tracking-tight" style={{ color: IDIP_GRAY }}>DIRECCIÓN ESTRATÉGICA</h1>
-              <p className="text-xs font-bold uppercase tracking-widest" style={{ color: IDIP_GREEN }}>Análisis Personalizado</p>
+              <p className="text-xs font-bold uppercase tracking-widest" style={{ color: IDIP_GREEN }}>Identidad y Análisis IDIP</p>
             </div>
           </div>
           <div className="flex items-center gap-3 bg-gray-50 p-2 px-4 rounded-xl border border-gray-100">
             <Calendar size={18} style={{ color: IDIP_GRAY }} />
-            <span className="text-xs font-bold text-gray-400 uppercase">Mes Individual:</span>
+            <span className="text-xs font-bold text-gray-400 uppercase">Mes:</span>
             <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="bg-transparent font-bold outline-none cursor-pointer text-sm" style={{ color: IDIP_GRAY }}>
               {mesesDisponibles.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
@@ -251,14 +250,13 @@ export default function DashboardConsejo() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-2">
               <CheckSquare size={22} color={IDIP_GREEN} />
-              <h2 className="font-black text-lg uppercase tracking-tight" style={{ color: IDIP_GRAY }}>Selección de Meses Acumulados</h2>
+              <h2 className="font-black text-lg uppercase tracking-tight" style={{ color: IDIP_GRAY }}>Acumulados Personalizados</h2>
             </div>
             <div className="text-[10px] font-bold text-gray-400 uppercase">
-              {selectedRangeMonths.length} meses seleccionados
+              {selectedRangeMonths.length} meses sumados
             </div>
           </div>
 
-          {/* LISTA DE CHECKBOXES CON SCROLL */}
           <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1 border-b border-gray-50 pb-4">
             {mesesDisponibles.map(mes => (
               <button
@@ -277,23 +275,28 @@ export default function DashboardConsejo() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { label: 'Ventas Totales (Rango)', val: rangeData.total, bg: IDIP_GRAY },
-              { label: 'Ventas CDMX (Rango)', val: rangeData.cdmx, bg: IDIP_GREEN },
-              { label: 'Ventas QRO (Rango)', val: rangeData.qro, bg: IDIP_GRAY },
-              { label: 'Ventas Online (Rango)', val: rangeData.online, bg: IDIP_GREEN }
-            ].map((k, i) => (
-              <div key={i} className="p-6 rounded-2xl text-white shadow-lg transition-all" style={{ backgroundColor: k.bg }}>
-                <p className="text-[9px] opacity-80 uppercase font-black tracking-widest">{k.label}</p>
-                <p className="text-2xl font-black mt-1">${k.val.toLocaleString()}</p>
-              </div>
-            ))}
+            <div className="p-6 rounded-2xl text-white shadow-lg" style={{ backgroundColor: IDIP_GRAY }}>
+              <p className="text-[9px] opacity-80 uppercase font-black tracking-widest">Ventas Totales</p>
+              <p className="text-2xl font-black mt-1">${rangeData.total.toLocaleString()}</p>
+            </div>
+            <div className="p-6 rounded-2xl text-white shadow-lg" style={{ backgroundColor: IDIP_GREEN }}>
+              <p className="text-[9px] opacity-80 uppercase font-black tracking-widest">Ventas CDMX</p>
+              <p className="text-2xl font-black mt-1">${rangeData.cdmx.toLocaleString()}</p>
+            </div>
+            <div className="p-6 rounded-2xl text-white shadow-lg" style={{ backgroundColor: IDIP_GRAY }}>
+              <p className="text-[9px] opacity-80 uppercase font-black tracking-widest">Ventas QRO</p>
+              <p className="text-2xl font-black mt-1">${rangeData.qro.toLocaleString()}</p>
+            </div>
+            <div className="p-6 rounded-2xl text-white shadow-lg" style={{ backgroundColor: IDIP_GREEN }}>
+              <p className="text-[9px] opacity-80 uppercase font-black tracking-widest">Ventas Online</p>
+              <p className="text-2xl font-black mt-1">${rangeData.online.toLocaleString()}</p>
+            </div>
           </div>
         </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h3 className="font-black mb-6 uppercase text-sm tracking-widest" style={{ color: IDIP_GRAY }}>Tendencia Mensual ($)</h3>
+            <h3 className="font-black mb-6 uppercase text-sm tracking-widest" style={{ color: IDIP_GRAY }}>Tendencia de Ingresos ($)</h3>
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={dataGraficas}>
