@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { DollarSign, Building, Target, TrendingUp, TrendingDown, Globe, Award, Calendar } from 'lucide-react';
+import { DollarSign, Building, Target, TrendingUp, TrendingDown, Globe, Award, Calendar, CheckSquare, Square } from 'lucide-react';
 
 // Colores institucionales IDIP
 const IDIP_GREEN = "#86C332";
 const IDIP_GRAY = "#6D6E71";
 const IDIP_LIGHT_GRAY = "#F1F1F2";
-
-// Colores del Semáforo
 const COLOR_RED = "#EF4444";
 const COLOR_YELLOW = "#F59E0B";
 
@@ -82,24 +80,37 @@ export default function DashboardConsejo() {
   const [data, setData] = useState(null);
   const [objetivos, setObjetivos] = useState({});
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7));
-  const [rangeMonths, setRangeMonths] = useState('all');
+  const [selectedRangeMonths, setSelectedRangeMonths] = useState([]);
 
   useEffect(() => {
     fetchAllData().then(res => {
-      setData(processVentas(res.ventas));
+      const processedVentas = processVentas(res.ventas);
+      setData(processedVentas);
+      
       const objs = {};
       res.objetivos?.forEach(r => {
         if (r[0] && r[1]) objs[`${r[0]}-${r[1].toString().trim().toUpperCase()}`] = { ventas: parseNumber(r[2]), cursos: parseNumber(r[3]) };
       });
       setObjetivos(objs);
+
+      // Por defecto, seleccionar los últimos 3 meses en el acumulado
+      const available = [...new Set([...Object.keys(processedVentas.cdmx.porMes), ...Object.keys(processedVentas.qro.porMes), ...Object.keys(processedVentas.online.porMes)])].sort().reverse();
+      setSelectedRangeMonths(available.slice(0, 3));
+      
       setLoading(false);
     });
   }, []);
 
-  if (loading) return <div className="p-8 text-center text-gray-500 font-medium italic">Actualizando información de IDIP...</div>;
+  if (loading) return <div className="p-8 text-center text-gray-500 font-medium italic">Configurando selectores personalizados...</div>;
 
   const mesesDisponibles = [...new Set([...Object.keys(data.cdmx.porMes), ...Object.keys(data.qro.porMes), ...Object.keys(data.online.porMes)])].sort().reverse();
   
+  const toggleMonth = (mes) => {
+    setSelectedRangeMonths(prev => 
+      prev.includes(mes) ? prev.filter(m => m !== mes) : [...prev, mes]
+    );
+  };
+
   const getSedeData = (sedeObj, sedeName, month) => {
     const actual = sedeObj.porMes[month] || { ventas: 0, cursos: 0 };
     const dateParts = month.split('-');
@@ -110,10 +121,9 @@ export default function DashboardConsejo() {
     return { actual, obj, crecimiento: ventasAnt > 0 ? ((actual.ventas - ventasAnt) / ventasAnt * 100) : 0, ventasAnt, anoAnteriorLabel: prevYearNum };
   };
 
-  const getRangeTotals = (range) => {
-    const targetMonths = range === 'all' ? mesesDisponibles : mesesDisponibles.slice(0, parseInt(range));
+  const getCustomRangeTotals = () => {
     const totals = { total: 0, cdmx: 0, qro: 0, online: 0 };
-    targetMonths.forEach(m => {
+    selectedRangeMonths.forEach(m => {
       totals.cdmx += data.cdmx.porMes[m]?.ventas || 0;
       totals.qro += data.qro.porMes[m]?.ventas || 0;
       totals.online += data.online.porMes[m]?.ventas || 0;
@@ -125,7 +135,7 @@ export default function DashboardConsejo() {
   const currentCDMX = getSedeData(data.cdmx, 'CDMX', selectedMonth);
   const currentQRO = getSedeData(data.qro, 'QRO', selectedMonth);
   const currentOnline = getSedeData(data.online, 'ONLINE', selectedMonth);
-  const rangeData = getRangeTotals(rangeMonths);
+  const rangeData = getCustomRangeTotals();
 
   const dataGraficas = mesesDisponibles.slice().reverse().map(m => ({
     mes: m.substring(5),
@@ -219,11 +229,12 @@ export default function DashboardConsejo() {
             <div className="h-10 w-[1px] bg-gray-200 hidden md:block"></div>
             <div>
               <h1 className="text-xl md:text-2xl font-black tracking-tight" style={{ color: IDIP_GRAY }}>DIRECCIÓN ESTRATÉGICA</h1>
-              <p className="text-xs font-bold uppercase tracking-widest" style={{ color: IDIP_GREEN }}>IDIP • Análisis Consolidado</p>
+              <p className="text-xs font-bold uppercase tracking-widest" style={{ color: IDIP_GREEN }}>Análisis Personalizado</p>
             </div>
           </div>
           <div className="flex items-center gap-3 bg-gray-50 p-2 px-4 rounded-xl border border-gray-100">
             <Calendar size={18} style={{ color: IDIP_GRAY }} />
+            <span className="text-xs font-bold text-gray-400 uppercase">Mes Individual:</span>
             <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="bg-transparent font-bold outline-none cursor-pointer text-sm" style={{ color: IDIP_GRAY }}>
               {mesesDisponibles.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
@@ -236,27 +247,44 @@ export default function DashboardConsejo() {
           <CardSede titulo="ONLINE" info={currentOnline} color={IDIP_GRAY} icon={Globe} />
         </div>
 
-        <section className="space-y-4">
-          <div className="flex justify-between items-center px-1">
-            <h2 className="font-black flex items-center gap-2 text-lg" style={{ color: IDIP_GRAY }}>
-              <DollarSign size={22} color={IDIP_GREEN} /> ACUMULADOS POR PERIODO
-            </h2>
-            <select value={rangeMonths} onChange={e => setRangeMonths(e.target.value)} className="text-xs font-bold border rounded-lg px-3 py-2 outline-none bg-white shadow-sm cursor-pointer uppercase tracking-tighter" style={{ color: IDIP_GRAY }}>
-              <option value="all">Histórico Total</option>
-              <option value="3">Último Trimestre</option>
-              <option value="6">Último Semestre</option>
-              <option value="12">Último Año</option>
-            </select>
+        <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex items-center gap-2">
+              <CheckSquare size={22} color={IDIP_GREEN} />
+              <h2 className="font-black text-lg uppercase tracking-tight" style={{ color: IDIP_GRAY }}>Selección de Meses Acumulados</h2>
+            </div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase">
+              {selectedRangeMonths.length} meses seleccionados
+            </div>
           </div>
+
+          {/* LISTA DE CHECKBOXES CON SCROLL */}
+          <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1 border-b border-gray-50 pb-4">
+            {mesesDisponibles.map(mes => (
+              <button
+                key={mes}
+                onClick={() => toggleMonth(mes)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-[10px] font-black uppercase ${
+                  selectedRangeMonths.includes(mes)
+                    ? "bg-green-50 border-green-200 text-green-700 shadow-sm"
+                    : "bg-white border-gray-100 text-gray-400 hover:border-gray-200"
+                }`}
+              >
+                {selectedRangeMonths.includes(mes) ? <CheckSquare size={14} /> : <Square size={14} />}
+                {mes}
+              </button>
+            ))}
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'Ventas Totales', val: rangeData.total, bg: IDIP_GRAY },
-              { label: 'Ventas CDMX', val: rangeData.cdmx, bg: IDIP_GREEN },
-              { label: 'Ventas QRO', val: rangeData.qro, bg: IDIP_GRAY },
-              { label: 'Ventas Online', val: rangeData.online, bg: IDIP_GREEN }
+              { label: 'Ventas Totales (Rango)', val: rangeData.total, bg: IDIP_GRAY },
+              { label: 'Ventas CDMX (Rango)', val: rangeData.cdmx, bg: IDIP_GREEN },
+              { label: 'Ventas QRO (Rango)', val: rangeData.qro, bg: IDIP_GRAY },
+              { label: 'Ventas Online (Rango)', val: rangeData.online, bg: IDIP_GREEN }
             ].map((k, i) => (
-              <div key={i} className="p-6 rounded-2xl text-white shadow-lg transition-all hover:scale-[1.03]" style={{ backgroundColor: k.bg }}>
-                <p className="text-[10px] opacity-80 uppercase font-black tracking-widest">{k.label}</p>
+              <div key={i} className="p-6 rounded-2xl text-white shadow-lg transition-all" style={{ backgroundColor: k.bg }}>
+                <p className="text-[9px] opacity-80 uppercase font-black tracking-widest">{k.label}</p>
                 <p className="text-2xl font-black mt-1">${k.val.toLocaleString()}</p>
               </div>
             ))}
