@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { Building, Target, TrendingUp, TrendingDown, Globe, Award, Calendar, CheckSquare, Square, Zap, Activity, Users } from 'lucide-react';
+import { Building, Target, TrendingUp, TrendingDown, Globe, Award, Calendar, CheckSquare, Square, Zap, Activity, Users, ExternalLink } from 'lucide-react';
 
 // Colores institucionales IDIP
 const IDIP_GREEN = "#86C332";
@@ -247,11 +247,23 @@ export default function DashboardConsejo() {
               <p className="text-xs font-bold uppercase tracking-widest" style={{ color: IDIP_GREEN }}>IDIP • Business Intelligence</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 bg-gray-50 p-2 px-4 rounded-xl border border-gray-100">
-            <Calendar size={18} style={{ color: IDIP_GRAY }} />
-            <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="bg-transparent font-bold outline-none cursor-pointer text-sm" style={{ color: IDIP_GRAY }}>
-              {mesesDisponibles.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
+          <div className="flex items-center gap-3">
+            <a
+              href="https://idip-dashboard.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border font-bold text-xs uppercase transition-all hover:shadow-md"
+              style={{ borderColor: IDIP_GREEN, color: IDIP_GREEN, backgroundColor: '#f0f9e8' }}
+            >
+              <ExternalLink size={14} />
+              Dashboard IDIP
+            </a>
+            <div className="flex items-center gap-3 bg-gray-50 p-2 px-4 rounded-xl border border-gray-100">
+              <Calendar size={18} style={{ color: IDIP_GRAY }} />
+              <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="bg-transparent font-bold outline-none cursor-pointer text-sm" style={{ color: IDIP_GRAY }}>
+                {mesesDisponibles.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
           </div>
         </header>
 
