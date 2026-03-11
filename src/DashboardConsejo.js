@@ -256,7 +256,7 @@ export default function DashboardConsejo() {
               style={{ borderColor: IDIP_GREEN, color: IDIP_GREEN, backgroundColor: '#f0f9e8' }}
             >
               <ExternalLink size={14} />
-              Dashboard IDIP
+              Dashboard Marketing
             </a>
             <div className="flex items-center gap-3 bg-gray-50 p-2 px-4 rounded-xl border border-gray-100">
               <Calendar size={18} style={{ color: IDIP_GRAY }} />
