@@ -378,7 +378,7 @@ const Dashboard = () => {
 
     const queretaroRows = rawData.slice(10, 16).map(row => row.slice(0, 16));
 
-    const totalRows = rawData.slice(17, 23).map(row => row.slice(17, 23));
+    const totalRows = rawData.slice(17, 23).map(row => row.slice(0, 16));
 
     const MONTH_ABBREVIATIONS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     const monthlyMap = {};
