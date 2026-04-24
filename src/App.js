@@ -376,9 +376,9 @@ const Dashboard = () => {
         .filter(row => row.length > 0 && parseNumberFromString(row[0]) > 0)
         .map(row => row.slice(0, 15));
 
-    const queretaroRows = rawData.slice(10, 15).map(row => row.slice(0, 15));
+    const queretaroRows = rawData.slice(10, 16).map(row => row.slice(0, 16));
 
-    const totalRows = rawData.slice(17, 22).map(row => row.slice(0, 15));
+    const totalRows = rawData.slice(17, 23).map(row => row.slice(17, 23));
 
     const MONTH_ABBREVIATIONS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     const monthlyMap = {};
@@ -2191,7 +2191,7 @@ const contactMethods = useMemo(() => {
 
         {queretaroRows && queretaroRows.length > 0 && (
             <SimpleTable 
-                title="Querétaro (A11:O15)" 
+                title="Querétaro" 
                 dataRows={queretaroRows} 
                 tableHeaders={headers} 
                 colorTheme="blue"
@@ -2200,7 +2200,7 @@ const contactMethods = useMemo(() => {
 
         {totalRows && totalRows.length > 0 && (
             <SimpleTable 
-                title="Total (A18:O22)" 
+                title="Total" 
                 dataRows={totalRows} 
                 tableHeaders={headers} 
                 colorTheme="orange"
