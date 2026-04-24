@@ -2453,16 +2453,18 @@ if (MODO === 'CONSEJO') {
               <MapPin className="w-4 h-4" />
               Mapa de Alumnos
             </button>
-            <button
-              onClick={() => setViewType("cobranza")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "cobranza" 
-                ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg" 
-                : "bg-gray-100 text-gray-700 hover:bg-blue-50 hover:text-blue-700"
-              }`}
-            >
-              <DollarSign className="w-4 h-4" />
-              Cobranza
-            </button>
+            {SEDE !== 'QRO' && (
+  <button
+    onClick={() => setViewType("cobranza")}
+    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "cobranza" 
+      ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg" 
+      : "bg-gray-100 text-gray-700 hover:bg-blue-50 hover:text-blue-700"
+    }`}
+  >
+    <DollarSign className="w-4 h-4" />
+    Cobranza
+  </button>
+)}
             <button
               onClick={() => setViewType("crecimientoAnual")}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium ${viewType === "crecimientoAnual" 
