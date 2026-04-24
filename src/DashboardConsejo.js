@@ -101,7 +101,7 @@ function processPolancoIngresos(rows) {
     let fecha = (row[0] || '').toString().trim();
     const beneficiario = (row[1] || '').toString().trim();
     const concepto = (row[2] || 'SIN CONCEPTO').toString().trim().toUpperCase();
-    const ingreso = parseNumber(row[3] || 0);
+    const ingreso = parseNumber((row[3] || '').toString().replace(/\$/g, '').replace(/,/g, ''));
     const formaPago = (row[5] || 'SIN ESPECIFICAR').toString().trim().toUpperCase();
     const campus = (row[12] || '').toString().trim().toUpperCase();
 
@@ -402,74 +402,6 @@ export default function DashboardConsejo() {
         <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-2">
-              <Wallet size={22} color={IDIP_GREEN} />
-              <div>
-                <h2 className="font-black text-lg uppercase tracking-tight" style={{ color: IDIP_GRAY }}>Ingresos complementarios Polanco</h2>
-                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: IDIP_GREEN }}>Resumen ejecutivo para Dirección</p>
-              </div>
-            </div>
-            <div className="text-[10px] font-bold text-gray-400 uppercase">Hoja: Registros 2026</div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-5 rounded-2xl text-white shadow-lg" style={{ backgroundColor: IDIP_GRAY }}>
-              <p className="text-[9px] opacity-80 uppercase font-black tracking-widest">Mes seleccionado</p>
-              <p className="text-2xl font-black mt-1">${currentPolanco.toLocaleString()}</p>
-            </div>
-
-            <div className="p-5 rounded-2xl text-white shadow-lg" style={{ backgroundColor: IDIP_GREEN }}>
-              <p className="text-[9px] opacity-80 uppercase font-black tracking-widest">Acumulado rango</p>
-              <p className="text-2xl font-black mt-1">${polancoRangeTotal.toLocaleString()}</p>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
-              <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">Participación vs CDMX</p>
-              <p className="text-2xl font-black mt-1" style={{ color: IDIP_GRAY }}>{polancoVsCDMX.toFixed(1)}%</p>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
-              <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">Ticket promedio</p>
-              <p className="text-2xl font-black mt-1" style={{ color: IDIP_GRAY }}>${Math.round(polancoTicketPromedio).toLocaleString()}</p>
-              <p className="text-[10px] text-gray-400 font-bold mt-1">{polancoRangeRegs.toLocaleString()} registros</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
-              <h3 className="font-black mb-4 uppercase text-sm tracking-widest" style={{ color: IDIP_GRAY }}>Tendencia mensual</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={polancoTrendData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={IDIP_LIGHT_GRAY} />
-                    <XAxis dataKey="mes" tick={{ fontSize: 10, fontWeight: 'bold' }} />
-                    <YAxis tickFormatter={v => `$${v / 1000}k`} tick={{ fontSize: 10 }} />
-                    <Tooltip formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Ingreso']} />
-                    <Line type="monotone" dataKey="total" stroke={IDIP_GREEN} strokeWidth={4} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
-              <h3 className="font-black mb-4 uppercase text-sm tracking-widest" style={{ color: IDIP_GRAY }}>Top conceptos</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={polancoConceptData} layout="vertical" margin={{ left: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={IDIP_LIGHT_GRAY} />
-                    <XAxis type="number" tick={{ fontSize: 10 }} />
-                    <YAxis dataKey="concepto" type="category" tick={{ fontSize: 10, fontWeight: 'bold' }} width={110} />
-                    <Tooltip formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Ingreso']} />
-                    <Bar dataKey="total" fill={IDIP_GRAY} radius={[0, 6, 6, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div className="flex items-center gap-2">
               <CheckSquare size={22} color={IDIP_GREEN} />
               <h2 className="font-black text-lg uppercase tracking-tight" style={{ color: IDIP_GRAY }}>Acumulado Multi-Mes</h2>
             </div>
@@ -545,6 +477,74 @@ export default function DashboardConsejo() {
             </div>
           </div>
         </div>
+
+        <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Wallet size={22} color={IDIP_GREEN} />
+              <div>
+                <h2 className="font-black text-lg uppercase tracking-tight" style={{ color: IDIP_GRAY }}>Ingresos complementarios Polanco</h2>
+                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: IDIP_GREEN }}>Resumen ejecutivo para Dirección</p>
+              </div>
+            </div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase">Hoja: Registros 2026</div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-2xl text-white shadow-lg" style={{ backgroundColor: IDIP_GRAY }}>
+              <p className="text-[9px] opacity-80 uppercase font-black tracking-widest">Mes seleccionado</p>
+              <p className="text-2xl font-black mt-1">${currentPolanco.toLocaleString()}</p>
+            </div>
+
+            <div className="p-5 rounded-2xl text-white shadow-lg" style={{ backgroundColor: IDIP_GREEN }}>
+              <p className="text-[9px] opacity-80 uppercase font-black tracking-widest">Acumulado rango</p>
+              <p className="text-2xl font-black mt-1">${polancoRangeTotal.toLocaleString()}</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
+              <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">Participación vs CDMX</p>
+              <p className="text-2xl font-black mt-1" style={{ color: IDIP_GRAY }}>{polancoVsCDMX.toFixed(1)}%</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
+              <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">Ticket promedio</p>
+              <p className="text-2xl font-black mt-1" style={{ color: IDIP_GRAY }}>${Math.round(polancoTicketPromedio).toLocaleString()}</p>
+              <p className="text-[10px] text-gray-400 font-bold mt-1">{polancoRangeRegs.toLocaleString()} registros</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
+              <h3 className="font-black mb-4 uppercase text-sm tracking-widest" style={{ color: IDIP_GRAY }}>Tendencia mensual</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={polancoTrendData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={IDIP_LIGHT_GRAY} />
+                    <XAxis dataKey="mes" tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                    <YAxis tickFormatter={v => `$${v / 1000}k`} tick={{ fontSize: 10 }} />
+                    <Tooltip formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Ingreso']} />
+                    <Line type="monotone" dataKey="total" stroke={IDIP_GREEN} strokeWidth={4} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
+              <h3 className="font-black mb-4 uppercase text-sm tracking-widest" style={{ color: IDIP_GRAY }}>Top conceptos</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={polancoConceptData} layout="vertical" margin={{ left: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={IDIP_LIGHT_GRAY} />
+                    <XAxis type="number" tick={{ fontSize: 10 }} />
+                    <YAxis dataKey="concepto" type="category" tick={{ fontSize: 10, fontWeight: 'bold' }} width={110} />
+                    <Tooltip formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Ingreso']} />
+                    <Bar dataKey="total" fill={IDIP_GRAY} radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex items-center gap-2 mb-6">
