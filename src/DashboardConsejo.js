@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { Building, Target, TrendingUp, TrendingDown, Globe, Award, Calendar, CheckSquare, Square, Zap, Activity, Users, ExternalLink } from 'lucide-react';
+import { Building, Target, TrendingUp, TrendingDown, Globe, Award, Calendar, CheckSquare, Square, Zap, Activity, Users, ExternalLink, Wallet } from 'lucide-react';
 
 // Colores institucionales IDIP
 const IDIP_GREEN = "#86C332";
@@ -12,59 +12,126 @@ const COLOR_YELLOW = "#F59E0B";
 function parseNumber(value) {
   if (!value) return 0;
   if (typeof value === 'number') return value;
-  const num = parseFloat(String(value).replace(/,/g, ''));
+  const num = parseFloat(String(value).replace(/,/g, '').replace(/\$/g, ''));
   return isNaN(num) ? 0 : num;
 }
 
 async function fetchAllData() {
   const apiKey = process.env.REACT_APP_GSHEETS_API_KEY;
   const spreadsheetId = '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg';
-  const ranges = ['Ventas Consolidadas!A:I', 'Objetivos!A:D'];
+  const ranges = ['Ventas Consolidadas!A:I', 'Objetivos!A:D', 'Registros 2026!A:M'];
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchGet?key=${apiKey}&` + ranges.map(r => `ranges=${encodeURIComponent(r)}`).join('&');
   const res = await fetch(url);
   const data = await res.json();
-  return { ventas: data.valueRanges[0].values, objetivos: data.valueRanges[1].values };
+  return {
+    ventas: data.valueRanges[0]?.values || [],
+    objetivos: data.valueRanges[1]?.values || [],
+    registros: data.valueRanges[2]?.values || []
+  };
 }
 
 function processVentas(rows) {
   const initializeData = () => ({ ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} });
   const data = { CDMX: initializeData(), QRO: initializeData(), ONLINE: initializeData() };
+
   if (!rows || rows.length < 2) return { cdmx: data.CDMX, qro: data.QRO, online: data.ONLINE };
+
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
     if (!row[0] || !row[1]) continue;
+
     let fecha = row[0].toString();
     if (!isNaN(fecha) && fecha.length < 10) {
       const excelEpoch = new Date(1899, 11, 30);
       fecha = new Date(excelEpoch.getTime() + parseFloat(fecha) * 86400000).toISOString().substring(0, 10);
-    } else { fecha = fecha.replace(/\//g, '-'); }
+    } else {
+      fecha = fecha.replace(/\//g, '-');
+    }
+
     const mes = fecha.substring(0, 7);
     const ano = fecha.substring(0, 4);
     const mesNum = fecha.substring(5, 7);
     const sedeRaw = (row[8] || '').toString().trim().toUpperCase();
+
     let sede = null;
     if (sedeRaw === 'ONLINE') sede = 'ONLINE';
     else if (['QUERÉTARO', 'QRO', 'QUERETARO'].includes(sedeRaw)) sede = 'QRO';
     else if (['POLANCO', 'CDMX', 'MÉXICO', 'MEXICO'].includes(sedeRaw)) sede = 'CDMX';
+
     if (sede) {
       const v = parseNumber(row[4]);
       const c = parseNumber(row[5]) || 1;
       const esc = row[1];
+
       data[sede].ventas += v;
       data[sede].cursos += c;
+
       if (!data[sede].escuelas[esc]) data[sede].escuelas[esc] = { ventas: 0, cursos: 0 };
       data[sede].escuelas[esc].ventas += v;
       data[sede].escuelas[esc].cursos += c;
+
       if (!data[sede].porMes[mes]) data[sede].porMes[mes] = { ventas: 0, cursos: 0 };
       data[sede].porMes[mes].ventas += v;
       data[sede].porMes[mes].cursos += c;
+
       if (!data[sede].porAno[ano]) data[sede].porAno[ano] = {};
       if (!data[sede].porAno[ano][mesNum]) data[sede].porAno[ano][mesNum] = { ventas: 0, cursos: 0 };
       data[sede].porAno[ano][mesNum].ventas += v;
       data[sede].porAno[ano][mesNum].cursos += c;
     }
   }
+
   return { cdmx: data.CDMX, qro: data.QRO, online: data.ONLINE };
+}
+
+function processPolancoIngresos(rows) {
+  const result = {
+    total: 0,
+    porMes: {},
+    porConcepto: {},
+    porFormaPago: {},
+    registros: []
+  };
+
+  if (!rows || rows.length < 2) return result;
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+
+    let fecha = (row[0] || '').toString().trim();
+    const beneficiario = (row[1] || '').toString().trim();
+    const concepto = (row[2] || 'SIN CONCEPTO').toString().trim().toUpperCase();
+    const ingreso = parseNumber(row[3] || 0);
+    const formaPago = (row[5] || 'SIN ESPECIFICAR').toString().trim().toUpperCase();
+    const campus = (row[12] || '').toString().trim().toUpperCase();
+
+    if (!fecha || campus !== 'POLANCO' || ingreso <= 0) continue;
+
+    fecha = fecha.replace(/\//g, '-');
+    const mes = fecha.substring(0, 7);
+
+    result.total += ingreso;
+
+    if (!result.porMes[mes]) result.porMes[mes] = { total: 0, registros: 0 };
+    result.porMes[mes].total += ingreso;
+    result.porMes[mes].registros += 1;
+
+    if (!result.porConcepto[concepto]) result.porConcepto[concepto] = 0;
+    result.porConcepto[concepto] += ingreso;
+
+    if (!result.porFormaPago[formaPago]) result.porFormaPago[formaPago] = 0;
+    result.porFormaPago[formaPago] += ingreso;
+
+    result.registros.push({
+      fecha,
+      beneficiario,
+      concepto,
+      ingreso,
+      formaPago
+    });
+  }
+
+  return result;
 }
 
 export default function DashboardConsejo() {
@@ -73,26 +140,58 @@ export default function DashboardConsejo() {
   const [objetivos, setObjetivos] = useState({});
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7));
   const [selectedRangeMonths, setSelectedRangeMonths] = useState([]);
+  const [polancoData, setPolancoData] = useState(null);
 
   useEffect(() => {
     fetchAllData().then(res => {
       const processedVentas = processVentas(res.ventas);
+      const processedPolanco = processPolancoIngresos(res.registros);
+
       setData(processedVentas);
+      setPolancoData(processedPolanco);
+
       const objs = {};
       res.objetivos?.forEach(r => {
-        if (r[0] && r[1]) objs[`${r[0]}-${r[1].toString().trim().toUpperCase()}`] = { ventas: parseNumber(r[2]), cursos: parseNumber(r[3]) };
+        if (r[0] && r[1]) {
+          objs[`${r[0]}-${r[1].toString().trim().toUpperCase()}`] = {
+            ventas: parseNumber(r[2]),
+            cursos: parseNumber(r[3])
+          };
+        }
       });
+
       setObjetivos(objs);
-      const available = [...new Set([...Object.keys(processedVentas.cdmx.porMes), ...Object.keys(processedVentas.qro.porMes), ...Object.keys(processedVentas.online.porMes)])].sort().reverse();
+
+      const available = [
+        ...new Set([
+          ...Object.keys(processedVentas.cdmx.porMes),
+          ...Object.keys(processedVentas.qro.porMes),
+          ...Object.keys(processedVentas.online.porMes)
+        ])
+      ].sort().reverse();
+
       setSelectedRangeMonths(available.slice(0, 3));
       setLoading(false);
     });
   }, []);
 
-  if (loading) return <div className="p-8 text-center text-gray-500 font-medium italic">Actualizando visión estratégica IDIP...</div>;
+  if (loading) {
+    return <div className="p-8 text-center text-gray-500 font-medium italic">Actualizando visión estratégica IDIP...</div>;
+  }
 
-  const mesesDisponibles = [...new Set([...Object.keys(data.cdmx.porMes), ...Object.keys(data.qro.porMes), ...Object.keys(data.online.porMes)])].sort().reverse();
-  const toggleMonth = (mes) => { setSelectedRangeMonths(prev => prev.includes(mes) ? prev.filter(m => m !== mes) : [...prev, mes]); };
+  const mesesDisponibles = [
+    ...new Set([
+      ...Object.keys(data.cdmx.porMes),
+      ...Object.keys(data.qro.porMes),
+      ...Object.keys(data.online.porMes)
+    ])
+  ].sort().reverse();
+
+  const toggleMonth = (mes) => {
+    setSelectedRangeMonths(prev =>
+      prev.includes(mes) ? prev.filter(m => m !== mes) : [...prev, mes]
+    );
+  };
 
   const getSedeData = (sedeObj, sedeName, month) => {
     const actual = sedeObj.porMes[month] || { ventas: 0, cursos: 0 };
@@ -101,16 +200,25 @@ export default function DashboardConsejo() {
     const anoAnt = `${prevYearNum}-${dateParts[1]}`;
     const ventasAnt = sedeObj.porMes[anoAnt]?.ventas || 0;
     const obj = objetivos[`${month}-${sedeName}`] || objetivos[`${month}-${sedeName === 'QRO' ? 'QUERÉTARO' : sedeName}`] || { ventas: 0, cursos: 0 };
-    return { actual, obj, crecimiento: ventasAnt > 0 ? ((actual.ventas - ventasAnt) / ventasAnt * 100) : 0, ventasAnt, anoAnteriorLabel: prevYearNum };
+
+    return {
+      actual,
+      obj,
+      crecimiento: ventasAnt > 0 ? ((actual.ventas - ventasAnt) / ventasAnt * 100) : 0,
+      ventasAnt,
+      anoAnteriorLabel: prevYearNum
+    };
   };
 
   const getCustomRangeTotals = () => {
     const totals = { total: 0, cdmx: 0, qro: 0, online: 0 };
+
     selectedRangeMonths.forEach(m => {
       totals.cdmx += data.cdmx.porMes[m]?.ventas || 0;
       totals.qro += data.qro.porMes[m]?.ventas || 0;
       totals.online += data.online.porMes[m]?.ventas || 0;
     });
+
     totals.total = totals.cdmx + totals.qro + totals.online;
     return totals;
   };
@@ -127,6 +235,24 @@ export default function DashboardConsejo() {
   const currentOnline = getSedeData(data.online, 'ONLINE', selectedMonth);
   const rangeData = getCustomRangeTotals();
 
+  const currentPolanco = polancoData?.porMes?.[selectedMonth]?.total || 0;
+  const polancoRangeTotal = selectedRangeMonths.reduce((sum, mes) => sum + (polancoData?.porMes?.[mes]?.total || 0), 0);
+  const polancoRangeRegs = selectedRangeMonths.reduce((sum, mes) => sum + (polancoData?.porMes?.[mes]?.registros || 0), 0);
+  const polancoVsCDMX = rangeData.cdmx > 0 ? (polancoRangeTotal / rangeData.cdmx) * 100 : 0;
+  const polancoTicketPromedio = polancoRangeRegs > 0 ? polancoRangeTotal / polancoRangeRegs : 0;
+
+  const polancoTrendData = Object.keys(polancoData?.porMes || {})
+    .sort()
+    .map(mes => ({
+      mes: mes.substring(5),
+      total: polancoData.porMes[mes].total
+    }));
+
+  const polancoConceptData = Object.entries(polancoData?.porConcepto || {})
+    .map(([concepto, total]) => ({ concepto, total }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 6);
+
   const dataGraficas = mesesDisponibles.slice().reverse().map(m => ({
     mes: m.substring(5),
     CDMX: data.cdmx.porMes[m]?.ventas || 0,
@@ -137,7 +263,11 @@ export default function DashboardConsejo() {
     Online_C: data.online.porMes[m]?.cursos || 0
   }));
 
-  const rankingEscuelas = [...Object.entries(data.cdmx.escuelas).map(([n, d]) => ({ n: n + ' (CDMX)', v: d.ventas })), ...Object.entries(data.qro.escuelas).map(([n, d]) => ({ n: n + ' (QRO)', v: d.ventas })), ...Object.entries(data.online.escuelas).map(([n, d]) => ({ n: n + ' (Online)', v: d.ventas }))].sort((a, b) => b.v - a.v).slice(0, 10);
+  const rankingEscuelas = [
+    ...Object.entries(data.cdmx.escuelas).map(([n, d]) => ({ n: n + ' (CDMX)', v: d.ventas })),
+    ...Object.entries(data.qro.escuelas).map(([n, d]) => ({ n: n + ' (QRO)', v: d.ventas })),
+    ...Object.entries(data.online.escuelas).map(([n, d]) => ({ n: n + ' (Online)', v: d.ventas }))
+  ].sort((a, b) => b.v - a.v).slice(0, 10);
 
   const getProgressColor = (percent) => {
     if (percent >= 100) return IDIP_GREEN;
@@ -149,8 +279,7 @@ export default function DashboardConsejo() {
     const avanceV = info.obj.ventas > 0 ? (info.actual.ventas / info.obj.ventas * 100) : 0;
     const avanceC = info.obj.cursos > 0 ? (info.actual.cursos / info.obj.cursos * 100) : 0;
     const alcanceAnual = info.ventasAnt > 0 ? (info.actual.ventas / info.ventasAnt * 100) : 0;
-    
-    // KPI Proactivos
+
     const pace = avanceV - timeElapsedPercent;
     const forecast = dayOfMonth > 0 ? (info.actual.ventas / dayOfMonth) * daysInMonth : 0;
     const forecastPercent = info.obj.ventas > 0 ? (forecast / info.obj.ventas * 100) : 0;
@@ -174,7 +303,6 @@ export default function DashboardConsejo() {
         </div>
 
         <div className="space-y-4">
-          {/* VENTAS */}
           <div>
             <div className="flex justify-between text-[10px] mb-1 font-bold text-gray-500 uppercase">
               <span>Ventas: ${info.actual.ventas.toLocaleString()}</span>
@@ -185,7 +313,6 @@ export default function DashboardConsejo() {
             </div>
           </div>
 
-          {/* CURSOS / ALUMNOS */}
           <div>
             <div className="flex justify-between text-[10px] mb-1 font-bold text-gray-500 uppercase">
               <div className="flex items-center gap-1"><Users size={10}/><span>Alumnos: {info.actual.cursos}</span></div>
@@ -196,7 +323,6 @@ export default function DashboardConsejo() {
             </div>
           </div>
 
-          {/* KPI PROACTIVOS (Solo mes actual) */}
           {isCurrentMonthSelected && (
             <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 space-y-3">
               <div className="flex justify-between items-center">
@@ -208,7 +334,7 @@ export default function DashboardConsejo() {
                   {pace >= 0 ? 'A Tiempo' : 'Crítico'} ({pace >= 0 ? '+' : ''}{pace.toFixed(1)}%)
                 </span>
               </div>
-              
+
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-1.5">
                   <Zap size={14} className="text-yellow-500" />
@@ -225,9 +351,9 @@ export default function DashboardConsejo() {
           <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
             <span className="text-[9px] font-bold text-gray-400 uppercase">Alcance vs Año Anterior</span>
             <div className="text-right">
-                <p className="text-[9px] font-bold" style={{ color: alcanceAnual >= 100 ? IDIP_GREEN : IDIP_GRAY }}>
-                  {alcanceAnual.toFixed(1)}% Logrado
-                </p>
+              <p className="text-[9px] font-bold" style={{ color: alcanceAnual >= 100 ? IDIP_GREEN : IDIP_GRAY }}>
+                {alcanceAnual.toFixed(1)}% Logrado
+              </p>
             </div>
           </div>
         </div>
@@ -276,18 +402,92 @@ export default function DashboardConsejo() {
         <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex items-center gap-2">
+              <Wallet size={22} color={IDIP_GREEN} />
+              <div>
+                <h2 className="font-black text-lg uppercase tracking-tight" style={{ color: IDIP_GRAY }}>Ingresos complementarios Polanco</h2>
+                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: IDIP_GREEN }}>Resumen ejecutivo para Dirección</p>
+              </div>
+            </div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase">Hoja: Registros 2026</div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-2xl text-white shadow-lg" style={{ backgroundColor: IDIP_GRAY }}>
+              <p className="text-[9px] opacity-80 uppercase font-black tracking-widest">Mes seleccionado</p>
+              <p className="text-2xl font-black mt-1">${currentPolanco.toLocaleString()}</p>
+            </div>
+
+            <div className="p-5 rounded-2xl text-white shadow-lg" style={{ backgroundColor: IDIP_GREEN }}>
+              <p className="text-[9px] opacity-80 uppercase font-black tracking-widest">Acumulado rango</p>
+              <p className="text-2xl font-black mt-1">${polancoRangeTotal.toLocaleString()}</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
+              <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">Participación vs CDMX</p>
+              <p className="text-2xl font-black mt-1" style={{ color: IDIP_GRAY }}>{polancoVsCDMX.toFixed(1)}%</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
+              <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">Ticket promedio</p>
+              <p className="text-2xl font-black mt-1" style={{ color: IDIP_GRAY }}>${Math.round(polancoTicketPromedio).toLocaleString()}</p>
+              <p className="text-[10px] text-gray-400 font-bold mt-1">{polancoRangeRegs.toLocaleString()} registros</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
+              <h3 className="font-black mb-4 uppercase text-sm tracking-widest" style={{ color: IDIP_GRAY }}>Tendencia mensual</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={polancoTrendData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={IDIP_LIGHT_GRAY} />
+                    <XAxis dataKey="mes" tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                    <YAxis tickFormatter={v => `$${v / 1000}k`} tick={{ fontSize: 10 }} />
+                    <Tooltip formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Ingreso']} />
+                    <Line type="monotone" dataKey="total" stroke={IDIP_GREEN} strokeWidth={4} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
+              <h3 className="font-black mb-4 uppercase text-sm tracking-widest" style={{ color: IDIP_GRAY }}>Top conceptos</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={polancoConceptData} layout="vertical" margin={{ left: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={IDIP_LIGHT_GRAY} />
+                    <XAxis type="number" tick={{ fontSize: 10 }} />
+                    <YAxis dataKey="concepto" type="category" tick={{ fontSize: 10, fontWeight: 'bold' }} width={110} />
+                    <Tooltip formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Ingreso']} />
+                    <Bar dataKey="total" fill={IDIP_GRAY} radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex items-center gap-2">
               <CheckSquare size={22} color={IDIP_GREEN} />
               <h2 className="font-black text-lg uppercase tracking-tight" style={{ color: IDIP_GRAY }}>Acumulado Multi-Mes</h2>
             </div>
             <div className="text-[10px] font-bold text-gray-400 uppercase">{selectedRangeMonths.length} meses seleccionados</div>
           </div>
+
           <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1 border-b border-gray-50 pb-4">
             {mesesDisponibles.map(mes => (
-              <button key={mes} onClick={() => toggleMonth(mes)} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-[10px] font-black uppercase ${selectedRangeMonths.includes(mes) ? "bg-green-50 border-green-200 text-green-700 shadow-sm" : "bg-white border-gray-100 text-gray-400 hover:border-gray-200"}`}>
+              <button
+                key={mes}
+                onClick={() => toggleMonth(mes)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-[10px] font-black uppercase ${selectedRangeMonths.includes(mes) ? "bg-green-50 border-green-200 text-green-700 shadow-sm" : "bg-white border-gray-100 text-gray-400 hover:border-gray-200"}`}
+              >
                 {selectedRangeMonths.includes(mes) ? <CheckSquare size={14} /> : <Square size={14} />} {mes}
               </button>
             ))}
           </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-6 rounded-2xl text-white shadow-lg" style={{ backgroundColor: IDIP_GRAY }}>
               <p className="text-[9px] opacity-80 uppercase font-black tracking-widest">Suma Ventas</p>
@@ -311,11 +511,38 @@ export default function DashboardConsejo() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <h3 className="font-black mb-6 uppercase text-sm tracking-widest" style={{ color: IDIP_GRAY }}>Tendencia Histórica ($)</h3>
-            <div className="h-72"><ResponsiveContainer width="100%" height="100%"><LineChart data={dataGraficas}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke={IDIP_LIGHT_GRAY} /><XAxis dataKey="mes" tick={{fontSize: 10, fontWeight: 'bold'}} /><YAxis tickFormatter={v => `$${v/1000}k`} tick={{fontSize: 10}} /><Tooltip contentStyle={{ borderRadius: '15px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} /><Legend iconType="circle" /><Line name="CDMX" type="monotone" dataKey="CDMX" stroke={IDIP_GRAY} strokeWidth={4} dot={false}/><Line name="QRO" type="monotone" dataKey="QRO" stroke={IDIP_GREEN} strokeWidth={4} dot={false}/><Line name="Online" type="monotone" dataKey="Online" stroke="#A6A8AB" strokeWidth={2} strokeDasharray="5 5" dot={false}/></LineChart></ResponsiveContainer></div>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={dataGraficas}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={IDIP_LIGHT_GRAY} />
+                  <XAxis dataKey="mes" tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                  <YAxis tickFormatter={v => `$${v / 1000}k`} tick={{ fontSize: 10 }} />
+                  <Tooltip contentStyle={{ borderRadius: '15px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                  <Legend iconType="circle" />
+                  <Line name="CDMX" type="monotone" dataKey="CDMX" stroke={IDIP_GRAY} strokeWidth={4} dot={false} />
+                  <Line name="QRO" type="monotone" dataKey="QRO" stroke={IDIP_GREEN} strokeWidth={4} dot={false} />
+                  <Line name="Online" type="monotone" dataKey="Online" stroke="#A6A8AB" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
+
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
             <h3 className="font-black mb-6 uppercase text-sm tracking-widest" style={{ color: IDIP_GRAY }}>Inscritos por Sede</h3>
-            <div className="h-72"><ResponsiveContainer width="100%" height="100%"><BarChart data={dataGraficas}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke={IDIP_LIGHT_GRAY} /><XAxis dataKey="mes" tick={{fontSize: 10, fontWeight: 'bold'}} /><YAxis tick={{fontSize: 10}} /><Tooltip cursor={{fill: IDIP_LIGHT_GRAY}} contentStyle={{ borderRadius: '15px' }} /><Legend iconType="rect" /><Bar name="CDMX" dataKey="CDMX_C" fill={IDIP_GRAY} radius={[4, 4, 0, 0]} /><Bar name="QRO" dataKey="QRO_C" fill={IDIP_GREEN} radius={[4, 4, 0, 0]} /><Bar name="Online" dataKey="Online_C" fill="#A6A8AB" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></div>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={dataGraficas}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={IDIP_LIGHT_GRAY} />
+                  <XAxis dataKey="mes" tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip cursor={{ fill: IDIP_LIGHT_GRAY }} contentStyle={{ borderRadius: '15px' }} />
+                  <Legend iconType="rect" />
+                  <Bar name="CDMX" dataKey="CDMX_C" fill={IDIP_GRAY} radius={[4, 4, 0, 0]} />
+                  <Bar name="QRO" dataKey="QRO_C" fill={IDIP_GREEN} radius={[4, 4, 0, 0]} />
+                  <Bar name="Online" dataKey="Online_C" fill="#A6A8AB" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
 
@@ -328,7 +555,7 @@ export default function DashboardConsejo() {
             {rankingEscuelas.map((e, i) => (
               <div key={i} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl hover:bg-white hover:shadow-md transition-all border border-transparent hover:border-gray-100 group">
                 <div className="flex items-center gap-3">
-                  <span className="flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-black text-white" style={{ backgroundColor: i < 3 ? IDIP_GREEN : IDIP_GRAY }}>{i+1}</span>
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-black text-white" style={{ backgroundColor: i < 3 ? IDIP_GREEN : IDIP_GRAY }}>{i + 1}</span>
                   <span className="text-xs font-bold text-gray-600 group-hover:text-black">{e.n}</span>
                 </div>
                 <span className="font-black text-sm" style={{ color: IDIP_GRAY }}>${e.v.toLocaleString()}</span>
