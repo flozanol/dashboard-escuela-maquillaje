@@ -2183,7 +2183,7 @@ const contactMethods = useMemo(() => {
         </div>
         
         <SimpleTable 
-            title="Resumen General Anual" 
+            title="Polanco & Online" 
             dataRows={rows} 
             tableHeaders={headers} 
             colorTheme="gray"
