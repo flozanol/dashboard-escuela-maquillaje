@@ -119,6 +119,7 @@ const Dashboard = () => {
   const [isManualRefresh, setIsManualRefresh] = useState(false);
   const [alerts, setAlerts] = useState([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+  const [selectedContactMonths, setSelectedContactMonths] = useState([]);
 
   const debugInstructors = () => {
     console.log('DEBUG: Verificando datos de instructores...');
@@ -1138,9 +1139,27 @@ const contactMethods = useMemo(() => {
     );
   };
 
-  const ContactDashboard = () => {
+const ContactDashboard = () => {
     const COLORS = ['#22C55E', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#EC4899'];
-    const contactTotals = getContactTotals(selectedMonth);
+
+    const activeContactMonths = selectedContactMonths.length > 0 ? selectedContactMonths : months;
+
+    const contactTotals = {};
+    activeContactMonths.forEach(month => {
+      const monthTotals = getContactTotals(month);
+      Object.keys(monthTotals).forEach(method => {
+        if (!contactTotals[method]) contactTotals[method] = { ventas: 0, cursos: 0 };
+        contactTotals[method].ventas += monthTotals[method].ventas;
+        contactTotals[method].cursos += monthTotals[method].cursos;
+      });
+    });
+
+    const toggleContactMonth = (month) => {
+      setSelectedContactMonths(prev =>
+        prev.includes(month) ? prev.filter(m => m !== month) : [...prev, month]
+      );
+    };
+
     const totalVentas = Object.values(contactTotals).reduce((sum, method) => sum + method.ventas, 0);
     const totalCursos = Object.values(contactTotals).reduce((sum, method) => sum + method.cursos, 0);
     const pieData = Object.entries(contactTotals).map(([method, data]) => ({
@@ -1158,9 +1177,58 @@ const contactMethods = useMemo(() => {
       return result;
     });
 
-    return (
+        return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+
+        {/* 🗓️ Filtro multi-mes */}
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-purple-600" />
+              <span className="text-sm font-semibold text-gray-700">
+                Filtrar por mes(es)
+                {selectedContactMonths.length > 0 && (
+                  <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">
+                    {selectedContactMonths.length} seleccionado{selectedContactMonths.length > 1 ? 's' : ''}
+                  </span>
+                )}
+              </span>
+            </div>
+            {selectedContactMonths.length > 0 && (
+              <button
+                onClick={() => setSelectedContactMonths([])}
+                className="text-xs text-purple-600 hover:text-purple-800 underline font-medium"
+              >
+                Ver todos ({months.length} meses)
+              </button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {months.map(month => {
+              const isSelected = selectedContactMonths.includes(month);
+              return (
+                <button
+                  key={month}
+                  onClick={() => toggleContactMonth(month)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-150 ${
+                    isSelected
+                      ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                      : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700'
+                  }`}
+                >
+                  {formatDateForDisplay(month)}
+                </button>
+              );
+            })}
+          </div>
+          {selectedContactMonths.length === 0 && (
+            <p className="text-xs text-gray-400 mt-2">
+              Sin filtro activo — mostrando acumulado de todos los meses
+            </p>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow p-6 text-white">
             <div className="flex items-center justify-between">
               <div>
@@ -2427,7 +2495,7 @@ if (MODO === 'CONSEJO') {
                 </select>
               </div>
 
-              {viewType !== "comparacion" && (
+              {viewType !== "comparacion" && viewType !== "contacto" && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Mes</label>
                   <select 
