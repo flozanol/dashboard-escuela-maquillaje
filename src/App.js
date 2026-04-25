@@ -3,6 +3,7 @@ import DashboardConsejo from './DashboardConsejo';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { MapContainer, TileLayer, CircleMarker, Popup as MapPopup } from 'react-leaflet';
 import { TrendingUp, TrendingDown, Minus, DollarSign, ShoppingCart, Bell, RefreshCw, Wifi, WifiOff, User, Building, BookOpen, Book, BarChart3, Star, Target, AlertTriangle, Activity, Phone, Mail, Globe, MessageSquare, Users, MapPin, Layers, Calendar } from 'lucide-react';
+import CobranzaAnalytics from './CobranzaAnalytics';
 
 const SEDE = process.env.REACT_APP_SEDE || 'CDMX';
 const MODO = process.env.REACT_APP_MODO || 'ESCUELA';
@@ -120,6 +121,7 @@ const Dashboard = () => {
   const [alerts, setAlerts] = useState([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [selectedContactMonths, setSelectedContactMonths] = useState([]);
+  const [cobranzaMundial, setCobranzaMundial] = useState(null);
 
   const debugInstructors = () => {
     console.log('DEBUG: Verificando datos de instructores...');
@@ -2331,9 +2333,22 @@ const ContactDashboard = () => {
   };
   
 if (MODO === 'CONSEJO') {
-    return <DashboardConsejo />;
+    return (
+      <>
+        <DashboardConsejo data={data} />
+        {/* Conexión al nuevo módulo de cobranza */}
+        <CobranzaAnalytics datosCobranza={cobranzaMundial} modo={MODO} />
+      </>
+    );
   }
 
+  return (
+    <>
+      <Dashboard data={data} />
+      {/* Conexión al nuevo módulo de cobranza */}
+      <CobranzaAnalytics datosCobranza={cobranzaMundial} modo={MODO} />
+    </>
+  );
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -2722,5 +2737,13 @@ if (MODO === 'CONSEJO') {
     </div>
   );
 };
-
+// --- ESTO ES LO QUE "LINKEA" EL NUEVO MÓDULO ---
+// Buscamos donde se cierra el componente principal para insertar la vista
+const IntegracionCobranza = ({ cobranzaMundial, modo }) => {
+  return (
+    <div style={{ marginTop: '40px', borderTop: '2px dashed #ccc', paddingTop: '20px' }}>
+      <CobranzaAnalytics datosCobranza={cobranzaMundial} modo={modo} />
+    </div>
+  );
+};
 export default Dashboard;
