@@ -2746,7 +2746,7 @@ if (MODO === 'CONSEJO') {
         <CobranzaAnalytics datosCobranza={cobranzaMundial} modo={MODO} />
       </>
     );
-  }
+  
 
   return (
     <>
@@ -2754,4 +2754,5 @@ if (MODO === 'CONSEJO') {
       <CobranzaAnalytics datosCobranza={cobranzaMundial} modo={MODO} />
     </>
   );
+  } // <--- ESTA LLAVE DEBE SER LA ÚLTIMA ANTES DEL EXPORT
 export default Dashboard;
