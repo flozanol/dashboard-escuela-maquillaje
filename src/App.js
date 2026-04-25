@@ -25,10 +25,7 @@ import {
   RefreshCw,
   Wifi,
   WifiOff,
-  User,
   Building,
-  BookOpen,
-  Book,
   BarChart3,
   Target,
   AlertTriangle,
@@ -287,91 +284,106 @@ const Dashboard = () => {
     return Array.from(set);
   }, [salesData]);
 
-  const getSchoolTotals = (month) => {
-    const totals = {};
-    const monthData = salesData[month] || {};
-    Object.keys(monthData).forEach((school) => {
-      totals[school] = { ventas: 0, cursos: 0 };
-      Object.values(monthData[school] || {}).forEach((areaData) => {
-        Object.values(areaData || {}).forEach((courseData) => {
-          totals[school].ventas += parseNumberFromString(courseData?.ventas);
-          totals[school].cursos += parseNumberFromString(courseData?.cursos);
+  const getSchoolTotals = useMemo(
+    () => (month) => {
+      const totals = {};
+      const monthData = salesData[month] || {};
+      Object.keys(monthData).forEach((school) => {
+        totals[school] = { ventas: 0, cursos: 0 };
+        Object.values(monthData[school] || {}).forEach((areaData) => {
+          Object.values(areaData || {}).forEach((courseData) => {
+            totals[school].ventas += parseNumberFromString(courseData?.ventas);
+            totals[school].cursos += parseNumberFromString(courseData?.cursos);
+          });
         });
       });
-    });
-    return totals;
-  };
+      return totals;
+    },
+    [salesData]
+  );
 
-  const getAreaTotals = (month, school = null) => {
-    const totals = {};
-    const monthData = salesData[month] || {};
-    const schoolsToProcess = school ? [school] : Object.keys(monthData);
-    schoolsToProcess.forEach((schoolKey) => {
-      Object.keys(monthData[schoolKey] || {}).forEach((area) => {
-        if (!totals[area]) totals[area] = { ventas: 0, cursos: 0 };
-        Object.values(monthData[schoolKey][area] || {}).forEach((courseData) => {
-          totals[area].ventas += parseNumberFromString(courseData?.ventas);
-          totals[area].cursos += parseNumberFromString(courseData?.cursos);
+  const getAreaTotals = useMemo(
+    () => (month, school = null) => {
+      const totals = {};
+      const monthData = salesData[month] || {};
+      const schoolsToProcess = school ? [school] : Object.keys(monthData);
+      schoolsToProcess.forEach((schoolKey) => {
+        Object.keys(monthData[schoolKey] || {}).forEach((area) => {
+          if (!totals[area]) totals[area] = { ventas: 0, cursos: 0 };
+          Object.values(monthData[schoolKey][area] || {}).forEach((courseData) => {
+            totals[area].ventas += parseNumberFromString(courseData?.ventas);
+            totals[area].cursos += parseNumberFromString(courseData?.cursos);
+          });
         });
       });
-    });
-    return totals;
-  };
+      return totals;
+    },
+    [salesData]
+  );
 
-  const getCourses = (month, school = null, area = null) => {
-    const courses = {};
-    const monthData = salesData[month] || {};
-    const schoolsToProcess = school ? [school] : Object.keys(monthData);
-    schoolsToProcess.forEach((schoolKey) => {
-      const schoolData = monthData[schoolKey] || {};
-      const areasToProcess = area ? [area] : Object.keys(schoolData);
-      areasToProcess.forEach((areaKey) => {
-        Object.entries(schoolData[areaKey] || {}).forEach(([course, courseData]) => {
-          const key = `${course} (${schoolKey})`;
-          if (!courses[key]) {
-            courses[key] = {
-              ventas: 0,
-              cursos: 0,
-              instructor: courseData?.instructor || 'Sin asignar',
-              escuela: schoolKey,
-              area: areaKey,
-            };
-          }
-          courses[key].ventas += parseNumberFromString(courseData?.ventas);
-          courses[key].cursos += parseNumberFromString(courseData?.cursos);
+  const getCourses = useMemo(
+    () => (month, school = null, area = null) => {
+      const courses = {};
+      const monthData = salesData[month] || {};
+      const schoolsToProcess = school ? [school] : Object.keys(monthData);
+      schoolsToProcess.forEach((schoolKey) => {
+        const schoolData = monthData[schoolKey] || {};
+        const areasToProcess = area ? [area] : Object.keys(schoolData);
+        areasToProcess.forEach((areaKey) => {
+          Object.entries(schoolData[areaKey] || {}).forEach(([course, courseData]) => {
+            const key = `${course} (${schoolKey})`;
+            if (!courses[key]) {
+              courses[key] = {
+                ventas: 0,
+                cursos: 0,
+                instructor: courseData?.instructor || 'Sin asignar',
+                escuela: schoolKey,
+                area: areaKey,
+              };
+            }
+            courses[key].ventas += parseNumberFromString(courseData?.ventas);
+            courses[key].cursos += parseNumberFromString(courseData?.cursos);
+          });
         });
       });
-    });
-    return courses;
-  };
+      return courses;
+    },
+    [salesData]
+  );
 
-  const getInstructorTotals = (month, school = null) => {
-    const totals = {};
-    const monthData = salesData[month] || {};
-    const schoolsToProcess = school ? [school] : Object.keys(monthData);
-    schoolsToProcess.forEach((schoolKey) => {
-      Object.entries(monthData[schoolKey] || {}).forEach(([area, areaData]) => {
-        Object.entries(areaData || {}).forEach(([course, courseData]) => {
-          const instructor = courseData?.instructor || 'Sin asignar';
-          if (!totals[instructor]) {
-            totals[instructor] = { ventas: 0, cursos: 0, areas: new Set(), escuelas: new Set(), cursosdetalle: [] };
-          }
-          totals[instructor].ventas += parseNumberFromString(courseData?.ventas);
-          totals[instructor].cursos += parseNumberFromString(courseData?.cursos);
-          totals[instructor].areas.add(area);
-          totals[instructor].escuelas.add(schoolKey);
-          totals[instructor].cursosdetalle.push({ curso: course, area, escuela: schoolKey });
+  const getInstructorTotals = useMemo(
+    () => (month, school = null) => {
+      const totals = {};
+      const monthData = salesData[month] || {};
+      const schoolsToProcess = school ? [school] : Object.keys(monthData);
+      schoolsToProcess.forEach((schoolKey) => {
+        Object.entries(monthData[schoolKey] || {}).forEach(([area, areaData]) => {
+          Object.entries(areaData || {}).forEach(([course, courseData]) => {
+            const instructor = courseData?.instructor || 'Sin asignar';
+            if (!totals[instructor]) {
+              totals[instructor] = { ventas: 0, cursos: 0, areas: new Set(), escuelas: new Set(), cursosdetalle: [] };
+            }
+            totals[instructor].ventas += parseNumberFromString(courseData?.ventas);
+            totals[instructor].cursos += parseNumberFromString(courseData?.cursos);
+            totals[instructor].areas.add(area);
+            totals[instructor].escuelas.add(schoolKey);
+            totals[instructor].cursosdetalle.push({ curso: course, area, escuela: schoolKey });
+          });
         });
       });
-    });
-    Object.keys(totals).forEach((instructor) => {
-      totals[instructor].areas = Array.from(totals[instructor].areas);
-      totals[instructor].escuelas = Array.from(totals[instructor].escuelas);
-    });
-    return totals;
-  };
+      Object.keys(totals).forEach((instructor) => {
+        totals[instructor].areas = Array.from(totals[instructor].areas);
+        totals[instructor].escuelas = Array.from(totals[instructor].escuelas);
+      });
+      return totals;
+    },
+    [salesData]
+  );
 
-  const getContactTotals = (month) => contactData[month] || {};
+  const getContactTotals = useMemo(
+    () => (month) => contactData[month] || {},
+    [contactData]
+  );
 
   const transformGoogleSheetsData = (rawData = []) => {
     if (!rawData.length) return fallbackData;
@@ -493,65 +505,69 @@ const Dashboard = () => {
     };
   };
 
-  const fetchGoogleSheetsData = async (showLoading = true) => {
-    if (!GOOGLE_SHEETS_CONFIG.apiKey) {
-      setConnectionStatus('disconnected');
-      setIsLoading(false);
-      setIsManualRefresh(false);
-      setLastUpdated(new Date());
-      return;
-    }
+  const fetchGoogleSheetsData = useMemo(
+    () =>
+      async (showLoading = true) => {
+        if (!GOOGLE_SHEETS_CONFIG.apiKey) {
+          setConnectionStatus('disconnected');
+          setIsLoading(false);
+          setIsManualRefresh(false);
+          setLastUpdated(new Date());
+          return;
+        }
 
-    try {
-      if (showLoading) setIsLoading(true);
-      setIsManualRefresh(showLoading);
+        try {
+          if (showLoading) setIsLoading(true);
+          setIsManualRefresh(showLoading);
 
-      const ventasUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${encodeURIComponent(GOOGLE_SHEETS_CONFIG.ranges.ventas)}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
-      const cobranzaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${encodeURIComponent(GOOGLE_SHEETS_CONFIG.ranges.cobranza)}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
-      const crecimientoUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${encodeURIComponent(GOOGLE_SHEETS_CONFIG.ranges.crecimientoAnual)}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
+          const ventasUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${encodeURIComponent(GOOGLE_SHEETS_CONFIG.ranges.ventas)}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
+          const cobranzaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${encodeURIComponent(GOOGLE_SHEETS_CONFIG.ranges.cobranza)}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
+          const crecimientoUrl = `https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEETS_CONFIG.spreadsheetId}/values/${encodeURIComponent(GOOGLE_SHEETS_CONFIG.ranges.crecimientoAnual)}?key=${GOOGLE_SHEETS_CONFIG.apiKey}`;
 
-      const [ventasResponse, cobranzaResponse, crecimientoResponse] = await Promise.all([
-        fetch(ventasUrl),
-        fetch(cobranzaUrl),
-        fetch(crecimientoUrl),
-      ]);
+          const [ventasResponse, cobranzaResponse, crecimientoResponse] = await Promise.all([
+            fetch(ventasUrl),
+            fetch(cobranzaUrl),
+            fetch(crecimientoUrl),
+          ]);
 
-      const ventasJson = ventasResponse.ok ? await ventasResponse.json() : { values: [] };
-      const cobranzaJson = cobranzaResponse.ok ? await cobranzaResponse.json() : { values: [] };
-      const crecimientoJson = crecimientoResponse.ok ? await crecimientoResponse.json() : { values: [] };
+          const ventasJson = ventasResponse.ok ? await ventasResponse.json() : { values: [] };
+          const cobranzaJson = cobranzaResponse.ok ? await cobranzaResponse.json() : { values: [] };
+          const crecimientoJson = crecimientoResponse.ok ? await crecimientoResponse.json() : { values: [] };
 
-      setSalesData(transformGoogleSheetsData(ventasJson.values));
-      setContactData(transformContactData(ventasJson.values));
-      setAgeData(transformAgeData(ventasJson.values));
-      setMapData(transformMapData(ventasJson.values));
-      setCobranzaData(transformCobranzaData(cobranzaJson.values));
-      const crecimientoTransformado = transformCrecimientoAnualData(crecimientoJson.values);
-      setCrecimientoAnualData(crecimientoTransformado);
-      if (crecimientoTransformado.years?.length) {
-        setSelectedYear(String(crecimientoTransformado.years[crecimientoTransformado.years.length - 1]));
-      }
-      setConnectionStatus('connected');
-      setErrorMessage('');
-      setLastUpdated(new Date());
-    } catch (error) {
-      console.error('Error fetching Google Sheets data:', error);
-      setConnectionStatus('error');
-      setErrorMessage(error.message || 'Error al cargar datos');
-      setSalesData(fallbackData);
-      setContactData(fallbackContactData);
-      setAgeData(fallbackAgeData);
-      setCobranzaData(fallbackCobranzaData);
-      setMapData(fallbackMapData);
-      setCrecimientoAnualData(fallbackCrecimientoAnualData);
-    } finally {
-      setIsLoading(false);
-      setIsManualRefresh(false);
-    }
-  };
+          setSalesData(transformGoogleSheetsData(ventasJson.values));
+          setContactData(transformContactData(ventasJson.values));
+          setAgeData(transformAgeData(ventasJson.values));
+          setMapData(transformMapData(ventasJson.values));
+          setCobranzaData(transformCobranzaData(cobranzaJson.values));
+          const crecimientoTransformado = transformCrecimientoAnualData(crecimientoJson.values);
+          setCrecimientoAnualData(crecimientoTransformado);
+          if (crecimientoTransformado.years?.length) {
+            setSelectedYear(String(crecimientoTransformado.years[crecimientoTransformado.years.length - 1]));
+          }
+          setConnectionStatus('connected');
+          setErrorMessage('');
+          setLastUpdated(new Date());
+        } catch (error) {
+          console.error('Error fetching Google Sheets data:', error);
+          setConnectionStatus('error');
+          setErrorMessage(error.message || 'Error al cargar datos');
+          setSalesData(fallbackData);
+          setContactData(fallbackContactData);
+          setAgeData(fallbackAgeData);
+          setCobranzaData(fallbackCobranzaData);
+          setMapData(fallbackMapData);
+          setCrecimientoAnualData(fallbackCrecimientoAnualData);
+        } finally {
+          setIsLoading(false);
+          setIsManualRefresh(false);
+        }
+      },
+    []
+  );
 
   useEffect(() => {
     fetchGoogleSheetsData();
-  }, []);
+  }, [fetchGoogleSheetsData]);
 
   useEffect(() => {
     if (!months.includes(selectedMonth) && months.length) {
@@ -661,7 +677,17 @@ const Dashboard = () => {
       default:
         return [];
     }
-  }, [viewType, selectedMonth, selectedSchool, selectedArea, metricType, salesData]);
+  }, [
+    viewType,
+    selectedMonth,
+    selectedSchool,
+    selectedArea,
+    metricType,
+    getSchoolTotals,
+    getAreaTotals,
+    getInstructorTotals,
+    getCourses,
+  ]);
 
   const contactTotals = useMemo(() => {
     const monthsToUse = selectedContactMonths.length ? selectedContactMonths : months;
@@ -674,7 +700,7 @@ const Dashboard = () => {
       });
     });
     return totals;
-  }, [months, selectedContactMonths, contactData]);
+  }, [months, selectedContactMonths, getContactTotals]);
 
   const contactPieData = useMemo(() => {
     return Object.entries(contactTotals).map(([name, data]) => ({ name, value: data[metricType] || 0 }));
@@ -688,7 +714,7 @@ const Dashboard = () => {
       });
       return row;
     });
-  }, [months, contactData, metricType]);
+  }, [months, getContactTotals, metricType]);
 
   const cobranzaSchools = useMemo(() => Object.keys(cobranzaData), [cobranzaData]);
   const cobranzaMonths = useMemo(() => {
@@ -953,7 +979,13 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <KpiCard title={`Ventas ${selectedYear}`} value={formatCurrency(currentYearTotal)} subtitle="Total anual" icon={DollarSign} tone="green" />
           <KpiCard title="Crecimiento" value={String(currentYearGrowth)} subtitle="Vs año anterior" icon={Activity} tone="blue" />
-          <KpiCard title="Meses con venta" value={`${crecimientoChartData.filter((d) => parseNumberFromString(d[selectedYear]) > 0).length} / 12`} subtitle="Meses activos" icon={Calendar} tone="orange" />
+          <KpiCard
+            title="Meses con venta"
+            value={`${crecimientoChartData.filter((d) => parseNumberFromString(d[selectedYear]) > 0).length} / 12`}
+            subtitle="Meses activos"
+            icon={Calendar}
+            tone="orange"
+          />
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
@@ -961,7 +993,9 @@ const Dashboard = () => {
             <h3 className="text-lg font-semibold">Tendencia anual</h3>
             <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-lg text-sm">
               {crecimientoYears.map((year) => (
-                <option key={year} value={year}>{year}</option>
+                <option key={year} value={year}>
+                  {year}
+                </option>
               ))}
             </select>
           </div>
@@ -988,8 +1022,20 @@ const Dashboard = () => {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <KpiCard title="CPs activos" value={mapEntries.length} subtitle={formatDateForDisplay(selectedMonth)} icon={MapPin} tone="red" />
-        <KpiCard title="Registros" value={mapEntries.reduce((sum, [, value]) => sum + (value.count || 0), 0)} subtitle="Conteo de alumnos" icon={Users} tone="blue" />
-        <KpiCard title="Ventas mapa" value={formatCurrency(mapEntries.reduce((sum, [, value]) => sum + (value.ventas || 0), 0))} subtitle="Monto asociado" icon={DollarSign} tone="green" />
+        <KpiCard
+          title="Registros"
+          value={mapEntries.reduce((sum, [, value]) => sum + (value.count || 0), 0)}
+          subtitle="Conteo de alumnos"
+          icon={Users}
+          tone="blue"
+        />
+        <KpiCard
+          title="Ventas mapa"
+          value={formatCurrency(mapEntries.reduce((sum, [, value]) => sum + (value.ventas || 0), 0))}
+          subtitle="Monto asociado"
+          icon={DollarSign}
+          tone="green"
+        />
       </div>
 
       <div className="bg-white rounded-lg shadow p-6">
@@ -1052,8 +1098,20 @@ const Dashboard = () => {
   const ExecutiveDashboard = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <KpiCard title="Ventas totales" value={formatCurrency(executiveKPIs.totalVentas)} subtitle={`${executiveKPIs.ventasGrowth >= 0 ? '+' : ''}${executiveKPIs.ventasGrowth.toFixed(1)}% vs mes anterior`} icon={DollarSign} tone="blue" />
-        <KpiCard title="Cursos vendidos" value={executiveKPIs.totalCursos.toLocaleString('es-MX')} subtitle={`${executiveKPIs.cursosGrowth >= 0 ? '+' : ''}${executiveKPIs.cursosGrowth.toFixed(1)}% vs mes anterior`} icon={ShoppingCart} tone="green" />
+        <KpiCard
+          title="Ventas totales"
+          value={formatCurrency(executiveKPIs.totalVentas)}
+          subtitle={`${executiveKPIs.ventasGrowth >= 0 ? '+' : ''}${executiveKPIs.ventasGrowth.toFixed(1)}% vs mes anterior`}
+          icon={DollarSign}
+          tone="blue"
+        />
+        <KpiCard
+          title="Cursos vendidos"
+          value={executiveKPIs.totalCursos.toLocaleString('es-MX')}
+          subtitle={`${executiveKPIs.cursosGrowth >= 0 ? '+' : ''}${executiveKPIs.cursosGrowth.toFixed(1)}% vs mes anterior`}
+          icon={ShoppingCart}
+          tone="green"
+        />
         <KpiCard title="Ticket promedio" value={formatCurrency(executiveKPIs.ticketPromedio)} subtitle="Por curso vendido" icon={Target} tone="purple" />
         <KpiCard title="Alertas activas" value={alerts.length} subtitle={`${schools.length} escuelas monitoreadas`} icon={Bell} tone="orange" />
       </div>
@@ -1137,7 +1195,9 @@ const Dashboard = () => {
               <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Mes</label>
               <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg">
                 {months.map((month) => (
-                  <option key={month} value={month}>{formatDateForDisplay(month)}</option>
+                  <option key={month} value={month}>
+                    {formatDateForDisplay(month)}
+                  </option>
                 ))}
               </select>
             </div>
@@ -1145,7 +1205,9 @@ const Dashboard = () => {
               <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Escuela</label>
               <select value={selectedSchool} onChange={(e) => setSelectedSchool(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg">
                 {schools.map((school) => (
-                  <option key={school} value={school}>{school}</option>
+                  <option key={school} value={school}>
+                    {school}
+                  </option>
                 ))}
               </select>
             </div>
@@ -1153,7 +1215,9 @@ const Dashboard = () => {
               <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Área</label>
               <select value={selectedArea} onChange={(e) => setSelectedArea(e.target.value)} className="w-full px-3 py-2 border border-gray-200 rounded-lg">
                 {areas.map((area) => (
-                  <option key={area} value={area}>{area}</option>
+                  <option key={area} value={area}>
+                    {area}
+                  </option>
                 ))}
               </select>
             </div>
@@ -1211,8 +1275,8 @@ const Dashboard = () => {
               <h3 className="text-lg font-semibold">Resumen del mes</h3>
             </div>
             <p className="text-sm text-gray-600">
-              En {formatDateForDisplay(selectedMonth)}, la operación suma {formatCurrency(executiveKPIs.totalVentas)} y {executiveKPIs.totalCursos.toLocaleString('es-MX')} cursos,
-              con ticket promedio de {formatCurrency(executiveKPIs.ticketPromedio)}.
+              En {formatDateForDisplay(selectedMonth)}, la operación suma {formatCurrency(executiveKPIs.totalVentas)} y{' '}
+              {executiveKPIs.totalCursos.toLocaleString('es-MX')} cursos, con ticket promedio de {formatCurrency(executiveKPIs.ticketPromedio)}.
             </p>
           </div>
         ) : null}
@@ -1225,6 +1289,5 @@ export default function App() {
   if (MODO === 'CONSEJO') {
     return <DashboardConsejo />;
   }
-
   return <Dashboard />;
 }
