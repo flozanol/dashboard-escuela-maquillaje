@@ -2737,13 +2737,21 @@ if (MODO === 'CONSEJO') {
     </div>
   );
 };
-// --- ESTO ES LO QUE "LINKEA" EL NUEVO MÓDULO ---
-// Buscamos donde se cierra el componente principal para insertar la vista
-const IntegracionCobranza = ({ cobranzaMundial, modo }) => {
+// Buscamos el lugar donde se decide qué dashboard mostrar
+  if (MODO === 'CONSEJO') {
+    return (
+      <>
+        {/* Cambiamos 'data' por 'salesData' o la variable que contenga tus ventas */}
+        <DashboardConsejo data={salesData} /> 
+        <CobranzaAnalytics datosCobranza={cobranzaMundial} modo={MODO} />
+      </>
+    );
+  }
+
   return (
-    <div style={{ marginTop: '40px', borderTop: '2px dashed #ccc', paddingTop: '20px' }}>
-      <CobranzaAnalytics datosCobranza={cobranzaMundial} modo={modo} />
-    </div>
+    <>
+      <Dashboard data={salesData} />
+      <CobranzaAnalytics datosCobranza={cobranzaMundial} modo={MODO} />
+    </>
   );
-};
 export default Dashboard;
