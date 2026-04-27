@@ -19,7 +19,7 @@ function parseNumber(value) {
 async function fetchAllData() {
   const apiKey = process.env.REACT_APP_GSHEETS_API_KEY;
   const spreadsheetId = '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg';
-  const ranges = ['Ventas Consolidadas!A:I', 'Objetivos!A:D', 'Registros 2026!A:M'];
+  const ranges = ['Ventas Consolidadas!A:I', 'Objetivos!A:D', 'Registros 2026!A:K'];
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchGet?key=${apiKey}&` + ranges.map(r => `ranges=${encodeURIComponent(r)}`).join('&');
   const res = await fetch(url);
   const data = await res.json();
@@ -103,7 +103,8 @@ function processPolancoIngresos(rows) {
     const concepto = (row[2] || 'SIN CONCEPTO').toString().trim().toUpperCase();
     const ingreso = parseNumber((row[3] || '').toString().replace(/\$/g, '').replace(/,/g, ''));
     const formaPago = (row[5] || 'SIN ESPECIFICAR').toString().trim().toUpperCase();
-    const campus = (row[12] || '').toString().trim().toUpperCase();
+    // CAMPUS está en columna K = índice 10 (A=0,B=1,C=2,D=3,E=4,F=5,G=6,H=7,I=8,J=9,K=10)
+    const campus = (row[10] || '').toString().trim().toUpperCase();
 
     if (!fecha || campus !== 'POLANCO' || ingreso <= 0) continue;
 
