@@ -19,14 +19,15 @@ function parseNumber(value) {
 async function fetchAllData() {
   const apiKey = process.env.REACT_APP_GSHEETS_API_KEY;
   const spreadsheetId = '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg';
-  const ranges = ['Ventas Consolidadas!A:I', 'Objetivos!A:D', 'Registros 2026!A:K'];
+  const ranges = ['Ventas Consolidadas!A:I', 'Objetivos!A:D', 'Registros 2026!A:K', 'Registros 2026 Qro!A:T'];
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchGet?key=${apiKey}&` + ranges.map(r => `ranges=${encodeURIComponent(r)}`).join('&');
   const res = await fetch(url);
   const data = await res.json();
   return {
     ventas: data.valueRanges[0]?.values || [],
     objetivos: data.valueRanges[1]?.values || [],
-    registros: data.valueRanges[2]?.values || []
+    registros: data.valueRanges[2]?.values || [],
+    registrosQro: data.valueRanges[3]?.values || []
   };
 }
 
@@ -135,6 +136,60 @@ function processPolancoIngresos(rows) {
   return result;
 }
 
+function processQroIngresos(rows) {
+  const result = {
+    total: 0,
+    porMes: {},
+    porConcepto: {},
+    porFormaPago: {},
+    registros: []
+  };
+
+  if (!rows || rows.length < 2) return result;
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+
+    let fecha = (row[0] || '').toString().trim();
+    const beneficiario = (row[1] || '').toString().trim();
+    const concepto = (row[2] || 'SIN CONCEPTO').toString().trim().toUpperCase();
+    // Ingreso en Columna I (índice 8)
+    const ingreso = parseNumber((row[8] || '').toString().replace(/\$/g, '').replace(/,/g, ''));
+    // Forma de pago en Columna K (índice 10)
+    const formaPago = (row[10] || 'SIN ESPECIFICAR').toString().trim().toUpperCase();
+    // Campus en Columna T (índice 19)
+    const campus = (row[19] || '').toString().trim().toUpperCase();
+
+    if (!fecha || ingreso <= 0) continue;
+
+    fecha = fecha.replace(/\//g, '-');
+    const mes = fecha.substring(0, 7);
+
+    result.total += ingreso;
+
+    if (!result.porMes[mes]) result.porMes[mes] = { total: 0, registros: 0 };
+    result.porMes[mes].total += ingreso;
+    result.porMes[mes].registros += 1;
+
+    if (!result.porConcepto[concepto]) result.porConcepto[concepto] = 0;
+    result.porConcepto[concepto] += ingreso;
+
+    if (!result.porFormaPago[formaPago]) result.porFormaPago[formaPago] = 0;
+    result.porFormaPago[formaPago] += ingreso;
+
+    result.registros.push({
+      fecha,
+      beneficiario,
+      concepto,
+      ingreso,
+      formaPago,
+      campus
+    });
+  }
+
+  return result;
+}
+
 export default function DashboardConsejo() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
@@ -142,14 +197,17 @@ export default function DashboardConsejo() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7));
   const [selectedRangeMonths, setSelectedRangeMonths] = useState([]);
   const [polancoData, setPolancoData] = useState(null);
+  const [qroData, setQroData] = useState(null);
 
   useEffect(() => {
     fetchAllData().then(res => {
       const processedVentas = processVentas(res.ventas);
       const processedPolanco = processPolancoIngresos(res.registros);
+      const processedQro = processQroIngresos(res.registrosQro);
 
       setData(processedVentas);
       setPolancoData(processedPolanco);
+      setQroData(processedQro);
 
       const objs = {};
       res.objetivos?.forEach(r => {
@@ -250,6 +308,24 @@ export default function DashboardConsejo() {
     }));
 
   const polancoConceptData = Object.entries(polancoData?.porConcepto || {})
+    .map(([concepto, total]) => ({ concepto, total }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 6);
+
+  const currentQroIngresos = qroData?.porMes?.[selectedMonth]?.total || 0;
+  const qroRangeTotal = selectedRangeMonths.reduce((sum, mes) => sum + (qroData?.porMes?.[mes]?.total || 0), 0);
+  const qroRangeRegs = selectedRangeMonths.reduce((sum, mes) => sum + (qroData?.porMes?.[mes]?.registros || 0), 0);
+  const qroVsQro = rangeData.qro > 0 ? (qroRangeTotal / rangeData.qro) * 100 : 0;
+  const qroTicketPromedio = qroRangeRegs > 0 ? qroRangeTotal / qroRangeRegs : 0;
+
+  const qroTrendData = Object.keys(qroData?.porMes || {})
+    .sort()
+    .map(mes => ({
+      mes: mes.substring(5),
+      total: qroData.porMes[mes].total
+    }));
+
+  const qroConceptData = Object.entries(qroData?.porConcepto || {})
     .map(([concepto, total]) => ({ concepto, total }))
     .sort((a, b) => b.total - a.total)
     .slice(0, 6);
@@ -535,6 +611,74 @@ export default function DashboardConsejo() {
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={polancoConceptData} layout="vertical" margin={{ left: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={IDIP_LIGHT_GRAY} />
+                    <XAxis type="number" tick={{ fontSize: 10 }} />
+                    <YAxis dataKey="concepto" type="category" tick={{ fontSize: 10, fontWeight: 'bold' }} width={110} />
+                    <Tooltip formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Ingreso']} />
+                    <Bar dataKey="total" fill={IDIP_GRAY} radius={[0, 6, 6, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Wallet size={22} color={IDIP_GREEN} />
+              <div>
+                <h2 className="font-black text-lg uppercase tracking-tight" style={{ color: IDIP_GRAY }}>Ingresos complementarios Querétaro</h2>
+                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: IDIP_GREEN }}>Resumen ejecutivo para Dirección</p>
+              </div>
+            </div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase">Hoja: Registros 2026 Qro</div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-2xl text-white shadow-lg" style={{ backgroundColor: IDIP_GRAY }}>
+              <p className="text-[9px] opacity-80 uppercase font-black tracking-widest">Mes seleccionado</p>
+              <p className="text-2xl font-black mt-1">${currentQroIngresos.toLocaleString()}</p>
+            </div>
+
+            <div className="p-5 rounded-2xl text-white shadow-lg" style={{ backgroundColor: IDIP_GREEN }}>
+              <p className="text-[9px] opacity-80 uppercase font-black tracking-widest">Acumulado rango</p>
+              <p className="text-2xl font-black mt-1">${qroRangeTotal.toLocaleString()}</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
+              <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">Participación vs QRO</p>
+              <p className="text-2xl font-black mt-1" style={{ color: IDIP_GRAY }}>{qroVsQro.toFixed(1)}%</p>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
+              <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">Ticket promedio</p>
+              <p className="text-2xl font-black mt-1" style={{ color: IDIP_GRAY }}>${Math.round(qroTicketPromedio).toLocaleString()}</p>
+              <p className="text-[10px] text-gray-400 font-bold mt-1">{qroRangeRegs.toLocaleString()} registros</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
+              <h3 className="font-black mb-4 uppercase text-sm tracking-widest" style={{ color: IDIP_GRAY }}>Tendencia mensual</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={qroTrendData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={IDIP_LIGHT_GRAY} />
+                    <XAxis dataKey="mes" tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                    <YAxis tickFormatter={v => `$${v / 1000}k`} tick={{ fontSize: 10 }} />
+                    <Tooltip formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Ingreso']} />
+                    <Line type="monotone" dataKey="total" stroke={IDIP_GREEN} strokeWidth={4} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
+              <h3 className="font-black mb-4 uppercase text-sm tracking-widest" style={{ color: IDIP_GRAY }}>Top conceptos</h3>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={qroConceptData} layout="vertical" margin={{ left: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={IDIP_LIGHT_GRAY} />
                     <XAxis type="number" tick={{ fontSize: 10 }} />
                     <YAxis dataKey="concepto" type="category" tick={{ fontSize: 10, fontWeight: 'bold' }} width={110} />
