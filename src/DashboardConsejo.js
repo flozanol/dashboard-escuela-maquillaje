@@ -31,6 +31,44 @@ async function fetchAllData() {
   };
 }
 
+function normalizeDate(dateStr) {
+  if (!dateStr) return null;
+  dateStr = dateStr.toString().trim();
+  
+  if (!isNaN(dateStr) && dateStr.length < 10) {
+    const excelEpoch = new Date(1899, 11, 30);
+    return new Date(excelEpoch.getTime() + parseFloat(dateStr) * 86400000).toISOString().substring(0, 10);
+  }
+  
+  dateStr = dateStr.replace(/\//g, '-');
+  
+  if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) return dateStr.substring(0, 10);
+  
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    if (parts[2].length === 4) return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    if (parts[0].length === 4) return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+  }
+  if (parts.length === 2 && parts[1].length === 4) {
+    return `${parts[1]}-${parts[0].padStart(2, '0')}-01`;
+  }
+  
+  const lower = dateStr.toLowerCase();
+  const monthMap = { 'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04', 'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08', 'septiembre': '09', 'octubre': '10', 'noviembre': '11', 'diciembre': '12' };
+  for (let m in monthMap) {
+    if (lower.includes(m)) {
+      const yearMatch = lower.match(/\b(202\d)\b/);
+      const yyyy = yearMatch ? yearMatch[1] : new Date().getFullYear().toString();
+      return `${yyyy}-${monthMap[m]}-01`;
+    }
+  }
+
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) return d.toISOString().substring(0, 10);
+  
+  return dateStr;
+}
+
 function processVentas(rows) {
   const initializeData = () => ({ ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} });
   const data = { CDMX: initializeData(), QRO: initializeData(), ONLINE: initializeData() };
@@ -41,13 +79,8 @@ function processVentas(rows) {
     const row = rows[i];
     if (!row[0] || !row[1]) continue;
 
-    let fecha = row[0].toString();
-    if (!isNaN(fecha) && fecha.length < 10) {
-      const excelEpoch = new Date(1899, 11, 30);
-      fecha = new Date(excelEpoch.getTime() + parseFloat(fecha) * 86400000).toISOString().substring(0, 10);
-    } else {
-      fecha = fecha.replace(/\//g, '-');
-    }
+    let fecha = normalizeDate(row[0]);
+    if (!fecha) continue;
 
     const mes = fecha.substring(0, 7);
     const ano = fecha.substring(0, 4);
@@ -99,7 +132,7 @@ function processPolancoIngresos(rows) {
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
 
-    let fecha = (row[0] || '').toString().trim();
+    let fechaRaw = row[0];
     const beneficiario = (row[1] || '').toString().trim();
     const concepto = (row[2] || 'SIN CONCEPTO').toString().trim().toUpperCase();
     const ingreso = parseNumber((row[3] || '').toString().replace(/\$/g, '').replace(/,/g, ''));
@@ -107,9 +140,9 @@ function processPolancoIngresos(rows) {
     // CAMPUS está en columna K = índice 10 (A=0,B=1,C=2,D=3,E=4,F=5,G=6,H=7,I=8,J=9,K=10)
     const campus = (row[10] || '').toString().trim().toUpperCase();
 
+    let fecha = normalizeDate(fechaRaw);
     if (!fecha || campus !== 'POLANCO' || ingreso <= 0) continue;
 
-    fecha = fecha.replace(/\//g, '-');
     const mes = fecha.substring(0, 7);
 
     result.total += ingreso;
@@ -150,7 +183,7 @@ function processQroIngresos(rows) {
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
 
-    let fecha = (row[0] || '').toString().trim();
+    let fechaRaw = row[0];
     const beneficiario = (row[1] || '').toString().trim();
     const concepto = (row[2] || 'SIN CONCEPTO').toString().trim().toUpperCase();
     // Ingreso en Columna I (índice 8)
@@ -160,9 +193,9 @@ function processQroIngresos(rows) {
     // Campus en Columna T (índice 19)
     const campus = (row[19] || '').toString().trim().toUpperCase();
 
+    let fecha = normalizeDate(fechaRaw);
     if (!fecha || ingreso <= 0) continue;
 
-    fecha = fecha.replace(/\//g, '-');
     const mes = fecha.substring(0, 7);
 
     result.total += ingreso;
