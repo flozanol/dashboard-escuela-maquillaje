@@ -220,29 +220,36 @@ function processQroIngresos(rows) {
   return result;
 }
 
-function processInscritos(rows = []) {
-  if (rows.length < 2) return [];
+function processInscritos(rows) {
+  // Asegurarnos de que sea un array de arrays
+  if (!Array.isArray(rows) || rows.length < 2) return [];
 
-  return rows.slice(1).filter(row => row.some(value => String(value || '').trim() !== '')).map((row, index) => {
-    const inscritos = parseNumber(row[4]);
-    const cupo = parseNumber(row[5]);
-    const disponibles = cupo - inscritos;
-    const ocupacion = cupo > 0 ? (inscritos / cupo) * 100 : 0;
+  return rows
+    .slice(1)
+    .filter(
+      row =>
+        Array.isArray(row) &&
+        row.some(value => String(value || '').trim() !== '')
+    )
+    .map((row, index) => {
+      const inscritos = parseNumber(row[4]);
+      const cupo = parseNumber(row[5]);
+      const disponibles = cupo - inscritos;
+      const ocupacion = cupo > 0 ? (inscritos / cupo) * 100 : 0;
 
-    return {
-      id: `${row[0] || 'curso'}-${row[1] || index}-${index}`,
-      curso: row[0] || 'Sin curso',
-      fechaInicio: row[1] || '',
-      horario: row[2] || '',
-      sede: row[3] || 'Sin sede',
-      inscritos,
-      cupo,
-      disponibles,
-      ocupacion
-    };
-  });
+      return {
+        id: `${row[0] || 'curso'}-${row[1] || index}-${index}`,
+        curso: row[0] || 'Sin curso',
+        fechaInicio: row[1] || '',
+        horario: row[2] || '',
+        sede: row[3] || 'Sin sede',
+        inscritos,
+        cupo,
+        disponibles,
+        ocupacion
+      };
+    });
 }
-
 function getStatusInscritos(ocupacion, cupo) {
   if (cupo <= 0) return { label: 'Sin cupo', className: 'bg-gray-100 text-gray-600', color: IDIP_GRAY };
   if (ocupacion >= 100) return { label: ocupacion > 100 ? 'Sobrecupo' : 'Lleno', className: 'bg-red-100 text-red-700', color: COLOR_RED };
