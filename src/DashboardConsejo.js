@@ -273,30 +273,60 @@ function InscritosSection({ rows = [] }) {
   const [selectedSede, setSelectedSede] = useState('TODAS');
   const [search, setSearch] = useState('');
 
-  const registros = useMemo(() => processInscritos(rows), [rows]);
-  const sedes = useMemo(() => ['TODAS', ...new Set(registros.map(item => item.sede))], [registros]);
+  // Aquí rows YA VIENE procesado desde useEffect (inscritosData)
+  const registros = Array.isArray(rows) ? rows : [];
 
-  const filtered = useMemo(() => registros.filter(item => {
-    const matchesSede = selectedSede === 'TODAS' || item.sede === selectedSede;
-    const term = search.trim().toLowerCase();
-    const matchesSearch = !term || [item.curso, item.sede, item.horario, item.fechaInicio].some(value => String(value).toLowerCase().includes(term));
-    return matchesSede && matchesSearch;
-  }), [registros, selectedSede, search]);
+  const sedes = useMemo(
+    () => ['TODAS', ...new Set(registros.map(item => item.sede))],
+    [registros]
+  );
 
-  const totals = useMemo(() => filtered.reduce((result, item) => ({
-    inscritos: result.inscritos + item.inscritos,
-    cupo: result.cupo + item.cupo,
-    disponibles: result.disponibles + item.disponibles
-  }), { inscritos: 0, cupo: 0, disponibles: 0 }), [filtered]);
+  const filtered = useMemo(
+    () =>
+      registros.filter(item => {
+        const matchesSede =
+          selectedSede === 'TODAS' || item.sede === selectedSede;
+        const term = search.trim().toLowerCase();
+        const matchesSearch =
+          !term ||
+          [item.curso, item.sede, item.horario, item.fechaInicio].some(
+            value => String(value || '').toLowerCase().includes(term)
+          );
+        return matchesSede && matchesSearch;
+      }),
+    [registros, selectedSede, search]
+  );
 
-  const ocupacionGeneral = totals.cupo > 0 ? (totals.inscritos / totals.cupo) * 100 : 0;
+  const totals = useMemo(
+    () =>
+      filtered.reduce(
+        (result, item) => ({
+          inscritos: result.inscritos + item.inscritos,
+          cupo: result.cupo + item.cupo,
+          disponibles: result.disponibles + item.disponibles
+        }),
+        { inscritos: 0, cupo: 0, disponibles: 0 }
+      ),
+    [filtered]
+  );
 
-  const porSede = useMemo(() => Object.values(filtered.reduce((result, item) => {
-    if (!result[item.sede]) result[item.sede] = { sede: item.sede, inscritos: 0, cupo: 0 };
-    result[item.sede].inscritos += item.inscritos;
-    result[item.sede].cupo += item.cupo;
-    return result;
-  }, {})), [filtered]);
+  const ocupacionGeneral =
+    totals.cupo > 0 ? (totals.inscritos / totals.cupo) * 100 : 0;
+
+  const porSede = useMemo(
+    () =>
+      Object.values(
+        filtered.reduce((result, item) => {
+          if (!result[item.sede]) {
+            result[item.sede] = { sede: item.sede, inscritos: 0, cupo: 0 };
+          }
+          result[item.sede].inscritos += item.inscritos;
+          result[item.sede].cupo += item.cupo;
+          return result;
+        }, {})
+      ),
+    [filtered]
+  );
 
   return (
     <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
@@ -304,55 +334,146 @@ function InscritosSection({ rows = [] }) {
         <div className="flex items-center gap-3">
           <Users size={24} color={IDIP_GREEN} />
           <div>
-            <h2 className="font-black text-lg uppercase tracking-tight" style={{ color: IDIP_GRAY }}>Inscritos y ocupacion</h2>
-            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: IDIP_GREEN }}>Cursos y grupos</p>
+            <h2
+              className="font-black text-lg uppercase tracking-tight"
+              style={{ color: IDIP_GRAY }}
+            >
+              Inscritos y ocupacion
+            </h2>
+            <p
+              className="text-[10px] font-bold uppercase tracking-widest"
+              style={{ color: IDIP_GREEN }}
+            >
+              Cursos y grupos
+            </p>
           </div>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
-          <select value={selectedSede} onChange={event => setSelectedSede(event.target.value)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold outline-none">
-            {sedes.map(sede => <option key={sede} value={sede}>{sede}</option>)}
+          <select
+            value={selectedSede}
+            onChange={event => setSelectedSede(event.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold outline-none"
+          >
+            {sedes.map(sede => (
+              <option key={sede} value={sede}>
+                {sede}
+              </option>
+            ))}
           </select>
-          <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar curso..." className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none" />
+          <input
+            value={search}
+            onChange={event => setSearch(event.target.value)}
+            placeholder="Buscar curso..."
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none"
+          />
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard icon={Users} label="Inscritos" value={totals.inscritos} color={IDIP_GRAY} />
-        <MetricCard icon={Target} label="Cupo total" value={totals.cupo} color={IDIP_GREEN} />
-        <MetricCard icon={Building} label="Lugares disponibles" value={totals.disponibles} color={IDIP_GRAY} />
-        <MetricCard icon={TrendingUp} label="Ocupacion general" value={`${ocupacionGeneral.toFixed(1)}%`} color={getStatusInscritos(ocupacionGeneral, totals.cupo).color} />
+        <MetricCard
+          icon={Users}
+          label="Inscritos"
+          value={totals.inscritos}
+          color={IDIP_GRAY}
+        />
+        <MetricCard
+          icon={Target}
+          label="Cupo total"
+          value={totals.cupo}
+          color={IDIP_GREEN}
+        />
+        <MetricCard
+          icon={Building}
+          label="Lugares disponibles"
+          value={totals.disponibles}
+          color={IDIP_GRAY}
+        />
+        <MetricCard
+          icon={TrendingUp}
+          label="Ocupacion general"
+          value={`${ocupacionGeneral.toFixed(1)}%`}
+          color={getStatusInscritos(ocupacionGeneral, totals.cupo).color}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
-          <h3 className="font-black mb-4 uppercase text-sm tracking-widest" style={{ color: IDIP_GRAY }}>Cupo contra inscritos por curso</h3>
+          <h3
+            className="font-black mb-4 uppercase text-sm tracking-widest"
+            style={{ color: IDIP_GRAY }}
+          >
+            Cupo contra inscritos por curso
+          </h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={filtered} margin={{ bottom: 55 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={IDIP_LIGHT_GRAY} />
-                <XAxis dataKey="curso" angle={-35} textAnchor="end" interval={0} height={75} tick={{ fontSize: 9 }} />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke={IDIP_LIGHT_GRAY}
+                />
+                <XAxis
+                  dataKey="curso"
+                  angle={-35}
+                  textAnchor="end"
+                  interval={0}
+                  height={75}
+                  tick={{ fontSize: 9 }}
+                />
                 <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
                 <Tooltip />
                 <Legend />
-                <Bar name="Inscritos" dataKey="inscritos" fill={IDIP_GREEN} radius={[5, 5, 0, 0]} />
-                <Bar name="Cupo" dataKey="cupo" fill={IDIP_GRAY} radius={[5, 5, 0, 0]} />
+                <Bar
+                  name="Inscritos"
+                  dataKey="inscritos"
+                  fill={IDIP_GREEN}
+                  radius={[5, 5, 0, 0]}
+                />
+                <Bar
+                  name="Cupo"
+                  dataKey="cupo"
+                  fill={IDIP_GRAY}
+                  radius={[5, 5, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
-          <h3 className="font-black mb-4 uppercase text-sm tracking-widest" style={{ color: IDIP_GRAY }}>Resumen por sede</h3>
+          <h3
+            className="font-black mb-4 uppercase text-sm tracking-widest"
+            style={{ color: IDIP_GRAY }}
+          >
+            Resumen por sede
+          </h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={porSede} margin={{ bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={IDIP_LIGHT_GRAY} />
-                <XAxis dataKey="sede" tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke={IDIP_LIGHT_GRAY}
+                />
+                <XAxis
+                  dataKey="sede"
+                  tick={{ fontSize: 10, fontWeight: 'bold' }}
+                />
                 <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
                 <Tooltip />
                 <Legend />
-                <Bar name="Inscritos" dataKey="inscritos" fill={IDIP_GREEN} radius={[5, 5, 0, 0]} />
-                <Bar name="Cupo" dataKey="cupo" fill={IDIP_GRAY} radius={[5, 5, 0, 0]} />
+                <Bar
+                  name="Inscritos"
+                  dataKey="inscritos"
+                  fill={IDIP_GREEN}
+                  radius={[5, 5, 0, 0]}
+                />
+                <Bar
+                  name="Cupo"
+                  dataKey="cupo"
+                  fill={IDIP_GRAY}
+                  radius={[5, 5, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -363,24 +484,68 @@ function InscritosSection({ rows = [] }) {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-gray-200 text-[10px] uppercase tracking-wider text-gray-500">
-              <th className="p-3">Curso</th><th className="p-3">Fecha de inicio</th><th className="p-3">Horario</th><th className="p-3">Sede</th><th className="p-3 text-right">Inscritos</th><th className="p-3 text-right">Cupo</th><th className="p-3 text-right">Disponibles</th><th className="p-3 text-right">Ocupacion</th><th className="p-3">Estado</th>
+              <th className="p-3">Curso</th>
+              <th className="p-3">Fecha de inicio</th>
+              <th className="p-3">Horario</th>
+              <th className="p-3">Sede</th>
+              <th className="p-3 text-right">Inscritos</th>
+              <th className="p-3 text-right">Cupo</th>
+              <th className="p-3 text-right">Disponibles</th>
+              <th className="p-3 text-right">Ocupacion</th>
+              <th className="p-3">Estado</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map(item => {
               const status = getStatusInscritos(item.ocupacion, item.cupo);
-              return <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="p-3 font-bold text-gray-700">{item.curso}</td><td className="p-3">{item.fechaInicio}</td><td className="p-3">{item.horario}</td><td className="p-3">{item.sede}</td><td className="p-3 text-right font-bold">{item.inscritos.toLocaleString()}</td><td className="p-3 text-right">{item.cupo.toLocaleString()}</td><td className={`p-3 text-right font-bold ${item.disponibles < 0 ? 'text-red-600' : 'text-gray-700'}`}>{item.disponibles.toLocaleString()}</td><td className="p-3 text-right font-bold">{item.ocupacion.toFixed(1)}%</td><td className="p-3"><span className={`px-2 py-1 rounded-full text-[10px] font-black ${status.className}`}>{status.label}</span></td>
-              </tr>;
+              return (
+                <tr
+                  key={item.id}
+                  className="border-b border-gray-100 hover:bg-gray-50"
+                >
+                  <td className="p-3 font-bold text-gray-700">{item.curso}</td>
+                  <td className="p-3">{item.fechaInicio}</td>
+                  <td className="p-3">{item.horario}</td>
+                  <td className="p-3">{item.sede}</td>
+                  <td className="p-3 text-right font-bold">
+                    {item.inscritos.toLocaleString()}
+                  </td>
+                  <td className="p-3 text-right">
+                    {item.cupo.toLocaleString()}
+                  </td>
+                  <td
+                    className={`p-3 text-right font-bold ${
+                      item.disponibles < 0
+                        ? 'text-red-600'
+                        : 'text-gray-700'
+                    }`}
+                  >
+                    {item.disponibles.toLocaleString()}
+                  </td>
+                  <td className="p-3 text-right font-bold">
+                    {item.ocupacion.toFixed(1)}%
+                  </td>
+                  <td className="p-3">
+                    <span
+                      className={`px-2 py-1 rounded-full text-[10px] font-black ${status.className}`}
+                    >
+                      {status.label}
+                    </span>
+                  </td>
+                </tr>
+              );
             })}
           </tbody>
         </table>
-        {!filtered.length && <p className="py-8 text-center text-gray-400">No hay cursos o grupos para mostrar.</p>}
+        {!filtered.length && (
+          <p className="py-8 text-center text-gray-400">
+            No hay cursos o grupos para mostrar.
+          </p>
+        )}
       </div>
     </section>
   );
 }
-
 function MetricCard({ icon: Icon, label, value, color }) {
   return <div className="p-5 rounded-2xl text-white shadow-lg" style={{ backgroundColor: color }}><p className="text-[9px] opacity-80 uppercase font-black tracking-widest">{label}</p><p className="text-2xl font-black mt-1">{typeof value === 'number' ? value.toLocaleString() : value}</p><Icon size={18} className="mt-2 opacity-80" /></div>;
 }
