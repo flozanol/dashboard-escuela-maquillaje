@@ -27,7 +27,6 @@ function normalizeDate(dateStr) {
   let str = dateStr.toString().trim();
   if (!str) return null;
   
-  // Manejo de seriales numéricos de Excel en UTC para evitar desfases de zona horaria
   if (!isNaN(str) && str.length < 10) {
     const numDays = parseFloat(str);
     const utcDays = Math.floor(numDays - 25569);
@@ -77,7 +76,7 @@ async function fetchAllData() {
   try {
     const apiKey = process.env.REACT_APP_GSHEETS_API_KEY;
     const spreadsheetId = '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg';
-    const ranges = ['Ventas Consolidadas!A:I', 'Objetivos!A:D', 'Registros 2026!A:K', 'Registros 2026 Qro!A:T', 'INSCRITOS!A:F'];
+    const ranges = ['Ventas Consolidadas!A:Z', 'Objetivos!A:D', 'Registros 2026!A:Z', 'Registros 2026 Qro!A:Z', 'INSCRITOS!A:Z'];
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchGet?key=${apiKey}&` + ranges.map(r => `ranges=${encodeURIComponent(r)}`).join('&');
     
     const res = await fetch(url);
@@ -101,29 +100,36 @@ function processVentas(rows) {
   const initializeData = () => ({ ventas: 0, cursos: 0, escuelas: {}, porMes: {}, porAno: {} });
   const data = { CDMX: initializeData(), QRO: initializeData(), ONLINE: initializeData() };
 
-  if (!rows || rows.length < 2) return { cdmx: data.CDMX, qro: data.QRO, online: data.ONLINE };
+  if (!Array.isArray(rows) || rows.length < 2) return { cdmx: data.CDMX, qro: data.QRO, online: data.ONLINE };
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    if (!row[0] || !row[1]) continue;
+    if (!Array.isArray(row) || row.length === 0) continue;
 
     let fecha = normalizeDate(row[0]);
     if (!fecha) continue;
 
-    const mes = fecha.substring(0, 7);
-    const ano = fecha.substring(0, 4);
-    const mesNum = fecha.substring(5, 7);
-    const sedeRaw = (row[8] || '').toString().trim().toUpperCase();
-
+    // Detectar Sede dinámicamente buscando en toda la fila sin importar acentos ni posición
     let sede = null;
-    if (sedeRaw === 'ONLINE') sede = 'ONLINE';
-    else if (['QUERETARO', 'QRO'].includes(sedeRaw)) sede = 'QRO';
-    else if (['POLANCO', 'CDMX', 'MEXICO'].includes(sedeRaw)) sede = 'CDMX';
+    const fullText = row.map(cell => 
+      String(cell ?? '')
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toUpperCase()
+    ).join(' ');
+
+    if (fullText.includes('ONLINE')) {
+      sede = 'ONLINE';
+    } else if (fullText.includes('QUERETARO') || fullText.includes('QRO')) {
+      sede = 'QRO';
+    } else if (fullText.includes('POLANCO') || fullText.includes('CDMX') || fullText.includes('MEXICO')) {
+      sede = 'CDMX';
+    }
 
     if (sede) {
       const v = parseNumber(row[4]);
       const c = parseNumber(row[5]) || 1;
-      const esc = row[1];
+      const esc = String(row[1] || 'GENERAL').trim();
 
       data[sede].ventas += v;
       data[sede].cursos += c;
@@ -131,6 +137,10 @@ function processVentas(rows) {
       if (!data[sede].escuelas[esc]) data[sede].escuelas[esc] = { ventas: 0, cursos: 0 };
       data[sede].escuelas[esc].ventas += v;
       data[sede].escuelas[esc].cursos += c;
+
+      const mes = fecha.substring(0, 7);
+      const ano = fecha.substring(0, 4);
+      const mesNum = fecha.substring(5, 7);
 
       if (!data[sede].porMes[mes]) data[sede].porMes[mes] = { ventas: 0, cursos: 0 };
       data[sede].porMes[mes].ventas += v;
@@ -189,9 +199,9 @@ function processQroIngresos(rows) {
     let fechaRaw = row[0];
     const beneficiario = (row[1] || '').toString().trim();
     const concepto = (row[2] || 'SIN CONCEPTO').toString().trim().toUpperCase();
-    const ingreso = parseNumber(row[8]);
-    const formaPago = (row[10] || 'SIN ESPECIFICAR').toString().trim().toUpperCase();
-    const campus = (row[19] || '').toString().trim().toUpperCase();
+    const ingreso = parseNumber(row[8] || row[3] || row[4]);
+    const formaPago = (row[10] || row[5] || 'SIN ESPECIFICAR').toString().trim().toUpperCase();
+    const campus = (row[19] || row[8] || '').toString().trim().toUpperCase();
 
     let fecha = normalizeDate(fechaRaw);
     if (!fecha || ingreso <= 0) continue;
@@ -261,6 +271,25 @@ function getProgressColor(percent) {
   if (percent >= 100) return IDIP_GREEN;
   if (percent >= 80) return COLOR_YELLOW;
   return COLOR_RED;
+}
+
+function getSedeData(sedeObj, sedeName, month, objetivos) {
+  if (!sedeObj) return { actual: { ventas: 0, cursos: 0 }, obj: { ventas: 0, cursos: 0 }, crecimiento: 0, ventasAnt: 0, anoAnteriorLabel: '' };
+  
+  const actual = sedeObj.porMes[month] || { ventas: 0, cursos: 0 };
+  const dateParts = month.split('-');
+  const prevYearNum = parseInt(dateParts[0]) - 1;
+  const anoAnt = `${prevYearNum}-${dateParts[1]}`;
+  const ventasAnt = sedeObj.porMes[anoAnt]?.ventas || 0;
+  const obj = objetivos[`${month}-${sedeName}`] || objetivos[`${month}-${sedeName === 'QRO' ? 'QUERETARO' : sedeName}`] || { ventas: 0, cursos: 0 };
+
+  return {
+    actual,
+    obj,
+    crecimiento: ventasAnt > 0 ? ((actual.ventas - ventasAnt) / ventasAnt * 100) : 0,
+    ventasAnt,
+    anoAnteriorLabel: prevYearNum
+  };
 }
 
 function MetricCard({ icon: Icon, label, value, color }) {
@@ -698,6 +727,7 @@ export default function DashboardConsejo() {
       }
       setLoading(false);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const mesesDisponibles = useMemo(() => {
@@ -715,25 +745,6 @@ export default function DashboardConsejo() {
     setSelectedRangeMonths(prev =>
       prev.includes(mes) ? prev.filter(m => m !== mes) : [...prev, mes]
     );
-  };
-
-  const getSedeData = (sedeObj, sedeName, month) => {
-    if (!sedeObj) return { actual: { ventas: 0, cursos: 0 }, obj: { ventas: 0, cursos: 0 }, crecimiento: 0, ventasAnt: 0, anoAnteriorLabel: '' };
-    
-    const actual = sedeObj.porMes[month] || { ventas: 0, cursos: 0 };
-    const dateParts = month.split('-');
-    const prevYearNum = parseInt(dateParts[0]) - 1;
-    const anoAnt = `${prevYearNum}-${dateParts[1]}`;
-    const ventasAnt = sedeObj.porMes[anoAnt]?.ventas || 0;
-    const obj = objetivos[`${month}-${sedeName}`] || objetivos[`${month}-${sedeName === 'QRO' ? 'QUERETARO' : sedeName}`] || { ventas: 0, cursos: 0 };
-
-    return {
-      actual,
-      obj,
-      crecimiento: ventasAnt > 0 ? ((actual.ventas - ventasAnt) / ventasAnt * 100) : 0,
-      ventasAnt,
-      anoAnteriorLabel: prevYearNum
-    };
   };
 
   const rangeData = useMemo(() => {
@@ -757,9 +768,9 @@ export default function DashboardConsejo() {
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const timeElapsedPercent = (dayOfMonth / daysInMonth) * 100;
 
-  const currentCDMX = useMemo(() => data ? getSedeData(data.cdmx, 'CDMX', selectedMonth) : null, [data, selectedMonth, objetivos]);
-  const currentQRO = useMemo(() => data ? getSedeData(data.qro, 'QRO', selectedMonth) : null, [data, selectedMonth, objetivos]);
-  const currentOnline = useMemo(() => data ? getSedeData(data.online, 'ONLINE', selectedMonth) : null, [data, selectedMonth, objetivos]);
+  const currentCDMX = useMemo(() => data ? getSedeData(data.cdmx, 'CDMX', selectedMonth, objetivos) : null, [data, selectedMonth, objetivos]);
+  const currentQRO = useMemo(() => data ? getSedeData(data.qro, 'QRO', selectedMonth, objetivos) : null, [data, selectedMonth, objetivos]);
+  const currentOnline = useMemo(() => data ? getSedeData(data.online, 'ONLINE', selectedMonth, objetivos) : null, [data, selectedMonth, objetivos]);
 
   const currentPolanco = polancoData?.porMes?.[selectedMonth]?.total || 0;
   const polancoRangeTotal = useMemo(() => selectedRangeMonths.reduce((sum, mes) => sum + (polancoData?.porMes?.[mes]?.total || 0), 0), [selectedRangeMonths, polancoData]);
