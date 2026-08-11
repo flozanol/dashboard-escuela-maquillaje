@@ -221,28 +221,40 @@ function processQroIngresos(rows) {
 }
 
 function processInscritos(rows) {
-  // Asegurarnos de que sea un array de arrays
+  // rows viene directamente de Google Sheets: INSCRITOS!A:F
   if (!Array.isArray(rows) || rows.length < 2) return [];
 
   return rows
-    .slice(1)
-    .filter(
-      row =>
-        Array.isArray(row) &&
-        row.some(value => String(value || '').trim() !== '')
-    )
+    .slice(1) // saltamos encabezados
+    .filter(row => Array.isArray(row) && String(row[0] ?? '').trim() !== '')
     .map((row, index) => {
       const inscritos = parseNumber(row[4]);
       const cupo = parseNumber(row[5]);
       const disponibles = cupo - inscritos;
       const ocupacion = cupo > 0 ? (inscritos / cupo) * 100 : 0;
 
+      let fechaInicio = '';
+      if (row[1]) {
+        // Si es número de Google Sheets (serial date)
+        if (typeof row[1] === 'number') {
+          const excelEpoch = new Date(1899, 11, 30);
+          const d = new Date(excelEpoch.getTime() + row[1] * 86400000);
+          fechaInicio = d.toLocaleDateString('es-MX');
+        } else {
+          // Si ya viene como string fecha (por ejemplo 1/8/2026)
+          const d = new Date(row[1]);
+          fechaInicio = isNaN(d.getTime())
+            ? String(row[1])
+            : d.toLocaleDateString('es-MX');
+        }
+      }
+
       return {
-        id: `${row[0] || 'curso'}-${row[1] || index}-${index}`,
-        curso: row[0] || 'Sin curso',
-        fechaInicio: row[1] || '',
-        horario: row[2] || '',
-        sede: row[3] || 'Sin sede',
+        id: `${String(row[0] ?? 'curso').trim()}-${index}`,
+        curso: String(row[0] ?? '').trim(),
+        fechaInicio,
+        horario: String(row[2] ?? '').trim(),
+        sede: String(row[3] ?? '').trim(),
         inscritos,
         cupo,
         disponibles,
