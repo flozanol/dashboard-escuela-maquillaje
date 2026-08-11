@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { Building, Target, TrendingUp, TrendingDown, Globe, Award, Calendar, CheckSquare, Square, Zap, Activity, Users, ExternalLink, Wallet } from 'lucide-react';
 
@@ -19,7 +19,7 @@ function parseNumber(value) {
 async function fetchAllData() {
   const apiKey = process.env.REACT_APP_GSHEETS_API_KEY;
   const spreadsheetId = '1DHt8N8bEPElP4Stu1m2Wwb2brO3rLKOSuM8y_Ca3nVg';
-  const ranges = ['Ventas Consolidadas!A:I', 'Objetivos!A:D', 'Registros 2026!A:K', 'Registros 2026 Qro!A:T'];
+  const ranges = ['Ventas Consolidadas!A:I', 'Objetivos!A:D', 'Registros 2026!A:K', 'Registros 2026 Qro!A:T', 'INSCRITOS!A:F'];
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchGet?key=${apiKey}&` + ranges.map(r => `ranges=${encodeURIComponent(r)}`).join('&');
   const res = await fetch(url);
   const data = await res.json();
@@ -27,7 +27,8 @@ async function fetchAllData() {
     ventas: data.valueRanges[0]?.values || [],
     objetivos: data.valueRanges[1]?.values || [],
     registros: data.valueRanges[2]?.values || [],
-    registrosQro: data.valueRanges[3]?.values || []
+    registrosQro: data.valueRanges[3]?.values || [],
+    inscritos: data.valueRanges[4]?.values || []
   };
 }
 
@@ -89,8 +90,8 @@ function processVentas(rows) {
 
     let sede = null;
     if (sedeRaw === 'ONLINE') sede = 'ONLINE';
-    else if (['QUERÉTARO', 'QRO', 'QUERETARO'].includes(sedeRaw)) sede = 'QRO';
-    else if (['POLANCO', 'CDMX', 'MÉXICO', 'MEXICO'].includes(sedeRaw)) sede = 'CDMX';
+    else if (['QUERETARO', 'QRO', 'QUERETARO'].includes(sedeRaw)) sede = 'QRO';
+    else if (['POLANCO', 'CDMX', 'MEXICO', 'MEXICO'].includes(sedeRaw)) sede = 'CDMX';
 
     if (sede) {
       const v = parseNumber(row[4]);
@@ -137,7 +138,6 @@ function processPolancoIngresos(rows) {
     const concepto = (row[2] || 'SIN CONCEPTO').toString().trim().toUpperCase();
     const ingreso = parseNumber((row[3] || '').toString().replace(/\$/g, '').replace(/,/g, ''));
     const formaPago = (row[5] || 'SIN ESPECIFICAR').toString().trim().toUpperCase();
-    // CAMPUS está en columna K = índice 10 (A=0,B=1,C=2,D=3,E=4,F=5,G=6,H=7,I=8,J=9,K=10)
     const campus = (row[10] || '').toString().trim().toUpperCase();
 
     let fecha = normalizeDate(fechaRaw);
@@ -186,11 +186,8 @@ function processQroIngresos(rows) {
     let fechaRaw = row[0];
     const beneficiario = (row[1] || '').toString().trim();
     const concepto = (row[2] || 'SIN CONCEPTO').toString().trim().toUpperCase();
-    // Ingreso en Columna I (índice 8)
     const ingreso = parseNumber((row[8] || '').toString().replace(/\$/g, '').replace(/,/g, ''));
-    // Forma de pago en Columna K (índice 10)
     const formaPago = (row[10] || 'SIN ESPECIFICAR').toString().trim().toUpperCase();
-    // Campus en Columna T (índice 19)
     const campus = (row[19] || '').toString().trim().toUpperCase();
 
     let fecha = normalizeDate(fechaRaw);
@@ -223,6 +220,152 @@ function processQroIngresos(rows) {
   return result;
 }
 
+function processInscritos(rows = []) {
+  if (rows.length < 2) return [];
+
+  return rows.slice(1).filter(row => row.some(value => String(value || '').trim() !== '')).map((row, index) => {
+    const inscritos = parseNumber(row[4]);
+    const cupo = parseNumber(row[5]);
+    const disponibles = cupo - inscritos;
+    const ocupacion = cupo > 0 ? (inscritos / cupo) * 100 : 0;
+
+    return {
+      id: `${row[0] || 'curso'}-${row[1] || index}-${index}`,
+      curso: row[0] || 'Sin curso',
+      fechaInicio: row[1] || '',
+      horario: row[2] || '',
+      sede: row[3] || 'Sin sede',
+      inscritos,
+      cupo,
+      disponibles,
+      ocupacion
+    };
+  });
+}
+
+function getStatusInscritos(ocupacion, cupo) {
+  if (cupo <= 0) return { label: 'Sin cupo', className: 'bg-gray-100 text-gray-600', color: IDIP_GRAY };
+  if (ocupacion >= 100) return { label: ocupacion > 100 ? 'Sobrecupo' : 'Lleno', className: 'bg-red-100 text-red-700', color: COLOR_RED };
+  if (ocupacion >= 80) return { label: 'Casi lleno', className: 'bg-yellow-100 text-yellow-700', color: COLOR_YELLOW };
+  return { label: 'Disponible', className: 'bg-green-100 text-green-700', color: IDIP_GREEN };
+}
+
+function InscritosSection({ rows = [] }) {
+  const [selectedSede, setSelectedSede] = useState('TODAS');
+  const [search, setSearch] = useState('');
+
+  const registros = useMemo(() => processInscritos(rows), [rows]);
+  const sedes = useMemo(() => ['TODAS', ...new Set(registros.map(item => item.sede))], [registros]);
+
+  const filtered = useMemo(() => registros.filter(item => {
+    const matchesSede = selectedSede === 'TODAS' || item.sede === selectedSede;
+    const term = search.trim().toLowerCase();
+    const matchesSearch = !term || [item.curso, item.sede, item.horario, item.fechaInicio].some(value => String(value).toLowerCase().includes(term));
+    return matchesSede && matchesSearch;
+  }), [registros, selectedSede, search]);
+
+  const totals = useMemo(() => filtered.reduce((result, item) => ({
+    inscritos: result.inscritos + item.inscritos,
+    cupo: result.cupo + item.cupo,
+    disponibles: result.disponibles + item.disponibles
+  }), { inscritos: 0, cupo: 0, disponibles: 0 }), [filtered]);
+
+  const ocupacionGeneral = totals.cupo > 0 ? (totals.inscritos / totals.cupo) * 100 : 0;
+
+  const porSede = useMemo(() => Object.values(filtered.reduce((result, item) => {
+    if (!result[item.sede]) result[item.sede] = { sede: item.sede, inscritos: 0, cupo: 0 };
+    result[item.sede].inscritos += item.inscritos;
+    result[item.sede].cupo += item.cupo;
+    return result;
+  }, {})), [filtered]);
+
+  return (
+    <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+        <div className="flex items-center gap-3">
+          <Users size={24} color={IDIP_GREEN} />
+          <div>
+            <h2 className="font-black text-lg uppercase tracking-tight" style={{ color: IDIP_GRAY }}>Inscritos y ocupacion</h2>
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: IDIP_GREEN }}>Cursos y grupos</p>
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <select value={selectedSede} onChange={event => setSelectedSede(event.target.value)} className="border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold outline-none">
+            {sedes.map(sede => <option key={sede} value={sede}>{sede}</option>)}
+          </select>
+          <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar curso..." className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard icon={Users} label="Inscritos" value={totals.inscritos} color={IDIP_GRAY} />
+        <MetricCard icon={Target} label="Cupo total" value={totals.cupo} color={IDIP_GREEN} />
+        <MetricCard icon={Building} label="Lugares disponibles" value={totals.disponibles} color={IDIP_GRAY} />
+        <MetricCard icon={TrendingUp} label="Ocupacion general" value={`${ocupacionGeneral.toFixed(1)}%`} color={getStatusInscritos(ocupacionGeneral, totals.cupo).color} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
+          <h3 className="font-black mb-4 uppercase text-sm tracking-widest" style={{ color: IDIP_GRAY }}>Cupo contra inscritos por curso</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={filtered} margin={{ bottom: 55 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={IDIP_LIGHT_GRAY} />
+                <XAxis dataKey="curso" angle={-35} textAnchor="end" interval={0} height={75} tick={{ fontSize: 9 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
+                <Tooltip />
+                <Legend />
+                <Bar name="Inscritos" dataKey="inscritos" fill={IDIP_GREEN} radius={[5, 5, 0, 0]} />
+                <Bar name="Cupo" dataKey="cupo" fill={IDIP_GRAY} radius={[5, 5, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
+          <h3 className="font-black mb-4 uppercase text-sm tracking-widest" style={{ color: IDIP_GRAY }}>Resumen por sede</h3>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={porSede} margin={{ bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={IDIP_LIGHT_GRAY} />
+                <XAxis dataKey="sede" tick={{ fontSize: 10, fontWeight: 'bold' }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
+                <Tooltip />
+                <Legend />
+                <Bar name="Inscritos" dataKey="inscritos" fill={IDIP_GREEN} radius={[5, 5, 0, 0]} />
+                <Bar name="Cupo" dataKey="cupo" fill={IDIP_GRAY} radius={[5, 5, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 text-[10px] uppercase tracking-wider text-gray-500">
+              <th className="p-3">Curso</th><th className="p-3">Fecha de inicio</th><th className="p-3">Horario</th><th className="p-3">Sede</th><th className="p-3 text-right">Inscritos</th><th className="p-3 text-right">Cupo</th><th className="p-3 text-right">Disponibles</th><th className="p-3 text-right">Ocupacion</th><th className="p-3">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(item => {
+              const status = getStatusInscritos(item.ocupacion, item.cupo);
+              return <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <td className="p-3 font-bold text-gray-700">{item.curso}</td><td className="p-3">{item.fechaInicio}</td><td className="p-3">{item.horario}</td><td className="p-3">{item.sede}</td><td className="p-3 text-right font-bold">{item.inscritos.toLocaleString()}</td><td className="p-3 text-right">{item.cupo.toLocaleString()}</td><td className={`p-3 text-right font-bold ${item.disponibles < 0 ? 'text-red-600' : 'text-gray-700'}`}>{item.disponibles.toLocaleString()}</td><td className="p-3 text-right font-bold">{item.ocupacion.toFixed(1)}%</td><td className="p-3"><span className={`px-2 py-1 rounded-full text-[10px] font-black ${status.className}`}>{status.label}</span></td>
+              </tr>;
+            })}
+          </tbody>
+        </table>
+        {!filtered.length && <p className="py-8 text-center text-gray-400">No hay cursos o grupos para mostrar.</p>}
+      </div>
+    </section>
+  );
+}
+
+function MetricCard({ icon: Icon, label, value, color }) {
+  return <div className="p-5 rounded-2xl text-white shadow-lg" style={{ backgroundColor: color }}><p className="text-[9px] opacity-80 uppercase font-black tracking-widest">{label}</p><p className="text-2xl font-black mt-1">{typeof value === 'number' ? value.toLocaleString() : value}</p><Icon size={18} className="mt-2 opacity-80" /></div>;
+}
+
 export default function DashboardConsejo() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
@@ -231,16 +374,19 @@ export default function DashboardConsejo() {
   const [selectedRangeMonths, setSelectedRangeMonths] = useState([]);
   const [polancoData, setPolancoData] = useState(null);
   const [qroData, setQroData] = useState(null);
+  const [inscritosData, setInscritosData] = useState([]);
 
   useEffect(() => {
     fetchAllData().then(res => {
       const processedVentas = processVentas(res.ventas);
       const processedPolanco = processPolancoIngresos(res.registros);
       const processedQro = processQroIngresos(res.registrosQro);
+      const processedInscritos = processInscritos(res.inscritos);
 
       setData(processedVentas);
       setPolancoData(processedPolanco);
       setQroData(processedQro);
+      setInscritosData(processedInscritos);
 
       const objs = {};
       res.objetivos?.forEach(r => {
@@ -268,7 +414,7 @@ export default function DashboardConsejo() {
   }, []);
 
   if (loading) {
-    return <div className="p-8 text-center text-gray-500 font-medium italic">Actualizando visión estratégica IDIP...</div>;
+    return <div className="p-8 text-center text-gray-500 font-medium italic">Actualizando vision estrategica IDIP...</div>;
   }
 
   const mesesDisponibles = [
@@ -291,7 +437,7 @@ export default function DashboardConsejo() {
     const prevYearNum = parseInt(dateParts[0]) - 1;
     const anoAnt = `${prevYearNum}-${dateParts[1]}`;
     const ventasAnt = sedeObj.porMes[anoAnt]?.ventas || 0;
-    const obj = objetivos[`${month}-${sedeName}`] || objetivos[`${month}-${sedeName === 'QRO' ? 'QUERÉTARO' : sedeName}`] || { ventas: 0, cursos: 0 };
+    const obj = objetivos[`${month}-${sedeName}`] || objetivos[`${month}-${sedeName === 'QRO' ? 'QUERETARO' : sedeName}`] || { ventas: 0, cursos: 0 };
 
     return {
       actual,
@@ -441,14 +587,14 @@ export default function DashboardConsejo() {
                   <span className="text-[10px] font-black text-gray-600 uppercase">Ritmo (Pace)</span>
                 </div>
                 <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${pace >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                  {pace >= 0 ? 'A Tiempo' : 'Crítico'} ({pace >= 0 ? '+' : ''}{pace.toFixed(1)}%)
+                  {pace >= 0 ? 'A Tiempo' : 'Critico'} ({pace >= 0 ? '+' : ''}{pace.toFixed(1)}%)
                 </span>
               </div>
 
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-1.5">
                   <Zap size={14} className="text-yellow-500" />
-                  <span className="text-[10px] font-black text-gray-600 uppercase">Pronóstico</span>
+                  <span className="text-[10px] font-black text-gray-600 uppercase">Pronostico</span>
                 </div>
                 <div className="text-right">
                   <p className="text-xs font-black text-gray-800">${Math.round(forecast).toLocaleString()}</p>
@@ -459,7 +605,7 @@ export default function DashboardConsejo() {
           )}
 
           <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
-            <span className="text-[9px] font-bold text-gray-400 uppercase">Alcance vs Año Anterior</span>
+            <span className="text-[9px] font-bold text-gray-400 uppercase">Alcance vs Ano Anterior</span>
             <div className="text-right">
               <p className="text-[9px] font-bold" style={{ color: alcanceAnual >= 100 ? IDIP_GREEN : IDIP_GRAY }}>
                 {alcanceAnual.toFixed(1)}% Logrado
@@ -479,7 +625,7 @@ export default function DashboardConsejo() {
             <img src="https://idip.com.mx/wp-content/uploads/2024/08/logos-IDIP-sin-fondo-1-2.png" alt="IDIP Logo" className="h-12 md:h-16 w-auto" />
             <div className="h-10 w-[1px] bg-gray-200 hidden md:block"></div>
             <div>
-              <h1 className="text-xl md:text-2xl font-black tracking-tight" style={{ color: IDIP_GRAY }}>DIRECCIÓN ESTRATÉGICA</h1>
+              <h1 className="text-xl md:text-2xl font-black tracking-tight" style={{ color: IDIP_GRAY }}>DIRECCION ESTRATEGICA</h1>
               <p className="text-xs font-bold uppercase tracking-widest" style={{ color: IDIP_GREEN }}>IDIP • Business Intelligence</p>
             </div>
           </div>
@@ -505,7 +651,7 @@ export default function DashboardConsejo() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <CardSede titulo="CDMX" info={currentCDMX} color={IDIP_GRAY} icon={Building} />
-          <CardSede titulo="QUERÉTARO" info={currentQRO} color={IDIP_GREEN} icon={Target} />
+          <CardSede titulo="QUERETARO" info={currentQRO} color={IDIP_GREEN} icon={Target} />
           <CardSede titulo="ONLINE" info={currentOnline} color={IDIP_GRAY} icon={Globe} />
         </div>
 
@@ -552,7 +698,7 @@ export default function DashboardConsejo() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h3 className="font-black mb-6 uppercase text-sm tracking-widest" style={{ color: IDIP_GRAY }}>Tendencia Histórica ($)</h3>
+            <h3 className="font-black mb-6 uppercase text-sm tracking-widest" style={{ color: IDIP_GRAY }}>Tendencia Historica ($)</h3>
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={dataGraficas}>
@@ -594,7 +740,7 @@ export default function DashboardConsejo() {
               <Wallet size={22} color={IDIP_GREEN} />
               <div>
                 <h2 className="font-black text-lg uppercase tracking-tight" style={{ color: IDIP_GRAY }}>Ingresos complementarios Polanco</h2>
-                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: IDIP_GREEN }}>Resumen ejecutivo para Dirección</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: IDIP_GREEN }}>Resumen ejecutivo para Direccion</p>
               </div>
             </div>
             <div className="text-[10px] font-bold text-gray-400 uppercase">Hoja: Registros 2026</div>
@@ -612,7 +758,7 @@ export default function DashboardConsejo() {
             </div>
 
             <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
-              <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">Participación vs CDMX</p>
+              <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">Participacion vs CDMX</p>
               <p className="text-2xl font-black mt-1" style={{ color: IDIP_GRAY }}>{polancoVsCDMX.toFixed(1)}%</p>
             </div>
 
@@ -661,8 +807,8 @@ export default function DashboardConsejo() {
             <div className="flex items-center gap-2">
               <Wallet size={22} color={IDIP_GREEN} />
               <div>
-                <h2 className="font-black text-lg uppercase tracking-tight" style={{ color: IDIP_GRAY }}>Ingresos complementarios Querétaro</h2>
-                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: IDIP_GREEN }}>Resumen ejecutivo para Dirección</p>
+                <h2 className="font-black text-lg uppercase tracking-tight" style={{ color: IDIP_GRAY }}>Ingresos complementarios Queretaro</h2>
+                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: IDIP_GREEN }}>Resumen ejecutivo para Direccion</p>
               </div>
             </div>
             <div className="text-[10px] font-bold text-gray-400 uppercase">Hoja: Registros 2026 Qro</div>
@@ -680,7 +826,7 @@ export default function DashboardConsejo() {
             </div>
 
             <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
-              <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">Participación vs QRO</p>
+              <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">Participacion vs QRO</p>
               <p className="text-2xl font-black mt-1" style={{ color: IDIP_GRAY }}>{qroVsQro.toFixed(1)}%</p>
             </div>
 
@@ -723,6 +869,8 @@ export default function DashboardConsejo() {
             </div>
           </div>
         </section>
+
+        <InscritosSection rows={inscritosData} />
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
           <div className="flex items-center gap-2 mb-6">
