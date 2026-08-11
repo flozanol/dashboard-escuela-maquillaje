@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { Building, Target, TrendingUp, TrendingDown, Globe, Award, Calendar, CheckSquare, Square, Zap, Activity, Users, ExternalLink, Wallet } from 'lucide-react';
+import { Building, Target, TrendingUp, TrendingDown, Globe, Award, Calendar, CheckSquare, Square, Zap, Activity, Users, ExternalLink, Wallet, AlertTriangle, Clock } from 'lucide-react';
 
 // Colores institucionales IDIP
 const IDIP_GREEN = "#86C332";
@@ -231,7 +231,7 @@ function processInscritos(rows) {
       const disponibles = cupo - inscritos;
       const ocupacion = cupo > 0 ? (inscritos / cupo) * 100 : 0;
 
-      let fechaInicio = '';
+      let fechaInicio = 'POR DEFINIR';
       if (row[1]) {
         if (typeof row[1] === 'number') {
           const excelEpoch = new Date(1899, 11, 30);
@@ -240,17 +240,19 @@ function processInscritos(rows) {
         } else {
           const d = new Date(row[1]);
           fechaInicio = isNaN(d.getTime())
-            ? String(row[1])
+            ? String(row[1]).trim()
             : d.toLocaleDateString('es-MX');
         }
       }
+
+      const horarioRaw = String(row[2] ?? '').trim().toUpperCase();
 
       return {
         id: `${String(row[0] ?? 'curso').trim()}-${index}`,
         curso: String(row[0] ?? '').trim(),
         fechaInicio,
-        horario: String(row[2] ?? '').trim(),
-        sede: String(row[3] ?? '').trim(),
+        horario: horarioRaw || 'GENERAL',
+        sede: String(row[3] ?? '').trim().toUpperCase() || 'SIN SEDE',
         inscritos,
         cupo,
         disponibles,
@@ -263,32 +265,39 @@ function getStatusInscritos(ocupacion, cupo) {
   if (cupo <= 0) return { label: 'Sin cupo', className: 'bg-gray-100 text-gray-600', color: IDIP_GRAY };
   if (ocupacion >= 100) return { label: ocupacion > 100 ? 'Sobrecupo' : 'Lleno', className: 'bg-red-100 text-red-700', color: COLOR_RED };
   if (ocupacion >= 80) return { label: 'Casi lleno', className: 'bg-yellow-100 text-yellow-700', color: COLOR_YELLOW };
+  if (ocupacion < 40) return { label: 'Baja Ocupación', className: 'bg-rose-100 text-rose-800 font-bold', color: COLOR_RED };
   return { label: 'Disponible', className: 'bg-green-100 text-green-700', color: IDIP_GREEN };
 }
 
 function InscritosSection({ rows = [] }) {
   const [selectedSede, setSelectedSede] = useState('TODAS');
+  const [selectedHorario, setSelectedHorario] = useState('TODOS');
   const [search, setSearch] = useState('');
 
   const sedes = useMemo(() => {
     const registros = Array.isArray(rows) ? rows : [];
-    return ['TODAS', ...new Set(registros.map(item => item.sede))];
+    return ['TODAS', ...new Set(registros.map(item => item.sede).filter(Boolean))];
+  }, [rows]);
+
+  const horarios = useMemo(() => {
+    const registros = Array.isArray(rows) ? rows : [];
+    return ['TODOS', ...new Set(registros.map(item => item.horario).filter(Boolean))];
   }, [rows]);
 
   const filtered = useMemo(() => {
     const registros = Array.isArray(rows) ? rows : [];
     return registros.filter(item => {
-      const matchesSede =
-        selectedSede === 'TODAS' || item.sede === selectedSede;
+      const matchesSede = selectedSede === 'TODAS' || item.sede === selectedSede;
+      const matchesHorario = selectedHorario === 'TODOS' || item.horario === selectedHorario;
       const term = search.trim().toLowerCase();
       const matchesSearch =
         !term ||
         [item.curso, item.sede, item.horario, item.fechaInicio].some(
           value => String(value || '').toLowerCase().includes(term)
         );
-      return matchesSede && matchesSearch;
+      return matchesSede && matchesHorario && matchesSearch;
     });
-  }, [rows, selectedSede, search]);
+  }, [rows, selectedSede, selectedHorario, search]);
 
   const totals = useMemo(() => {
     return filtered.reduce(
@@ -301,8 +310,27 @@ function InscritosSection({ rows = [] }) {
     );
   }, [filtered]);
 
-  const ocupacionGeneral =
-    totals.cupo > 0 ? (totals.inscritos / totals.cupo) * 100 : 0;
+  const ocupacionGeneral = totals.cupo > 0 ? (totals.inscritos / totals.cupo) * 100 : 0;
+
+  // Detección automática de cursos en RIESGO (< 40% ocupación)
+  const cursosEnRiesgo = useMemo(() => {
+    return filtered.filter(item => item.cupo > 0 && item.ocupacion < 40);
+  }, [filtered]);
+
+  // Agrupación visual por Turno/Horario para tomar decisiones estratégicas
+  const porHorario = useMemo(() => {
+    return Object.values(
+      filtered.reduce((result, item) => {
+        const key = item.horario || 'GENERAL';
+        if (!result[key]) {
+          result[key] = { horario: key, inscritos: 0, cupo: 0 };
+        }
+        result[key].inscritos += item.inscritos;
+        result[key].cupo += item.cupo;
+        return result;
+      }, {})
+    );
+  }, [filtered]);
 
   const porSede = useMemo(() => {
     return Object.values(
@@ -319,218 +347,221 @@ function InscritosSection({ rows = [] }) {
 
   return (
     <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
-      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+      {/* HEADER DE SECCIÓN Y CONTROLES */}
+      <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4">
         <div className="flex items-center gap-3">
-          <Users size={24} color={IDIP_GREEN} />
+          <Users size={26} color={IDIP_GREEN} />
           <div>
-            <h2
-              className="font-black text-lg uppercase tracking-tight"
-              style={{ color: IDIP_GRAY }}
-            >
-              Inscritos y ocupacion
+            <h2 className="font-black text-xl uppercase tracking-tight" style={{ color: IDIP_GRAY }}>
+              Control de Inscritos y Ocupación
             </h2>
-            <p
-              className="text-[10px] font-bold uppercase tracking-widest"
-              style={{ color: IDIP_GREEN }}
-            >
-              Cursos y grupos
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+              Análisis operativo por grupo, fecha de apertura y turno
             </p>
           </div>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <select
-            value={selectedSede}
-            onChange={event => setSelectedSede(event.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold outline-none"
-          >
-            {sedes.map(sede => (
-              <option key={sede} value={sede}>
-                {sede}
-              </option>
-            ))}
-          </select>
+
+        {/* FILTROS ESTRATÉGICOS DE DIRECCIÓN */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-2 py-1">
+            <Building size={14} className="text-gray-400 mr-1" />
+            <select
+              value={selectedSede}
+              onChange={e => setSelectedSede(e.target.value)}
+              className="bg-transparent text-xs font-bold text-gray-700 outline-none pr-2 py-1 cursor-pointer"
+            >
+              {sedes.map(s => <option key={s} value={s}>Sede: {s}</option>)}
+            </select>
+          </div>
+
+          <div className="flex items-center bg-gray-50 border border-gray-200 rounded-xl px-2 py-1">
+            <Clock size={14} className="text-gray-400 mr-1" />
+            <select
+              value={selectedHorario}
+              onChange={e => setSelectedHorario(e.target.value)}
+              className="bg-transparent text-xs font-bold text-gray-700 outline-none pr-2 py-1 cursor-pointer"
+            >
+              {horarios.map(h => <option key={h} value={h}>Turno: {h}</option>)}
+            </select>
+          </div>
+
           <input
             value={search}
-            onChange={event => setSearch(event.target.value)}
-            placeholder="Buscar curso..."
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none"
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar por curso o fecha..."
+            className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs outline-none focus:border-green-500 w-full sm:w-auto"
           />
         </div>
       </div>
 
+      {/* METRIC CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard
-          icon={Users}
-          label="Inscritos"
-          value={totals.inscritos}
-          color={IDIP_GRAY}
-        />
-        <MetricCard
-          icon={Target}
-          label="Cupo total"
-          value={totals.cupo}
-          color={IDIP_GREEN}
-        />
-        <MetricCard
-          icon={Building}
-          label="Lugares disponibles"
-          value={totals.disponibles}
-          color={IDIP_GRAY}
-        />
+        <MetricCard icon={Users} label="Total Inscritos" value={totals.inscritos} color={IDIP_GRAY} />
+        <MetricCard icon={Target} label="Cupo Total Abierto" value={totals.cupo} color={IDIP_GREEN} />
+        <MetricCard icon={Building} label="Lugares Disponibles" value={totals.disponibles} color={IDIP_GRAY} />
         <MetricCard
           icon={TrendingUp}
-          label="Ocupacion general"
+          label="Ocupación Promedio"
           value={`${ocupacionGeneral.toFixed(1)}%`}
           color={getStatusInscritos(ocupacionGeneral, totals.cupo).color}
         />
       </div>
 
+      {/* PANEL DE ALERTAS: CURSOS CON BAJA OCUPACIÓN (ACCIONAL PARA MARKETING/VENTAS) */}
+      {cursosEnRiesgo.length > 0 && (
+        <div className="bg-rose-50 border-l-4 border-rose-500 p-4 rounded-r-2xl">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="text-rose-600 w-5 h-5" />
+              <h3 className="font-extrabold text-rose-900 text-sm uppercase">
+                Alerta de Dirección: {cursosEnRiesgo.length} Grupos con Baja Ocupación (&lt;40%)
+              </h3>
+            </div>
+            <span className="text-[10px] font-bold bg-rose-200 text-rose-800 px-2 py-0.5 rounded-full">
+              Atención Inmediata
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {cursosEnRiesgo.slice(0, 6).map(c => (
+              <span key={c.id} className="bg-white border border-rose-200 text-rose-900 text-xs px-2.5 py-1 rounded-lg font-medium shadow-sm">
+                <strong>{c.curso}</strong> ({c.sede} - {c.horario}) — Inicia: {c.fechaInicio} — 
+                <span className="font-bold text-rose-600"> {c.inscritos}/{c.cupo} ({c.ocupacion.toFixed(0)}%)</span>
+              </span>
+            ))}
+            {cursosEnRiesgo.length > 6 && (
+              <span className="text-xs text-rose-700 font-bold self-center">
+                + {cursosEnRiesgo.length - 6} grupos más
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* GRÁFICOS ESTRATÉGICOS: POR TURNO Y POR SEDE */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
-          <h3
-            className="font-black mb-4 uppercase text-sm tracking-widest"
-            style={{ color: IDIP_GRAY }}
-          >
-            Cupo contra inscritos por curso
+          <h3 className="font-black mb-1 uppercase text-sm tracking-widest text-gray-600">
+            Llenado por Turno / Horario
           </h3>
-          <div className="h-80">
+          <p className="text-[10px] text-gray-400 font-bold mb-4">
+            Compara la demanda entre Matutino, Vespertino, Sabatino, etc.
+          </p>
+          <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={filtered} margin={{ bottom: 55 }}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke={IDIP_LIGHT_GRAY}
-                />
-                <XAxis
-                  dataKey="curso"
-                  angle={-35}
-                  textAnchor="end"
-                  interval={0}
-                  height={75}
-                  tick={{ fontSize: 9 }}
-                />
+              <BarChart data={porHorario} margin={{ bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={IDIP_LIGHT_GRAY} />
+                <XAxis dataKey="horario" tick={{ fontSize: 10, fontWeight: 'bold' }} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
                 <Tooltip />
                 <Legend />
-                <Bar
-                  name="Inscritos"
-                  dataKey="inscritos"
-                  fill={IDIP_GREEN}
-                  radius={[5, 5, 0, 0]}
-                />
-                <Bar
-                  name="Cupo"
-                  dataKey="cupo"
-                  fill={IDIP_GRAY}
-                  radius={[5, 5, 0, 0]}
-                />
+                <Bar name="Inscritos" dataKey="inscritos" fill={IDIP_GREEN} radius={[5, 5, 0, 0]} />
+                <Bar name="Cupo Total" dataKey="cupo" fill={IDIP_GRAY} radius={[5, 5, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
-          <h3
-            className="font-black mb-4 uppercase text-sm tracking-widest"
-            style={{ color: IDIP_GRAY }}
-          >
-            Resumen por sede
+          <h3 className="font-black mb-1 uppercase text-sm tracking-widest text-gray-600">
+            Resumen General por Sede
           </h3>
-          <div className="h-80">
+          <p className="text-[10px] text-gray-400 font-bold mb-4">
+            Comparativa consolidada de capacidad entre planteles
+          </p>
+          <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={porSede} margin={{ bottom: 20 }}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke={IDIP_LIGHT_GRAY}
-                />
-                <XAxis
-                  dataKey="sede"
-                  tick={{ fontSize: 10, fontWeight: 'bold' }}
-                />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={IDIP_LIGHT_GRAY} />
+                <XAxis dataKey="sede" tick={{ fontSize: 10, fontWeight: 'bold' }} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
                 <Tooltip />
                 <Legend />
-                <Bar
-                  name="Inscritos"
-                  dataKey="inscritos"
-                  fill={IDIP_GREEN}
-                  radius={[5, 5, 0, 0]}
-                />
-                <Bar
-                  name="Cupo"
-                  dataKey="cupo"
-                  fill={IDIP_GRAY}
-                  radius={[5, 5, 0, 0]}
-                />
+                <Bar name="Inscritos" dataKey="inscritos" fill={IDIP_GREEN} radius={[5, 5, 0, 0]} />
+                <Bar name="Cupo Total" dataKey="cupo" fill={IDIP_GRAY} radius={[5, 5, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 text-[10px] uppercase tracking-wider text-gray-500">
-              <th className="p-3">Curso</th>
-              <th className="p-3">Fecha de inicio</th>
-              <th className="p-3">Horario</th>
-              <th className="p-3">Sede</th>
-              <th className="p-3 text-right">Inscritos</th>
-              <th className="p-3 text-right">Cupo</th>
-              <th className="p-3 text-right">Disponibles</th>
-              <th className="p-3 text-right">Ocupacion</th>
-              <th className="p-3">Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(item => {
-              const status = getStatusInscritos(item.ocupacion, item.cupo);
-              return (
-                <tr
-                  key={item.id}
-                  className="border-b border-gray-100 hover:bg-gray-50"
-                >
-                  <td className="p-3 font-bold text-gray-700">{item.curso}</td>
-                  <td className="p-3">{item.fechaInicio}</td>
-                  <td className="p-3">{item.horario}</td>
-                  <td className="p-3">{item.sede}</td>
-                  <td className="p-3 text-right font-bold">
-                    {item.inscritos.toLocaleString()}
-                  </td>
-                  <td className="p-3 text-right">
-                    {item.cupo.toLocaleString()}
-                  </td>
-                  <td
-                    className={`p-3 text-right font-bold ${
-                      item.disponibles < 0
-                        ? 'text-red-600'
-                        : 'text-gray-700'
-                    }`}
-                  >
-                    {item.disponibles.toLocaleString()}
-                  </td>
-                  <td className="p-3 text-right font-bold">
-                    {item.ocupacion.toFixed(1)}%
-                  </td>
-                  <td className="p-3">
-                    <span
-                      className={`px-2 py-1 rounded-full text-[10px] font-black ${status.className}`}
-                    >
-                      {status.label}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        {!filtered.length && (
-          <p className="py-8 text-center text-gray-400">
-            No hay cursos o grupos para mostrar.
-          </p>
-        )}
+      {/* TABLA DETALLADA CON FORMATO COMPLETO Y BARRA DE PROGRESO */}
+      <div>
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="font-black text-sm uppercase tracking-wider text-gray-700">
+            Detalle de Grupos Abiertos ({filtered.length})
+          </h3>
+          <span className="text-xs text-gray-400 font-semibold">
+            Mostrando horario y fecha exacta por cada grupo
+          </span>
+        </div>
+        <div className="overflow-x-auto border border-gray-100 rounded-xl">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200 text-[10px] uppercase tracking-wider text-gray-500 font-black">
+                <th className="p-3">Curso / Taller</th>
+                <th className="p-3">Sede</th>
+                <th className="p-3">Turno / Horario</th>
+                <th className="p-3">Fecha Inicio</th>
+                <th className="p-3 text-center">Avance Ocupación</th>
+                <th className="p-3 text-right">Inscritos / Cupo</th>
+                <th className="p-3 text-right">Lugares Libres</th>
+                <th className="p-3 text-center">Estado</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filtered.map(item => {
+                const status = getStatusInscritos(item.ocupacion, item.cupo);
+                return (
+                  <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="p-3 font-bold text-gray-800">{item.curso}</td>
+                    <td className="p-3 font-semibold text-gray-600">{item.sede}</td>
+                    <td className="p-3">
+                      <span className="bg-gray-100 text-gray-700 text-xs px-2 py-0.5 rounded font-bold">
+                        {item.horario}
+                      </span>
+                    </td>
+                    <td className="p-3 text-gray-600 font-medium">{item.fechaInicio}</td>
+                    
+                    {/* BARRA DE PROGRESO VISUAL */}
+                    <td className="p-3 w-36">
+                      <div className="flex items-center gap-2">
+                        <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              width: `${Math.min(item.ocupacion, 100)}%`,
+                              backgroundColor: status.color
+                            }}
+                          />
+                        </div>
+                        <span className="text-[10px] font-bold text-gray-500 min-w-[32px]">
+                          {item.ocupacion.toFixed(0)}%
+                        </span>
+                      </div>
+                    </td>
+
+                    <td className="p-3 text-right font-bold text-gray-900">
+                      {item.inscritos} <span className="text-gray-400 font-normal">/ {item.cupo}</span>
+                    </td>
+                    <td className={`p-3 text-right font-bold ${item.disponibles < 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                      {item.disponibles}
+                    </td>
+                    <td className="p-3 text-center">
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black ${status.className}`}>
+                        {status.label}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {!filtered.length && (
+            <p className="py-8 text-center text-gray-400 text-xs italic">
+              No se encontraron cursos con los filtros seleccionados.
+            </p>
+          )}
+        </div>
       </div>
     </section>
   );
