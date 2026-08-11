@@ -270,59 +270,52 @@ function InscritosSection({ rows = [] }) {
   const [selectedSede, setSelectedSede] = useState('TODAS');
   const [search, setSearch] = useState('');
 
-  const registros = Array.isArray(rows) ? rows : [];
+  const sedes = useMemo(() => {
+    const registros = Array.isArray(rows) ? rows : [];
+    return ['TODAS', ...new Set(registros.map(item => item.sede))];
+  }, [rows]);
 
-  const sedes = useMemo(
-    () => ['TODAS', ...new Set(registros.map(item => item.sede))],
-    [registros]
-  );
+  const filtered = useMemo(() => {
+    const registros = Array.isArray(rows) ? rows : [];
+    return registros.filter(item => {
+      const matchesSede =
+        selectedSede === 'TODAS' || item.sede === selectedSede;
+      const term = search.trim().toLowerCase();
+      const matchesSearch =
+        !term ||
+        [item.curso, item.sede, item.horario, item.fechaInicio].some(
+          value => String(value || '').toLowerCase().includes(term)
+        );
+      return matchesSede && matchesSearch;
+    });
+  }, [rows, selectedSede, search]);
 
-  const filtered = useMemo(
-    () =>
-      registros.filter(item => {
-        const matchesSede =
-          selectedSede === 'TODAS' || item.sede === selectedSede;
-        const term = search.trim().toLowerCase();
-        const matchesSearch =
-          !term ||
-          [item.curso, item.sede, item.horario, item.fechaInicio].some(
-            value => String(value || '').toLowerCase().includes(term)
-          );
-        return matchesSede && matchesSearch;
+  const totals = useMemo(() => {
+    return filtered.reduce(
+      (result, item) => ({
+        inscritos: result.inscritos + item.inscritos,
+        cupo: result.cupo + item.cupo,
+        disponibles: result.disponibles + item.disponibles
       }),
-    [registros, selectedSede, search]
-  );
-
-  const totals = useMemo(
-    () =>
-      filtered.reduce(
-        (result, item) => ({
-          inscritos: result.inscritos + item.inscritos,
-          cupo: result.cupo + item.cupo,
-          disponibles: result.disponibles + item.disponibles
-        }),
-        { inscritos: 0, cupo: 0, disponibles: 0 }
-      ),
-    [filtered]
-  );
+      { inscritos: 0, cupo: 0, disponibles: 0 }
+    );
+  }, [filtered]);
 
   const ocupacionGeneral =
     totals.cupo > 0 ? (totals.inscritos / totals.cupo) * 100 : 0;
 
-  const porSede = useMemo(
-    () =>
-      Object.values(
-        filtered.reduce((result, item) => {
-          if (!result[item.sede]) {
-            result[item.sede] = { sede: item.sede, inscritos: 0, cupo: 0 };
-          }
-          result[item.sede].inscritos += item.inscritos;
-          result[item.sede].cupo += item.cupo;
-          return result;
-        }, {})
-      ),
-    [filtered]
-  );
+  const porSede = useMemo(() => {
+    return Object.values(
+      filtered.reduce((result, item) => {
+        if (!result[item.sede]) {
+          result[item.sede] = { sede: item.sede, inscritos: 0, cupo: 0 };
+        }
+        result[item.sede].inscritos += item.inscritos;
+        result[item.sede].cupo += item.cupo;
+        return result;
+      }, {})
+    );
+  }, [filtered]);
 
   return (
     <section className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
